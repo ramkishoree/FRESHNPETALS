@@ -1,0 +1,10 @@
+pnpm-lock.yaml
+.next
+.turbo
+dist
+coverage
+
+# Engineering Handbook — source of truth documents, never reformatted
+INTRO PRD
+INTRO PRD1
+08-Ecommerce-Engine.md

@@ -1,0 +1,29 @@
+import { z } from 'zod';
+import { createAdminCrudCollectionRoute } from '@/server/http/admin-crud-route';
+
+/** Ch.16 §96 Outlet Management API. */
+const schema = z.object({
+  name: z.string().min(1).max(120),
+  slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
+  address: z.string().min(1),
+  city: z.string().min(1),
+  state: z.string().optional(),
+  country: z.string().length(2).optional(),
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+  delivery_radius_km: z.number().positive().optional(),
+  working_hours: z.record(z.string(), z.unknown()).optional(),
+  timezone: z.string().optional(),
+  phone: z.string().optional(),
+  email: z.string().email().optional(),
+  is_active: z.boolean().optional(),
+});
+
+export const { GET, POST } = createAdminCrudCollectionRoute({
+  table: 'outlets',
+  service: 'outlets',
+  aggregateType: 'outlet',
+  searchColumns: ['name', 'city'],
+  filterKeys: ['is_active'],
+  createSchema: schema,
+});

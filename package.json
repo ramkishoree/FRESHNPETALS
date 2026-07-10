@@ -1,0 +1,52 @@
+{
+  "name": "prana-commerce-os",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prana Commerce OS — AI-powered ecommerce platform. First implementation: Fresh & Petals.",
+  "engines": {
+    "node": ">=22.0.0",
+    "pnpm": ">=11.0.0"
+  },
+  "packageManager": "pnpm@11.8.0",
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck && pnpm typecheck:tests",
+    "typecheck:tests": "tsc -p tests/tsconfig.json",
+    "test": "turbo run test",
+    "test:coverage": "turbo run test:coverage",
+    "test:e2e": "turbo run test:e2e",
+    "test:integration": "vitest run",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@eslint/js": "^9.17.0",
+    "@playwright/test": "^1.61.1",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.20.0",
+    "@vitest/coverage-v8": "^3.2.7",
+    "eslint": "^9.17.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^15.2.10",
+    "pg": "^8.22.0",
+    "prettier": "^3.4.2",
+    "prettier-plugin-tailwindcss": "^0.6.9",
+    "testcontainers": "^12.0.4",
+    "turbo": "^2.3.3",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.19.0",
+    "vitest": "^3.2.7"
+  },
+  "lint-staged": {
+    "*.{ts,tsx,js,jsx}": [
+      "eslint --fix"
+    ],
+    "*.{ts,tsx,js,jsx,json,md,css}": [
+      "prettier --write"
+    ]
+  }
+}

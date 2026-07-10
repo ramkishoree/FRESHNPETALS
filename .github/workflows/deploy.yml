@@ -1,0 +1,100 @@
+name: Deploy
+
+# Ch.18 §6 Deployment Pipeline: Developer → PR → Code Review → CI Pipeline
+# → Staging Deployment → Testing → Approval → Production Deployment →
+# Smoke Tests → Monitoring → Completion. Runs only after CI has finished
+# successfully on main (workflow_run, not a duplicate trigger) — this
+# workflow is deployment automation, not a second copy of the quality
+# gates. Requires repository secrets this sandbox never configured
+# (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID, DATABASE_URL) — until
+# they're set, the vercel-action/migrate steps fail with a clear auth
+# error rather than doing anything silently. See docs/deployment-runbook.md.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    branches: [main]
+    types: [completed]
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+env:
+  PNPM_VERSION: 11.8.0
+  NODE_VERSION: 22
+
+jobs:
+  deploy:
+    name: Deploy to Vercel (Production)
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Ch.18 §17 Database Migration Procedure, steps 1-2 (review + backup
+      # is the responsibility of the Supabase project's own PITR — this
+      # runs step 3, "Execute migration").
+      - name: Review pending migrations
+        run: node scripts/migrate.mjs --dry-run
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Apply migrations
+        run: node scripts/migrate.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
+      - name: Deploy to Vercel (Production)
+        id: vercel_deploy
+        uses: amondnet/vercel-action@v25
+        with:
+          vercel-token: ${{ secrets.VERCEL_TOKEN }}
+          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
+          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
+          vercel-args: '--prod'
+          working-directory: apps/web
+
+      # Ch.18 §20 Health Check Verification.
+      - name: Verify health endpoint
+        run: |
+          for i in $(seq 1 10); do
+            status=$(curl -s -o /dev/null -w "%{http_code}" "${{ steps.vercel_deploy.outputs.preview-url }}/api/health")
+            if [ "$status" = "200" ]; then echo "Health check passed"; exit 0; fi
+            echo "Health check returned $status, retrying ($i/10)..."
+            sleep 5
+          done
+          echo "Health check did not return 200 after 10 attempts."
+          exit 1
+
+      # Ch.18 §21/§253 Production Smoke Test Procedure.
+      - name: Install Playwright (chromium only — smoke test budget is 5 minutes)
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run smoke tests against production
+        run: pnpm exec playwright test --config=apps/web/playwright.config.ts --project=chromium smoke.spec.ts
+        env:
+          PLAYWRIGHT_BASE_URL: ${{ steps.vercel_deploy.outputs.preview-url }}
+
+      - name: Upload smoke test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-report
+          path: apps/web/playwright-report/
+          retention-days: 30

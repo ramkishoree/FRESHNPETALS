@@ -1,0 +1,42 @@
+import path from 'node:path';
+import type { NextConfig } from 'next';
+
+/**
+ * Ch.14/15: HSTS, Referrer-Policy, Permissions-Policy,
+ * X-Content-Type-Options, X-Frame-Options, COOP, CORP — applied globally
+ * here (Ch.11 §16's "Security Headers" step of the chain). Content-Security-Policy
+ * is NOT set here: it needs a fresh nonce per request (so `script-src` can
+ * avoid 'unsafe-inline' without blocking Next's own hydration/RSC bootstrap
+ * scripts), which a static next.config header can't generate — see
+ * `proxy.ts`, which sets it per-request instead.
+ */
+const securityHeaders = [
+  { key: 'Strict-Transport-Security', value: 'max-age=63072000; includeSubDomains; preload' },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'DENY' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+  { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(self)' },
+  { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+  { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
+];
+
+const nextConfig: NextConfig = {
+  turbopack: {
+    root: path.join(import.meta.dirname, '../..'),
+  },
+  // packages/* ship TypeScript source directly (no build step, see Phase 1
+  // package.json "main"/"exports") — Next.js only runs its TS/JSX
+  // transform on the app itself plus whatever's listed here.
+  transpilePackages: [
+    '@prana/core',
+    '@prana/commerce',
+    '@prana/identity',
+    '@prana/operations',
+    '@prana/ai',
+  ],
+  async headers() {
+    return [{ source: '/:path*', headers: securityHeaders }];
+  },
+};
+
+export default nextConfig;

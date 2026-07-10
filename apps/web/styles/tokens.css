@@ -1,0 +1,216 @@
+/**
+ * Design tokens — Prana Commerce OS / Fresh & Petals
+ * Source of truth: Engineering Handbook Chapter 5 (Brand Guidelines & Design System).
+ * See /docs/design-tokens.md for the full value-by-value trace back to the handbook,
+ * including the handful of values (neutrals, shadows, easing) the handbook is silent
+ * on and that were chosen here — accessibly, deliberately, and documented.
+ *
+ * Dark mode: Ch.5.27 — "Not included in Version 1. Architecture should support it."
+ * The `.dark` block below exists so the *architecture* supports it; nothing in this
+ * codebase applies the `.dark` class yet. Do not wire it to a user-facing toggle
+ * without a handbook amendment.
+ */
+
+@theme {
+  /* -- Brand primitives (Ch.5.5, verbatim) -------------------------------- */
+  --color-white: #ffffff;
+  --color-forest-green: #2e4b3a;
+  --color-gold: #c8a25d;
+  --color-ivory: #f7f3e9;
+  --color-success: #3fae49;
+  --color-error: #d64545;
+  --color-warning: #f5a623;
+  --color-info: #2d9cdb;
+
+  /* -- Accessible derivatives (not in handbook — see docs/design-tokens.md) */
+  --color-charcoal: #1a211d;
+  --color-muted-foreground: #556359;
+  --color-border: #e4dfd3;
+  --color-input-border: #d8d2c4;
+  --color-success-text: #1e7a28;
+  --color-error-text: #b23131;
+  --color-warning-text: #8a5a00;
+  --color-info-text: #1b6fa8;
+
+  /* -- Semantic (shadcn/ui-compatible) mapping ---------------------------- */
+  --color-background: var(--color-white);
+  --color-foreground: var(--color-charcoal);
+  --color-card: var(--color-white);
+  --color-card-foreground: var(--color-charcoal);
+  --color-popover: var(--color-white);
+  --color-popover-foreground: var(--color-charcoal);
+  --color-primary: var(--color-forest-green);
+  --color-primary-foreground: var(--color-white);
+  --color-secondary: var(--color-ivory);
+  --color-secondary-foreground: var(--color-charcoal);
+  --color-muted: var(--color-ivory);
+  --color-accent: var(--color-gold);
+  --color-accent-foreground: var(--color-charcoal);
+  --color-destructive: var(--color-error-text);
+  --color-destructive-foreground: var(--color-white);
+  --color-success-foreground: var(--color-charcoal);
+  --color-warning-foreground: var(--color-charcoal);
+  --color-info-foreground: var(--color-charcoal);
+  --color-input: var(--color-input-border);
+  --color-ring: var(--color-forest-green);
+
+  /* -- Typography (Ch.5.6, 5.7) -------------------------------------------- */
+  --font-sans: var(--font-geist-sans), Inter, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --text-hero: 4rem; /* 64px desktop — see docs for tablet/mobile stepping */
+  --text-hero--line-height: 1.1;
+  --text-hero--letter-spacing: -0.02em;
+  --text-hero--font-weight: 700;
+
+  --text-h1: 3rem; /* 48px */
+  --text-h1--line-height: 1.1;
+  --text-h1--letter-spacing: -0.02em;
+  --text-h1--font-weight: 700;
+
+  --text-h2: 2.25rem; /* 36px */
+  --text-h2--line-height: 1.1;
+  --text-h2--letter-spacing: -0.02em;
+  --text-h2--font-weight: 700;
+
+  --text-h3: 1.875rem; /* 30px */
+  --text-h3--line-height: 1.1;
+  --text-h3--letter-spacing: -0.02em;
+  --text-h3--font-weight: 700;
+
+  --text-h4: 1.5rem; /* 24px */
+  --text-h4--line-height: 1.1;
+  --text-h4--letter-spacing: -0.02em;
+  --text-h4--font-weight: 700;
+
+  --text-body-lg: 1.125rem; /* 18px */
+  --text-body-lg--line-height: 1.6;
+  --text-body-lg--font-weight: 400;
+
+  --text-body: 1rem; /* 16px */
+  --text-body--line-height: 1.6;
+  --text-body--font-weight: 400;
+
+  --text-caption: 0.875rem; /* 14px */
+  --text-caption--line-height: 1.6;
+  --text-caption--font-weight: 400;
+
+  --text-small: 0.75rem; /* 12px */
+  --text-small--line-height: 1.6;
+  --text-small--font-weight: 400;
+
+  /* Ch.5.6 gives button typography a weight/case rule (600, sentence case)
+     but no distinct size — deferred to Phase 7 (docs/design-tokens.md).
+     Decision: body size, since most buttons sit next to body text. */
+  --text-button: 1rem; /* 16px */
+  --text-button--line-height: 1.2;
+  --text-button--font-weight: 600;
+
+  --tracking-heading: -0.02em;
+
+  /* -- Spacing — 8pt scale (Ch.5.9, verbatim; never invent other values) -- */
+  --spacing-1: 0.25rem; /* 4px  */
+  --spacing-2: 0.5rem; /* 8px  */
+  --spacing-3: 0.75rem; /* 12px */
+  --spacing-4: 1rem; /* 16px */
+  --spacing-6: 1.5rem; /* 24px */
+  --spacing-8: 2rem; /* 32px */
+  --spacing-10: 2.5rem; /* 40px */
+  --spacing-12: 3rem; /* 48px */
+  --spacing-16: 4rem; /* 64px */
+  --spacing-20: 5rem; /* 80px */
+  --spacing-24: 6rem; /* 96px */
+  --spacing-32: 8rem; /* 128px */
+
+  /* -- Radius (Ch.5.10, verbatim per component) --------------------------- */
+  --radius: 0.75rem; /* 12px base */
+  --radius-button: 0.75rem; /* 12px */
+  --radius-card: 1rem; /* 16px */
+  --radius-image: 1.25rem; /* 20px */
+  --radius-modal: 1.5rem; /* 24px */
+  --radius-hero-card: 1.75rem; /* 28px */
+  /* shadcn/ui's generic rounded-sm/md/lg/xl utilities, standard calc-from-
+     base convention, so every primitive the handbook doesn't name a radius
+     for (inputs, popovers, dropdowns, ...) still derives from our base
+     rather than Tailwind's own unrelated default scale. */
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+
+  /* -- Shadows — "extremely subtle, never heavy" (Ch.5.11) ---------------- */
+  /* Warm-tinted (forest green, not pure black) for a natural, premium feel. */
+  --shadow-xs: 0 1px 2px 0 rgb(46 75 58 / 0.04);
+  --shadow-sm: 0 1px 3px 0 rgb(46 75 58 / 0.06);
+  --shadow-md: 0 4px 12px -2px rgb(46 75 58 / 0.08);
+  --shadow-lg: 0 12px 24px -6px rgb(46 75 58 / 0.1);
+
+  /* -- Motion (Ch.5.16, 5.17) ---------------------------------------------- */
+  /* Durations 150/250/400ms are used directly as Tailwind's duration-150/
+     duration-250/duration-400 utilities (arbitrary values, no token needed). */
+  --ease-premium: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* -- Breakpoints (Ch.5.28 responsive matrix; md/lg/xl already align) ---- */
+  --breakpoint-xs: 23.4375rem; /* 375px */
+  --breakpoint-3xl: 90rem; /* 1440px */
+  --breakpoint-4xl: 120rem; /* 1920px */
+
+  /* -- Layout (Ch.5.8) ------------------------------------------------------ */
+  --container-max: 1280px;
+
+  /* -- Chart palette (Ch.12 §86: Recharts) --------------------------------- */
+  /* Not specified by the handbook — derived from brand hues (forest green,
+     gold) plus four complementary earthy tones, chosen so charts stay in
+     the same "premium natural" family as the rest of the product. Every
+     value below passed the `dataviz` skill's computed checks (OKLCH
+     lightness band, chroma floor, Machado-2009 CVD ΔE, WCAG contrast) —
+     see docs/design-tokens.md for the full validator output. Status colors
+     (success/warning/destructive/info, defined above) are reserved and
+     never reused here — a status color must never impersonate a series. */
+  --chart-1: #0f8a54; /* green   */
+  --chart-2: #c1552e; /* terracotta */
+  --chart-3: #00897b; /* teal    */
+  --chart-4: #c99a3a; /* gold    */
+  --chart-5: #8b4a78; /* plum    */
+  --chart-6: #3e5fa0; /* slate blue */
+  --chart-surface: var(--color-background);
+}
+
+/*
+ * Dark mode — dormant scaffold only (Ch.5.27). Same brand hues, inverted for
+ * legibility. Not imported/applied anywhere; requires a future `.dark` class
+ * toggle to activate, which is out of scope until the handbook authorizes it.
+ */
+.dark {
+  --color-background: #14231a;
+  --color-foreground: #f2efe6;
+  --color-card: #1a2b20;
+  --color-card-foreground: #f2efe6;
+  --color-popover: #1a2b20;
+  --color-popover-foreground: #f2efe6;
+  --color-primary: #6ea886;
+  --color-primary-foreground: #0f1c14;
+  --color-secondary: #24352a;
+  --color-secondary-foreground: #f2efe6;
+  --color-muted: #24352a;
+  --color-muted-foreground: #a9b8ac;
+  --color-accent: #c8a25d;
+  --color-accent-foreground: #14231a;
+  --color-destructive: #e57373;
+  --color-destructive-foreground: #14231a;
+  --color-success-foreground: #f2efe6;
+  --color-warning-foreground: #14231a;
+  --color-info-foreground: #f2efe6;
+  --color-border: #2b3d31;
+  --color-input: #34483a;
+  --color-ring: #6ea886;
+
+  /* Same six-hue family, restepped for the dark surface — validated
+     separately (dataviz skill), not an automatic flip of the light steps. */
+  --chart-1: #2ba36c;
+  --chart-2: #d06b44;
+  --chart-3: #1e9c8e;
+  --chart-4: #a8842f;
+  --chart-5: #a05e90;
+  --chart-6: #5776b8;
+}
