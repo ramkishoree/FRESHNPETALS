@@ -1,11 +1,10 @@
 'use client';
 
-import { Heart } from 'lucide-react';
+import { Heart, Minus, Plus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { PriceDisplay } from '@/components/commerce/price-display';
-import { Button } from '@/components/ui/button';
 import { useCart } from '@/lib/cart-context';
 
 export interface ProductActionsProps {
@@ -63,48 +62,71 @@ export function ProductActions({
   }
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-h2 text-foreground font-bold">{name}</h1>
-      {shortDescription && <p className="text-body text-muted-foreground">{shortDescription}</p>}
-      <PriceDisplay basePrice={basePrice} salePrice={salePrice} size="lg" />
+    <div className="flex flex-col">
+      <h1 className="text-h2">{name}</h1>
 
-      <div className="flex items-center gap-3">
-        <div className="rounded-button border-input flex items-center border">
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-          >
-            -
-          </Button>
-          <span className="text-body w-8 text-center">{quantity}</span>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => setQuantity((q) => q + 1)}
-          >
-            +
-          </Button>
-        </div>
-        <Button type="button" onClick={addToCart} className="flex-1">
-          Add to cart
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={toggleWishlist}
-          aria-label="Add to wishlist"
-        >
-          <Heart className="size-4" />
-        </Button>
+      {shortDescription && <p className="text-body-lg mt-3 max-w-prose">{shortDescription}</p>}
+
+      <div className="mt-6">
+        <PriceDisplay basePrice={basePrice} salePrice={salePrice} size="lg" />
       </div>
 
-      <Button type="button" variant="secondary" size="lg" onClick={buyNow} className="w-full">
-        Buy now
-      </Button>
+      <div className="mt-8 flex items-center gap-4">
+        <span className="text-caption">Quantity</span>
+        <div className="inline-flex items-center rounded-[var(--r-pill)] border border-[var(--sf-border-strong)] bg-[var(--sf-surface)]">
+          <button
+            type="button"
+            onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+            aria-label="Decrease quantity"
+            disabled={quantity <= 1}
+            className="grid size-11 place-items-center rounded-l-[var(--r-pill)] text-[var(--sf-ink)] hover:bg-[var(--sf-surface-2)] disabled:opacity-40"
+          >
+            <Minus className="size-4" />
+          </button>
+          <span
+            className="font-display min-w-[3ch] text-center text-lg text-[var(--sf-ink)]"
+            aria-live="polite"
+          >
+            {quantity}
+          </span>
+          <button
+            type="button"
+            onClick={() => setQuantity((q) => q + 1)}
+            aria-label="Increase quantity"
+            className="grid size-11 place-items-center rounded-r-[var(--r-pill)] text-[var(--sf-ink)] hover:bg-[var(--sf-surface-2)]"
+          >
+            <Plus className="size-4" />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+        <button
+          type="button"
+          onClick={addToCart}
+          className="btn btn-primary flex-1 px-7 py-3.5 text-sm"
+        >
+          Add to cart
+        </button>
+        <button type="button" onClick={buyNow} className="btn btn-gold flex-1 px-7 py-3.5 text-sm">
+          Buy now
+        </button>
+        <button
+          type="button"
+          onClick={toggleWishlist}
+          aria-label="Add to wishlist"
+          className="btn btn-outline grid h-[52px] w-[52px] place-items-center px-0"
+        >
+          <Heart className="size-5" />
+        </button>
+      </div>
+
+      <p className="text-caption mt-6 flex items-center gap-2">
+        <span className="text-[var(--gold)]" aria-hidden="true">
+          ✦
+        </span>
+        Fresh, hand-arranged, same-day delivery.
+      </p>
     </div>
   );
 }

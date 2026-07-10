@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { ReviewCard } from '@/components/commerce/review-card';
+import { BrandDivider } from '@/components/storefront/brand-divider';
 import { ProductActions } from '@/components/storefront/product-actions';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -34,7 +35,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-/** Ch.12 §22 Product Detail Page — server-rendered for SEO. Buy Now adds to cart and jumps straight to /cart (real checkout is Phase 10). */
+/** Ch.12 §22 Product Detail Page — server-rendered for SEO. */
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params;
   const supabase = await createSupabaseServerClient();
@@ -64,66 +65,79 @@ export default async function ProductDetailPage({ params }: PageProps) {
     .limit(10);
 
   return (
-    <div className="container-brand space-y-10 py-8">
-      <Breadcrumb>
-        <BreadcrumbList>
+    <div className="container-brand py-10">
+      <Breadcrumb className="mb-8">
+        <BreadcrumbList className="text-caption">
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
-              <Link href="/">Home</Link>
+              <Link href="/" className="hover:text-[var(--gold-deep)]">
+                Home
+              </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
-          <BreadcrumbSeparator />
+          <BreadcrumbSeparator className="text-[var(--sf-border-strong)]" />
           {category && (
             <>
               <BreadcrumbItem>
                 <BreadcrumbLink asChild>
-                  <Link href={`/shop/${category.slug}`}>{category.name}</Link>
+                  <Link href={`/shop/${category.slug}`} className="hover:text-[var(--gold-deep)]">
+                    {category.name}
+                  </Link>
                 </BreadcrumbLink>
               </BreadcrumbItem>
-              <BreadcrumbSeparator />
+              <BreadcrumbSeparator className="text-[var(--sf-border-strong)]" />
             </>
           )}
           <BreadcrumbItem>
-            <BreadcrumbPage>{product.name}</BreadcrumbPage>
+            <BreadcrumbPage className="text-[var(--sf-ink)]">{product.name}</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
 
-      <div className="grid gap-8 lg:grid-cols-2">
-        <div className="rounded-image bg-muted relative aspect-square overflow-hidden">
-          {product.featured_image && (
-            <Image
-              src={product.featured_image}
-              alt={product.name}
-              fill
-              sizes="(min-width: 1024px) 50vw, 100vw"
-              className="object-cover"
-            />
-          )}
+      <div className="grid gap-10 lg:grid-cols-2">
+        <div className="relative overflow-hidden rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] shadow-[var(--shadow-md)]">
+          <div className="relative aspect-square w-full">
+            {product.featured_image && (
+              <Image
+                src={product.featured_image}
+                alt={product.name}
+                fill
+                priority
+                sizes="(max-width: 1024px) 100vw, 50vw"
+                className="object-cover"
+              />
+            )}
+          </div>
         </div>
 
-        <ProductActions
-          productId={product.id}
-          name={product.name}
-          slug={product.slug}
-          shortDescription={product.short_description}
-          image={product.featured_image}
-          basePrice={priceRow ? Number(priceRow.base_price) : 0}
-          salePrice={priceRow?.sale_price != null ? Number(priceRow.sale_price) : null}
-        />
+        <div className="lg:pt-4">
+          <ProductActions
+            productId={product.id}
+            name={product.name}
+            slug={product.slug}
+            shortDescription={product.short_description}
+            image={product.featured_image}
+            basePrice={priceRow ? Number(priceRow.base_price) : 0}
+            salePrice={priceRow?.sale_price != null ? Number(priceRow.sale_price) : null}
+          />
+        </div>
       </div>
 
-      <section className="max-w-3xl space-y-3">
-        <h2 className="text-h3 text-foreground font-semibold">Description</h2>
-        <p className="text-body text-foreground whitespace-pre-line">{product.description}</p>
-      </section>
+      {product.description && (
+        <section className="mt-16 max-w-3xl">
+          <p className="eyebrow mb-3">The details</p>
+          <p className="text-body-lg whitespace-pre-line">{product.description}</p>
+        </section>
+      )}
 
-      <section className="space-y-4">
-        <h2 className="text-h3 text-foreground font-semibold">Reviews</h2>
+      <section className="mt-20 text-center">
+        <p className="eyebrow mb-2">Loved by locals</p>
+        <h2 className="text-h3">Customer reviews</h2>
+        <BrandDivider className="my-6" />
         {(reviews ?? []).length === 0 ? (
-          <p className="text-body text-muted-foreground">No reviews yet.</p>
+          <p className="text-body-lg">No reviews yet.</p>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-5 text-left md:grid-cols-3">
             {(reviews ?? []).map((review) => (
               <ReviewCard
                 key={review.id}

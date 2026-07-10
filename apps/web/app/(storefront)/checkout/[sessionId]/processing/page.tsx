@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import * as React from 'react';
-import { Spinner } from '@/components/states/spinner';
+import { BrandDivider } from '@/components/storefront/brand-divider';
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLLS = 30; // 60 seconds
@@ -53,26 +53,42 @@ export default function CheckoutProcessingPage() {
     };
   }, [pollCount, params.sessionId, router]);
 
-  if (timedOut) {
-    return (
-      <div className="container-brand flex flex-col items-center gap-4 py-24 text-center">
-        <h1 className="text-h2 text-foreground font-bold">Still confirming your payment</h1>
-        <p className="text-body text-muted-foreground max-w-md">
-          This is taking longer than expected. Check{' '}
-          <Link href="/account/orders" className="text-primary underline underline-offset-2">
-            My Orders
-          </Link>{' '}
-          in a few minutes — your payment provider may still be finalizing it.
-        </p>
-      </div>
-    );
-  }
-
   return (
-    <div className="container-brand flex flex-col items-center gap-4 py-24 text-center">
-      <Spinner />
-      <h1 className="text-h2 text-foreground font-bold">Confirming your payment...</h1>
-      <p className="text-body text-muted-foreground">This usually takes just a few seconds.</p>
+    <div className="container-brand grid min-h-[70vh] place-items-center py-16 text-center">
+      <div className="max-w-md">
+        {!timedOut ? (
+          <>
+            <div
+              className="mx-auto size-14 animate-spin rounded-full border-2 border-[var(--sf-border)] border-t-[var(--gold)]"
+              style={{ animationDuration: '1.1s' }}
+              aria-hidden="true"
+            />
+            <p className="eyebrow mt-8">Confirming your order</p>
+            <h1 className="text-h2 mt-3">Arranging your order</h1>
+            <p className="text-body-lg mt-3">
+              We&rsquo;re confirming your payment with the bank. This usually takes a few seconds —
+              please don&rsquo;t close this window.
+            </p>
+            <BrandDivider className="mt-8" />
+          </>
+        ) : (
+          <>
+            <p className="eyebrow">Taking a moment longer</p>
+            <h1 className="text-h2 mt-3">Still confirming</h1>
+            <p className="text-body-lg mt-3">
+              This is taking longer than expected. Check{' '}
+              <Link
+                href="/account/orders"
+                className="text-[var(--gold-deep)] underline underline-offset-2"
+              >
+                My Orders
+              </Link>{' '}
+              in a few minutes — your payment provider may still be finalizing it.
+            </p>
+            <BrandDivider className="my-8" />
+          </>
+        )}
+      </div>
     </div>
   );
 }

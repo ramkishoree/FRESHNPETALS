@@ -2,8 +2,6 @@ import type { Product } from '@prana/commerce';
 import { Heart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { DiscountBadge } from './discount-badge';
 import { PriceDisplay } from './price-display';
 
@@ -15,7 +13,7 @@ export interface ProductCardProps {
 }
 
 /**
- * Ch.12 §82. Ch.5.20: large image, price, delivery badge, add-to-cart,
+ * Ch.12 §82. Ch.5.20: large image, price, discount badge, add-to-cart,
  * wishlist, hover effect — CLS must stay 0 (Ch.12 §21), hence the fixed
  * aspect-ratio image wrapper rather than an intrinsic-sized <img>.
  */
@@ -26,58 +24,70 @@ export function ProductCard({
   isWishlisted,
 }: ProductCardProps) {
   return (
-    <Card className="rounded-card duration-250 group overflow-hidden p-0 transition-shadow hover:shadow-md">
-      <div className="rounded-image bg-muted relative aspect-square overflow-hidden">
-        <Link href={`/product/${product.slug}`} className="block size-full">
-          {product.featuredImage ? (
-            <Image
-              src={product.featuredImage}
-              alt={product.name}
-              fill
-              sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
-              className="duration-400 object-cover transition-transform group-hover:scale-105"
-            />
-          ) : (
-            <div className="text-caption text-muted-foreground flex size-full items-center justify-center">
-              No image
-            </div>
-          )}
+    <article className="card-brand group flex flex-col overflow-hidden">
+      <div className="relative">
+        <Link href={`/product/${product.slug}`} className="block" aria-label={product.name}>
+          <div className="relative aspect-[4/5] w-full overflow-hidden bg-[var(--sf-surface-2)]">
+            {product.featuredImage ? (
+              <Image
+                src={product.featuredImage}
+                alt={product.name}
+                fill
+                sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                className="object-cover transition-transform duration-700 ease-[var(--ease)] group-hover:scale-[1.04]"
+              />
+            ) : (
+              <div className="text-caption flex h-full w-full items-center justify-center">
+                No image
+              </div>
+            )}
+          </div>
         </Link>
-        <div className="absolute left-3 top-3">
+
+        <div className="pointer-events-none absolute left-3 top-3">
           <DiscountBadge basePrice={product.basePrice} salePrice={product.salePrice} />
         </div>
+
         {onToggleWishlist && (
-          <Button
+          <button
             type="button"
-            variant="secondary"
-            size="icon"
-            className="absolute right-3 top-3 size-8 rounded-full"
-            aria-pressed={isWishlisted}
-            aria-label={isWishlisted ? 'Remove from wishlist' : 'Add to wishlist'}
             onClick={() => onToggleWishlist(product.id)}
+            aria-pressed={isWishlisted}
+            aria-label={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+            className="bg-[var(--warm-white)]/90 absolute right-3 top-3 grid size-9 place-items-center rounded-full border border-[var(--sf-border)] text-[var(--sf-ink)] backdrop-blur transition-colors hover:border-[var(--gold)] hover:text-[var(--sale)] focus-visible:outline"
           >
-            <Heart className={isWishlisted ? 'fill-destructive text-destructive' : ''} />
-          </Button>
+            <Heart className="size-[18px]" fill={isWishlisted ? 'currentColor' : 'none'} />
+          </button>
         )}
       </div>
 
-      <CardContent className="space-y-2 px-4 pt-4">
-        <Link
-          href={`/product/${product.slug}`}
-          className="text-body line-clamp-2 font-medium hover:underline"
-        >
-          {product.name}
-        </Link>
-        <PriceDisplay basePrice={product.basePrice} salePrice={product.salePrice} />
-      </CardContent>
+      <div className="flex flex-1 flex-col p-4">
+        <h3 className="font-display text-xl leading-tight text-[var(--sf-ink)]">
+          <Link href={`/product/${product.slug}`} className="hover:text-[var(--gold-deep)]">
+            {product.name}
+          </Link>
+        </h3>
 
-      {onAddToCart && (
-        <CardFooter className="px-4 pb-4">
-          <Button type="button" className="w-full" onClick={() => onAddToCart(product.id)}>
-            Add to cart
-          </Button>
-        </CardFooter>
-      )}
-    </Card>
+        {product.shortDescription && (
+          <p className="mt-1.5 line-clamp-2 text-sm text-[var(--sf-ink-muted)]">
+            {product.shortDescription}
+          </p>
+        )}
+
+        <div className="mt-auto flex items-end justify-between gap-3 pt-4">
+          <PriceDisplay basePrice={product.basePrice} salePrice={product.salePrice} />
+
+          {onAddToCart && (
+            <button
+              type="button"
+              onClick={() => onAddToCart(product.id)}
+              className="btn btn-gold shrink-0 px-5 py-2.5 text-sm"
+            >
+              Add
+            </button>
+          )}
+        </div>
+      </div>
+    </article>
   );
 }

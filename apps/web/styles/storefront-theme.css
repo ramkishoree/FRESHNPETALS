@@ -1,0 +1,211 @@
+/* ============================================================
+   Storefront-only visual redesign layer.
+   Scoped under `.storefront-theme` (applied on the (storefront)
+   route group's root layout div) so the admin panel — which
+   shares this same globals.css/tokens.css — is completely
+   unaffected. Admin keeps its existing Tailwind-generated
+   text-h1..h4/text-body/text-caption utilities from tokens.css;
+   these rules only ever apply inside `.storefront-theme`.
+   ============================================================ */
+
+.storefront-theme {
+  --font-display: var(--font-cormorant, 'Cormorant Garamond'), Georgia, serif;
+  --font-body: var(--font-newsreader, 'Newsreader'), Georgia, 'Times New Roman', serif;
+  --font-util: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  --green: #2e4b3a;
+  --green-soft: #5a7060;
+  --gold: #c8a25d;
+  --gold-deep: #8a6d3b;
+  --ivory: #f7f3e9;
+  --warm-white: #fffdf8;
+
+  --sf-bg: var(--ivory);
+  --sf-surface: var(--warm-white);
+  --sf-surface-2: #fbf8f0;
+  --sf-ink: var(--green);
+  --sf-ink-muted: #6b6459;
+  --sf-border: #e8e0cf;
+  --sf-border-strong: #d9cfb6;
+
+  --price-was: #a79f8f;
+  --sale: #a8452f;
+  --sf-focus: #6f9a7d;
+
+  --r-sm: 8px;
+  --r-md: 14px;
+  --r-lg: 22px;
+  --r-pill: 999px;
+
+  --shadow-sm: 0 1px 2px rgba(46, 75, 58, 0.05), 0 4px 14px -8px rgba(46, 75, 58, 0.12);
+  --shadow-md: 0 8px 30px -12px rgba(46, 75, 58, 0.18);
+  --shadow-lift: 0 18px 48px -20px rgba(46, 75, 58, 0.28);
+  --ease: cubic-bezier(0.22, 0.61, 0.36, 1);
+
+  background: var(--sf-bg);
+  color: var(--sf-ink);
+  font-family: var(--font-body);
+  background-image: radial-gradient(
+    140% 90% at 50% -10%,
+    #fbf8ee 0%,
+    var(--ivory) 46%,
+    var(--ivory) 100%
+  );
+  background-attachment: fixed;
+}
+
+/* Typography — scoped override of the Tailwind-generated text-h1..h4/
+   text-body/text-caption utilities, storefront only. */
+.storefront-theme .text-h1,
+.storefront-theme .text-h2,
+.storefront-theme .text-h3,
+.storefront-theme .text-h4 {
+  font-family: var(--font-display);
+  color: var(--sf-ink);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.01em;
+}
+.storefront-theme .text-h1 {
+  font-size: clamp(2.6rem, 5.5vw, 4.4rem);
+}
+.storefront-theme .text-h2 {
+  font-size: clamp(2rem, 3.8vw, 3rem);
+}
+.storefront-theme .text-h3 {
+  font-size: clamp(1.5rem, 2.4vw, 2rem);
+}
+.storefront-theme .text-h4 {
+  font-size: clamp(1.2rem, 1.8vw, 1.5rem);
+  font-weight: 600;
+}
+.storefront-theme .text-body {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.65;
+}
+.storefront-theme .text-body-lg {
+  font-family: var(--font-body);
+  font-size: 1.125rem;
+  line-height: 1.7;
+  color: var(--sf-ink-muted);
+}
+.storefront-theme .text-caption {
+  font-family: var(--font-util);
+  font-size: 0.78rem;
+  letter-spacing: 0.02em;
+  color: var(--sf-ink-muted);
+}
+
+.storefront-theme .font-display {
+  font-family: var(--font-display);
+}
+.storefront-theme .font-body {
+  font-family: var(--font-body);
+}
+.storefront-theme .font-util {
+  font-family: var(--font-util);
+}
+
+.storefront-theme .eyebrow {
+  font-family: var(--font-util);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold-deep);
+}
+
+.storefront-theme .leaf-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.9rem;
+  color: var(--gold);
+}
+.storefront-theme .leaf-divider::before,
+.storefront-theme .leaf-divider::after {
+  content: '';
+  height: 1px;
+  width: clamp(2rem, 8vw, 5rem);
+  background: linear-gradient(90deg, transparent, var(--gold));
+}
+.storefront-theme .leaf-divider::after {
+  transform: scaleX(-1);
+}
+
+.storefront-theme .card-brand {
+  background: var(--sf-surface);
+  border: 1px solid var(--sf-border);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  transition:
+    transform 0.35s var(--ease),
+    box-shadow 0.35s var(--ease),
+    border-color 0.35s var(--ease);
+}
+.storefront-theme .card-brand:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lift);
+  border-color: var(--sf-border-strong);
+}
+
+.storefront-theme .btn {
+  font-family: var(--font-util);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  border-radius: var(--r-pill);
+  transition:
+    background 0.25s var(--ease),
+    color 0.25s var(--ease),
+    border-color 0.25s var(--ease),
+    transform 0.15s var(--ease);
+}
+.storefront-theme .btn:active {
+  transform: translateY(1px);
+}
+.storefront-theme .btn-primary {
+  background: var(--green);
+  color: var(--ivory);
+  border: 1px solid var(--green);
+}
+.storefront-theme .btn-primary:hover {
+  background: #24402f;
+}
+.storefront-theme .btn-outline {
+  background: transparent;
+  color: var(--green);
+  border: 1px solid var(--sf-border-strong);
+}
+.storefront-theme .btn-outline:hover {
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+.storefront-theme .btn-gold {
+  background: var(--gold);
+  color: var(--green);
+  border: 1px solid var(--gold);
+}
+.storefront-theme .btn-gold:hover {
+  background: #bd9346;
+}
+
+.storefront-theme :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--sf-focus);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .storefront-theme .reveal {
+    opacity: 0;
+    transform: translateY(14px);
+    transition:
+      opacity 0.7s var(--ease),
+      transform 0.7s var(--ease);
+  }
+  .storefront-theme .reveal.is-in {
+    opacity: 1;
+    transform: none;
+  }
+}

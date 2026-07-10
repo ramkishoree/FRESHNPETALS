@@ -13,7 +13,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
     .limit(8);
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="storefront-theme flex min-h-dvh flex-col">
       <SiteHeader categories={categories ?? []} />
       <div className="flex-1">{children}</div>
       <SiteFooter />

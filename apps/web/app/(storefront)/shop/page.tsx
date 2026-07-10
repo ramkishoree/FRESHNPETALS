@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
+import { BrandDivider } from '@/components/storefront/brand-divider';
 import { ShopSortControl } from '@/components/storefront/shop-sort-control';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
@@ -10,7 +11,7 @@ import {
 
 export const metadata: Metadata = { title: 'Shop All Products | Fresh & Petals' };
 
-/** Ch.12 §19 Category Pages (used here for the unfiltered "shop all" listing too) — SEO header, sorting, product grid, all server-rendered. */
+/** Ch.12 §19 Category Pages (used here for the unfiltered "shop all" listing too). */
 export default async function ShopPage({
   searchParams,
 }: {
@@ -30,11 +31,20 @@ export default async function ShopPage({
   const products = (data ?? []).map(mapProductRow);
 
   return (
-    <div className="container-brand space-y-6 py-10">
-      <div className="flex items-center justify-between">
-        <h1 className="text-h2 text-foreground font-bold">All products</h1>
+    <div className="container-brand py-14">
+      <header className="text-center">
+        <p className="eyebrow mb-3">The whole shop</p>
+        <h1 className="text-h1">Every bloom, box &amp; bouquet</h1>
+        <BrandDivider className="mt-6" />
+      </header>
+
+      <div className="mb-6 mt-10 flex items-center justify-between gap-4">
+        <p className="text-caption">
+          {products.length} {products.length === 1 ? 'item' : 'items'}
+        </p>
         <ShopSortControl {...(sort ? { currentSort: sort } : {})} />
       </div>
+
       <AddToCartProductGrid products={products} />
     </div>
   );
