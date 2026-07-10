@@ -48,3 +48,5 @@ next-env.d.ts
 INTRO PRD
 INTRO PRD1
 08-Ecommerce-Engine.md
+.vercel
+.env*

@@ -1,0 +1,10 @@
+node_modules
+.git
+.turbo
+.next
+coverage
+playwright-report
+test-results
+INTRO PRD
+INTRO PRD1
+08-Ecommerce-Engine.md
