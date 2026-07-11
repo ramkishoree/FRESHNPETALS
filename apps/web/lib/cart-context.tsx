@@ -25,13 +25,13 @@ interface CartContextValue {
 const CartContext = React.createContext<CartContextValue | null>(null);
 const STORAGE_KEY = 'fnp-cart';
 /**
- * Matches Zod v4's `.uuid()` exactly: requires a valid UUID v1–5 with the
- * RFC 4122 variant nibble (`[89ab]` at position 17). The backend's
- * `z.string().uuid()` rejects strings that pass the looser 6-hex-nibble
- * regex, so cart hydration must match the stricter one to prevent
- * perpetual "Invalid request body" errors on checkout.
+ * Matches Zod v4's `.uuid()` exactly so the cart never holds a productId
+ * the checkout API would reject with 422. The products table default is
+ * `uuid_generate_v7()` (RFC 9562 UUIDv7, version nibble = 7), so the
+ * regex must accept versions 1–8 (not just v4) plus the nil UUID.
  */
-const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const UUID_RE =
+  /^(?:00000000-0000-0000-0000-000000000000|[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
 
 /**
  * `/api/v1/checkout` requires `lines[].productId` to be a real UUID
