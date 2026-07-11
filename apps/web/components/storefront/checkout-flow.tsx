@@ -29,7 +29,9 @@ interface SavedAddress {
   recipient_name: string;
   phone: string;
   address_line_1: string;
+  address_line_2: string | null;
   city: string;
+  state: string | null;
   postal_code: string;
 }
 
@@ -93,7 +95,9 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           recipientName: saved.recipient_name,
           phone: saved.phone,
           addressLine1: saved.address_line_1,
+          addressLine2: saved.address_line_2 ?? undefined,
           city: saved.city,
+          state: saved.state ?? undefined,
           postalCode: saved.postal_code,
         }
       : manualAddress;

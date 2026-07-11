@@ -25,19 +25,30 @@ function generateNonce(): string {
  * development to reconstruct stack traces for the error overlay. React
  * itself guarantees it never calls eval() in production, so prod keeps
  * the strict policy.
+ *
+ * Razorpay URLs:
+ *   - `https://checkout.razorpay.com` is whitelisted in script-src as a
+ *     fallback for browsers that don't support `strict-dynamic` (the
+ *     script is loaded via <Script nonce={...}>, which CSP3 browsers
+ *     honour through the nonce alone).
+ *   - `frame-src` grants the Razorpay checkout.js script permission to
+ *     embed its payment iframe at `https://api.razorpay.com`.
+ *   - `connect-src` permits Razorpay's telemetry (lumberjack) endpoint.
  */
 function buildCsp(nonce: string, supabaseUrl: string): string {
+  const razorpayScript = 'https://checkout.razorpay.com';
   const scriptSrc =
     process.env.NODE_ENV === 'production'
-      ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic'`
-      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval'`;
+      ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${razorpayScript}`
+      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${razorpayScript}`;
   return [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self'",
-    `connect-src 'self' ${supabaseUrl}`,
+    `connect-src 'self' ${supabaseUrl} https://lumberjack.razorpay.com`,
+    'frame-src https://api.razorpay.com https://checkout.razorpay.com',
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",
