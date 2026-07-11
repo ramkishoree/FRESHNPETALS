@@ -10,9 +10,9 @@
 
 const API_KEY: string | undefined = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'];
 
-let pendingPromise: Promise<any> | null = null;
+let pendingPromise: Promise<typeof google.maps> | null = null;
 
-export function loadGoogleMaps(): Promise<any> {
+export function loadGoogleMaps(): Promise<typeof google.maps> {
   if (pendingPromise) return pendingPromise;
 
   if (!API_KEY) {
@@ -21,9 +21,8 @@ export function loadGoogleMaps(): Promise<any> {
   }
 
   // Already loaded (e.g. by a previous route)
-  const w = typeof window !== 'undefined' ? (window as any) : null;
-  if (w?.google?.maps) {
-    return Promise.resolve(w.google.maps);
+  if (typeof window !== 'undefined' && window.google?.maps) {
+    return Promise.resolve(window.google.maps);
   }
 
   pendingPromise = new Promise((resolve, reject) => {
@@ -32,9 +31,8 @@ export function loadGoogleMaps(): Promise<any> {
     script.async = true;
     script.defer = true;
     script.onload = () => {
-      const w2 = window as any;
-      if (w2.google?.maps) {
-        resolve(w2.google.maps);
+      if (window.google?.maps) {
+        resolve(window.google.maps);
       } else {
         reject(new Error('Google Maps loaded but google.maps is undefined.'));
       }

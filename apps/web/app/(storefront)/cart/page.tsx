@@ -6,9 +6,11 @@ import { CartItem } from '@/components/commerce/cart-item';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { useCart } from '@/lib/cart-context';
 
-const FREE_DELIVERY_THRESHOLD = 999;
-
-/** Ch.12 §24 Cart Experience + Ch.12 §25 Free Delivery Progress. */
+/** Ch.12 §24 Cart Experience. Delivery fee is distance-based (₹50 for the
+ * first 5km, +₹5/km beyond — see packages/commerce/src/domain/checkout.ts)
+ * and can only be computed once the customer drops a delivery pin at
+ * checkout, so the cart itself just states the pricing model rather than
+ * a progress bar toward a threshold that no longer exists. */
 export default function CartPage() {
   const { items, subtotal, setQuantity, removeItem } = useCart();
 
@@ -29,9 +31,6 @@ export default function CartPage() {
       </div>
     );
   }
-
-  const remaining = Math.max(0, FREE_DELIVERY_THRESHOLD - subtotal);
-  const progress = Math.min(100, (subtotal / FREE_DELIVERY_THRESHOLD) * 100);
 
   return (
     <div className="container-brand py-14">
@@ -56,24 +55,11 @@ export default function CartPage() {
         </div>
 
         <aside className="h-fit rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface-2)] p-6 lg:sticky lg:top-24">
-          <div className="mb-6">
-            {remaining > 0 ? (
-              <p className="text-sm text-[var(--sf-ink-muted)]">
-                Add <span className="font-display text-lg text-[var(--sf-ink)]">₹{remaining}</span>{' '}
-                more for free delivery.
-              </p>
-            ) : (
-              <p className="text-success-text text-sm font-medium">
-                ✦ You&rsquo;ve unlocked free delivery.
-              </p>
-            )}
-            <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-[var(--sf-border)]">
-              <div
-                className="h-full rounded-full bg-[var(--gold)] transition-all duration-500"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+          <p className="mb-6 text-sm text-[var(--sf-ink-muted)]">
+            Delivery is <span className="text-[var(--sf-ink)]">₹50</span> for the first 5km, plus
+            ₹5/km beyond that — you&rsquo;ll see the exact fee once you set your delivery location
+            at checkout.
+          </p>
 
           <div className="flex justify-between text-sm">
             <span className="text-[var(--sf-ink-muted)]">Subtotal</span>

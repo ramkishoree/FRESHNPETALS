@@ -27,10 +27,10 @@ export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProp
   const searchRef = React.useRef<HTMLInputElement>(null);
   const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
-  const markerRef = React.useRef<any>(null);
-  const mapInstanceRef = React.useRef<any>(null);
-  const autocompleteRef = React.useRef<any>(null);
-  const geocoderRef = React.useRef<any>(null);
+  const markerRef = React.useRef<google.maps.Marker | null>(null);
+  const mapInstanceRef = React.useRef<google.maps.Map | null>(null);
+  const autocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
+  const geocoderRef = React.useRef<google.maps.Geocoder | null>(null);
 
   React.useEffect(() => {
     let cancelled = false;

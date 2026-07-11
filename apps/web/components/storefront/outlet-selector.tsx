@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { computeDeliveryFee, rankOutletsByDistance, STANDARD_DELIVERY_FEE } from '@prana/commerce';
+import { computeDeliveryFee, rankOutletsByDistance } from '@prana/commerce';
 import type { MapLocation } from '@/components/storefront/delivery-map';
 
 export interface OutletWithStock {

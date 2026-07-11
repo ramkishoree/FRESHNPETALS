@@ -88,7 +88,18 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   // ---- Outlet selection state ------------------------------------------------
   const [outlets, setOutlets] = React.useState<OutletWithStock[]>([]);
   const [deliveryPin, setDeliveryPin] = React.useState<MapLocation | null>(null);
-  const [selectedOutletId, setSelectedOutletId] = React.useState<string | null>(null);
+  // The customer's explicit pick always wins; it resets back to "follow the
+  // nearest outlet" whenever the delivery pin moves (below), matching the
+  // React-recommended "adjust state during render" pattern rather than an
+  // effect — avoids a render -> effect -> setState -> render cascade for
+  // what is, in the end, a value fully derived from deliveryPin/outlets.
+  const [manualOutletId, setManualOutletId] = React.useState<string | null>(null);
+  const [pinKeyAtLastReset, setPinKeyAtLastReset] = React.useState<string | null>(null);
+  const pinKey = deliveryPin ? `${deliveryPin.lat},${deliveryPin.lng}` : null;
+  if (pinKey !== pinKeyAtLastReset) {
+    setPinKeyAtLastReset(pinKey);
+    setManualOutletId(null);
+  }
 
   // ---- Helpers ----------------------------------------------------------------
 
@@ -140,7 +151,6 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       }
     }
     void loadAddresses();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Fetch outlets with stock for the cart items on mount.
@@ -163,11 +173,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items.length]);
 
-  // Auto-select the nearest outlet when the delivery pin changes.
-  React.useEffect(() => {
-    if (!deliveryPin || outlets.length === 0) return;
-
-    // Find the nearest outlet by Haversine distance.
+  // Nearest outlet by Haversine distance — pure derivation from
+  // deliveryPin/outlets, recomputed on render rather than synced via effect.
+  const nearestOutletId = React.useMemo(() => {
+    if (!deliveryPin || outlets.length === 0) return null;
     let nearest: OutletWithStock | undefined = outlets[0];
     let minDist = Infinity;
     for (const o of outlets) {
@@ -184,14 +193,17 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         nearest = o;
       }
     }
-    if (nearest) setSelectedOutletId(nearest.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [deliveryPin]);
+    return nearest?.id ?? null;
+  }, [deliveryPin, outlets]);
+
+  const selectedOutletId = manualOutletId ?? nearestOutletId;
 
   // Re-fetch pricing when outlet selection or delivery pin changes.
   React.useEffect(() => {
     if (items.length === 0) return;
-    void loadPricing(null);
+    void (async () => {
+      await loadPricing(null);
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOutletId, deliveryPin, items.length]);
 
@@ -377,7 +389,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 }))}
                 deliveryPin={deliveryPin}
                 selectedOutletId={selectedOutletId}
-                onSelect={(id) => setSelectedOutletId(id)}
+                onSelect={(id) => setManualOutletId(id)}
               />
             </section>
           )}
