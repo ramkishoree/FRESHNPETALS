@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateCouponDiscount,
+  computeDeliveryFee,
   computePricing,
   type CouponRecord,
-  FREE_DELIVERY_THRESHOLD,
+  PER_KM_FEE,
   rankOutletsByDistance,
   STANDARD_DELIVERY_FEE,
+  STANDARD_DELIVERY_KM,
   validateCartIsNotEmpty,
   validateCoupon,
 } from './checkout';
@@ -41,30 +43,42 @@ describe('validateCartIsNotEmpty', () => {
 });
 
 describe('computePricing', () => {
-  it('charges standard delivery below the free-delivery threshold', () => {
+  it('charges standard delivery when no distance is provided', () => {
     const pricing = computePricing({
       lines: [{ productId: 'p1', sku: 'S1', name: 'A', quantity: 1, unitPrice: 500 }],
     });
     expect(pricing.subtotal).toBe(500);
     expect(pricing.deliveryFee).toBe(STANDARD_DELIVERY_FEE);
+    expect(pricing.deliveryDistanceKm).toBeNull();
   });
 
-  it('waives delivery at or above the free-delivery threshold', () => {
+  it('charges standard delivery when distance is within the base km', () => {
     const pricing = computePricing({
-      lines: [
-        { productId: 'p1', sku: 'S1', name: 'A', quantity: 1, unitPrice: FREE_DELIVERY_THRESHOLD },
-      ],
+      lines: [{ productId: 'p1', sku: 'S1', name: 'A', quantity: 1, unitPrice: 500 }],
+      deliveryDistanceKm: 3,
     });
-    expect(pricing.deliveryFee).toBe(0);
+    expect(pricing.deliveryFee).toBe(STANDARD_DELIVERY_FEE);
+    expect(pricing.deliveryDistanceKm).toBe(3);
   });
 
-  it('applies the coupon discount before computing tax and the free-delivery threshold', () => {
+  it('charges extra per km beyond the base distance', () => {
+    // 10 km → first 5 km = ₹50, remaining 5 km × ₹5 = ₹25, total = ₹75
+    const pricing = computePricing({
+      lines: [{ productId: 'p1', sku: 'S1', name: 'A', quantity: 1, unitPrice: 500 }],
+      deliveryDistanceKm: 10,
+    });
+    expect(pricing.deliveryFee).toBe(
+      STANDARD_DELIVERY_FEE + Math.ceil(10 - STANDARD_DELIVERY_KM) * PER_KM_FEE,
+    );
+  });
+
+  it('applies the coupon discount before computing tax', () => {
     const pricing = computePricing({
       lines: [{ productId: 'p1', sku: 'S1', name: 'A', quantity: 1, unitPrice: 1000 }],
       couponDiscount: 200,
     });
     expect(pricing.discountTotal).toBe(200);
-    // 1000 - 200 = 800, below threshold -> standard delivery fee still applies
+    // Delivery is distance-based, always charged when distance not provided.
     expect(pricing.deliveryFee).toBe(STANDARD_DELIVERY_FEE);
   });
 
@@ -74,6 +88,30 @@ describe('computePricing', () => {
       couponDiscount: 999,
     });
     expect(pricing.couponDiscount).toBe(100);
+  });
+});
+
+describe('computeDeliveryFee', () => {
+  it('returns the standard fee when distance is null or undefined', () => {
+    expect(computeDeliveryFee(null)).toBe(STANDARD_DELIVERY_FEE);
+    expect(computeDeliveryFee(undefined)).toBe(STANDARD_DELIVERY_FEE);
+  });
+
+  it('returns the standard fee for non-positive distance', () => {
+    expect(computeDeliveryFee(0)).toBe(STANDARD_DELIVERY_FEE);
+    expect(computeDeliveryFee(-1)).toBe(STANDARD_DELIVERY_FEE);
+  });
+
+  it('returns the standard fee within the base distance', () => {
+    expect(computeDeliveryFee(1)).toBe(STANDARD_DELIVERY_FEE);
+    expect(computeDeliveryFee(STANDARD_DELIVERY_KM)).toBe(STANDARD_DELIVERY_FEE);
+  });
+
+  it('charges extra per km beyond the base distance', () => {
+    // 10 km → base 5 km = ₹50, extra 5 km × ₹5 = ₹25, total = ₹75
+    expect(computeDeliveryFee(10)).toBe(75);
+    // 7.3 km → base 5 km = ₹50, extra ceil(2.3) = 3 × ₹5 = ₹15, total = ₹65
+    expect(computeDeliveryFee(7.3)).toBe(65);
   });
 });
 

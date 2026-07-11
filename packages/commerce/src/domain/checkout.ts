@@ -30,15 +30,21 @@ export interface PricingBreakdown {
   discountTotal: number;
   couponDiscount: number;
   deliveryFee: number;
+  deliveryDistanceKm: number | null;
   taxTotal: number;
   grandTotal: number;
 }
 
 /** Ch.8 §81 Tax Engine — a flat rate stands in for the real GST slab table (Ch.8 §82 "Future Tax Support") until product-level tax categories exist. */
 export const TAX_RATE = 0.05;
-/** Ch.12 §25 Free Delivery Progress example ("Spend ₹240 more"). */
-export const FREE_DELIVERY_THRESHOLD = 999;
-export const STANDARD_DELIVERY_FEE = 79;
+
+/** Distance-based delivery pricing:
+ *  - First STANDARD_DELIVERY_KM (5) costs STANDARD_DELIVERY_FEE (₹50).
+ *  - Every km beyond that costs PER_KM_FEE (₹5).
+ */
+export const STANDARD_DELIVERY_KM = 5;
+export const STANDARD_DELIVERY_FEE = 50;
+export const PER_KM_FEE = 5;
 
 /** Ch.8 §93 Cart Validation, the parts checkable without a database round trip (existence/published/inventory checks happen against real repository data in the caller). */
 export function validateCartIsNotEmpty(lines: CartLineInput[]): string[] {
@@ -48,20 +54,43 @@ export function validateCartIsNotEmpty(lines: CartLineInput[]): string[] {
   return [];
 }
 
-/** Ch.8 §89 Principle 1: "Always recalculate... never trust [price] coming from the client." Pricing is computed fresh from server-fetched unit prices, never from anything the request body supplied. */
+/** Compute the delivery fee from the straight-line distance to the nearest
+ *  outlet. First STANDARD_DELIVERY_KM km cost STANDARD_DELIVERY_FEE, then
+ *  PER_KM_FEE per km beyond that. Falls back to STANDARD_DELIVERY_FEE when
+ *  distance is unknown. */
+export function computeDeliveryFee(distanceKm: number | null | undefined): number {
+  if (distanceKm == null || distanceKm <= 0) return STANDARD_DELIVERY_FEE;
+  if (distanceKm <= STANDARD_DELIVERY_KM) return STANDARD_DELIVERY_FEE;
+  return STANDARD_DELIVERY_FEE + Math.ceil(distanceKm - STANDARD_DELIVERY_KM) * PER_KM_FEE;
+}
+
+/** Ch.8 §89 Principle 1: "Always recalculate... never trust [price] coming
+ *  from the client." Pricing is computed fresh from server-fetched unit
+ *  prices, never from anything the request body supplied. */
 export function computePricing(params: {
   lines: ValidatedCartLine[];
   couponDiscount?: number;
+  deliveryDistanceKm?: number | null;
 }): PricingBreakdown {
   const subtotal = params.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
   const couponDiscount = Math.min(params.couponDiscount ?? 0, subtotal);
   const discountTotal = couponDiscount;
   const afterDiscount = subtotal - discountTotal;
-  const deliveryFee = afterDiscount >= FREE_DELIVERY_THRESHOLD ? 0 : STANDARD_DELIVERY_FEE;
+  const deliveryDistanceKm = params.deliveryDistanceKm ?? null;
+  const deliveryFee = computeDeliveryFee(deliveryDistanceKm);
   const taxTotal = Math.round(afterDiscount * TAX_RATE * 100) / 100;
   const grandTotal = afterDiscount + deliveryFee + taxTotal;
 
-  return { subtotal, discountTotal, couponDiscount, deliveryFee, taxTotal, grandTotal };
+  return {
+    subtotal,
+    discountTotal,
+    couponDiscount,
+    deliveryFee,
+    deliveryDistanceKm:
+      deliveryDistanceKm != null ? Math.round(deliveryDistanceKm * 10) / 10 : null,
+    taxTotal,
+    grandTotal,
+  };
 }
 
 export interface CouponRecord {

@@ -10,6 +10,7 @@ import {
 import {
   calculateCouponDiscount,
   computePricing,
+  rankOutletsByDistance,
   validateCartIsNotEmpty,
   validateCoupon,
   type CartLineInput,
@@ -22,6 +23,9 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 export interface PreviewPricingInput {
   lines: CartLineInput[];
   couponCode?: string;
+  /** Customer's GPS coordinates for distance-based delivery fee calculation. */
+  addressLatitude?: number;
+  addressLongitude?: number;
 }
 
 export interface PreviewPricingResult {
@@ -87,6 +91,33 @@ export async function previewCheckoutPricing(
     });
   }
 
+  // Distance-based delivery fee: find the nearest active outlet and compute
+  // straight-line distance from the customer's GPS coordinates.
+  let deliveryDistanceKm: number | undefined;
+  if (input.addressLatitude != null && input.addressLongitude != null) {
+    const { data: outlets, error: outletsError } = await admin
+      .from('outlets')
+      .select('id, latitude, longitude, delivery_radius_km, is_active')
+      .eq('is_active', true);
+    if (!outletsError && outlets) {
+      const ranked = rankOutletsByDistance(
+        outlets.map((o) => ({
+          id: o.id,
+          latitude: Number(o.latitude),
+          longitude: Number(o.longitude),
+          deliveryRadiusKm: Number(o.delivery_radius_km),
+          isActive: o.is_active,
+        })),
+        input.addressLatitude,
+        input.addressLongitude,
+      );
+      const nearest = ranked.at(0);
+      if (nearest) {
+        deliveryDistanceKm = nearest.distanceKm;
+      }
+    }
+  }
+
   let couponDiscount = 0;
   let appliedCouponCode: string | null = null;
   if (input.couponCode) {
@@ -126,6 +157,10 @@ export async function previewCheckoutPricing(
     appliedCouponCode = coupon.code;
   }
 
-  const pricing = computePricing({ lines: validatedLines, couponDiscount });
+  const pricing = computePricing({
+    lines: validatedLines,
+    couponDiscount,
+    deliveryDistanceKm: deliveryDistanceKm ?? null,
+  });
   return ok({ pricing, appliedCouponCode });
 }

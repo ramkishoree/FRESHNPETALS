@@ -122,6 +122,7 @@ export async function startCheckout(
         }));
 
   let selectedOutletId: string | null = null;
+  let deliveryDistanceKm: number | undefined;
   for (const candidate of ranked) {
     const { data: inventoryRows } = await admin
       .from('inventory')
@@ -135,6 +136,7 @@ export async function startCheckout(
     });
     if (hasAllStock) {
       selectedOutletId = candidate.outlet.id;
+      deliveryDistanceKm = candidate.distanceKm;
       break;
     }
   }
@@ -196,7 +198,11 @@ export async function startCheckout(
     };
   }
 
-  const pricing = computePricing({ lines: validatedLines, couponDiscount });
+  const pricing = computePricing({
+    lines: validatedLines,
+    couponDiscount,
+    deliveryDistanceKm: deliveryDistanceKm ?? null,
+  });
 
   const { data: sessionRow, error: sessionError } = await admin.rpc('checkout_start', {
     p_customer_id: input.customerId,
@@ -214,6 +220,7 @@ export async function startCheckout(
       discountTotal: pricing.discountTotal,
       couponDiscount: pricing.couponDiscount,
       deliveryFee: pricing.deliveryFee,
+      deliveryDistanceKm: pricing.deliveryDistanceKm,
       taxTotal: pricing.taxTotal,
       grandTotal: pricing.grandTotal,
     },

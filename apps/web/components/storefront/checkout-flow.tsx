@@ -48,6 +48,7 @@ interface PricingBreakdown {
   discountTotal: number;
   couponDiscount: number;
   deliveryFee: number;
+  deliveryDistanceKm: number | null;
   taxTotal: number;
   grandTotal: number;
 }
@@ -66,11 +67,38 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [couponMessage, setCouponMessage] = React.useState<string | null>(null);
   const [isPaying, setIsPaying] = React.useState(false);
   const [scriptReady, setScriptReady] = React.useState(false);
+  const [gpsCoords, setGpsCoords] = React.useState<{ lat: number; lng: number } | null>(null);
+  const [gpsState, setGpsState] = React.useState<
+    'idle' | 'loading' | 'ok' | 'denied' | 'unavailable'
+  >('idle');
+
+  /** Request browser GPS once on mount. Updates `gpsCoords` and `gpsState`. */
+  React.useEffect(() => {
+    if (!navigator.geolocation) {
+      setGpsState('unavailable');
+      return;
+    }
+    setGpsState('loading');
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setGpsState('ok');
+      },
+      (err) => {
+        setGpsState(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable');
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
+    );
+  }, []);
 
   /** Fetch full pricing breakdown (GST, delivery, grand total) from the
    *  server so every charge is transparent before the customer pays. */
-  async function loadPricing(couponCode: string | null): Promise<PricingBreakdown | null> {
+  async function loadPricing(
+    couponCode: string | null,
+    coords?: { lat: number; lng: number } | null,
+  ): Promise<PricingBreakdown | null> {
     if (items.length === 0) return null;
+    const coordinates = coords ?? gpsCoords;
     try {
       const response = await fetch('/api/v1/checkout/coupon-preview', {
         method: 'POST',
@@ -78,6 +106,9 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         body: JSON.stringify({
           lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           ...(couponCode ? { couponCode } : {}),
+          ...(coordinates
+            ? { addressLatitude: coordinates.lat, addressLongitude: coordinates.lng }
+            : {}),
         }),
       });
       const body = await response.json();
@@ -107,10 +138,13 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   // Load pricing once cart items are available (hydration may lag behind
   // mount by one render cycle since the cart reads from localStorage).
+  // Also reload when GPS coords arrive so the distance-based delivery fee
+  // is always up to date.
   React.useEffect(() => {
     if (items.length === 0) return;
-    void loadPricing(null);
-  }, [items.length]);
+    void loadPricing(null, gpsCoords);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, gpsCoords]);
 
   if (items.length === 0) {
     return (
@@ -160,13 +194,13 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     if (!code) {
       setAppliedCoupon(null);
       setCouponMessage(null);
-      await loadPricing(null);
+      await loadPricing(null, gpsCoords);
       return;
     }
     setIsApplyingCoupon(true);
     setCouponMessage(null);
     try {
-      const result = await loadPricing(code);
+      const result = await loadPricing(code, gpsCoords);
       if (result) {
         setAppliedCoupon(code);
         setCouponMessage(`"${code}" applied — discount reflected above.`);
@@ -186,7 +220,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     setCouponInput('');
     setAppliedCoupon(null);
     setCouponMessage(null);
-    void loadPricing(null);
+    void loadPricing(null, gpsCoords);
   }
 
   async function payNow() {
@@ -204,7 +238,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
-          address,
+          address: {
+            ...address,
+            ...(gpsCoords ? { latitude: gpsCoords.lat, longitude: gpsCoords.lng } : {}),
+          },
           ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
         }),
       });
@@ -419,7 +456,28 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             <div className="flex items-center justify-between text-sm">
               <span className="text-[var(--sf-ink-muted)]">Delivery fee</span>
               <span>
-                {pricing ? (pricing.deliveryFee > 0 ? `₹${pricing.deliveryFee}` : 'Free') : '—'}
+                {pricing ? (
+                  pricing.deliveryFee > 0 ? (
+                    <>
+                      ₹{pricing.deliveryFee}
+                      {pricing.deliveryDistanceKm != null && (
+                        <span className="ml-1 text-xs text-[var(--sf-ink-muted)]">
+                          ({pricing.deliveryDistanceKm} km)
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    'Free'
+                  )
+                ) : gpsState === 'loading' ? (
+                  <span className="text-xs text-[var(--sf-ink-muted)]">Locating…</span>
+                ) : gpsState === 'denied' || gpsState === 'unavailable' ? (
+                  <span className="text-xs text-[var(--sf-ink-muted)]">
+                    Enable GPS for accurate fee
+                  </span>
+                ) : (
+                  '—'
+                )}
               </span>
             </div>
             <div className="flex items-center justify-between border-t border-[var(--sf-border)] pt-3">

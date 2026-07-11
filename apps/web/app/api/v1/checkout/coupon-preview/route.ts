@@ -9,6 +9,9 @@ import { previewCheckoutPricing } from '@/server/checkout/preview-pricing';
 const bodySchema = z.object({
   lines: z.array(z.object({ productId: zUuid(), quantity: z.number().int().positive() })).min(1),
   couponCode: z.string().optional(),
+  /** Customer's GPS coordinates for distance-based delivery fee preview. */
+  addressLatitude: z.number().min(-90).max(90).optional(),
+  addressLongitude: z.number().min(-180).max(180).optional(),
 });
 
 const couponPreview = createApiRoute({
@@ -17,6 +20,9 @@ const couponPreview = createApiRoute({
     previewCheckoutPricing({
       lines: body.lines,
       ...(body.couponCode ? { couponCode: body.couponCode } : {}),
+      ...(body.addressLatitude != null && body.addressLongitude != null
+        ? { addressLatitude: body.addressLatitude, addressLongitude: body.addressLongitude }
+        : {}),
     }),
 });
 
