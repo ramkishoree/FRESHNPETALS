@@ -20,9 +20,27 @@ const securityHeaders = [
   { key: 'Cross-Origin-Resource-Policy', value: 'same-origin' },
 ];
 
+// next/image's optimizer 400s on any remote host not explicitly
+// allowlisted. Derived from the env var (not hardcoded to one project ref)
+// so this keeps working if the Supabase project ever changes.
+const supabaseHostname = process.env['NEXT_PUBLIC_SUPABASE_URL']
+  ? new URL(process.env['NEXT_PUBLIC_SUPABASE_URL']).hostname
+  : undefined;
+
 const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(import.meta.dirname, '../..'),
+  },
+  images: {
+    remotePatterns: supabaseHostname
+      ? [
+          {
+            protocol: 'https',
+            hostname: supabaseHostname,
+            pathname: '/storage/v1/object/public/**',
+          },
+        ]
+      : [],
   },
   // packages/* ship TypeScript source directly (no build step, see Phase 1
   // package.json "main"/"exports") — Next.js only runs its TS/JSX
