@@ -1,6 +1,7 @@
 import { BusinessRuleError, err, InfrastructureError, ok } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { createApiRoute } from '@/server/http/route-handler';
@@ -14,7 +15,7 @@ import { runSecurityChain } from '@/server/security/chain';
  * jsonb column) rather than a new migration for three narrow fields.
  */
 const patchSchema = z.object({
-  preferredOutletId: z.string().uuid().optional(),
+  preferredOutletId: zUuid().optional(),
   preferredDeliveryTime: z.string().optional(),
   newsletterOptIn: z.boolean().optional(),
   preferredLanguage: z.string().min(2).max(10).optional(),

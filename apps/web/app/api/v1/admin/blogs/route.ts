@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createAdminCrudCollectionRoute } from '@/server/http/admin-crud-route';
 
 const BLOG_STATUSES = ['draft', 'review', 'scheduled', 'published', 'archived'] as const;
@@ -9,7 +10,7 @@ const schema = z.object({
   slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
   excerpt: z.string().optional(),
   featured_image: z.string().optional(),
-  author: z.string().uuid().optional(),
+  author: zUuid().optional(),
   status: z.enum(BLOG_STATUSES).optional(),
   reading_time_minutes: z.number().int().positive().optional(),
   published_at: z.string().datetime().optional(),

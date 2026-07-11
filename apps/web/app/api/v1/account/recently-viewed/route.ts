@@ -1,6 +1,7 @@
 import { BusinessRuleError, err, InfrastructureError, ok } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { createApiRoute } from '@/server/http/route-handler';
@@ -16,7 +17,7 @@ import { runSecurityChain } from '@/server/security/chain';
  */
 const RECENTLY_VIEWED_MAX = 20;
 
-const recordSchema = z.object({ productId: z.string().uuid() });
+const recordSchema = z.object({ productId: zUuid() });
 
 const listRecentlyViewed = createApiRoute({
   handler: async () => {

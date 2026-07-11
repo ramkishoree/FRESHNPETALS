@@ -1,6 +1,7 @@
 import { err, InfrastructureError, ok } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createApiRoute } from '@/server/http/route-handler';
 import { runSecurityChain } from '@/server/security/chain';
@@ -14,7 +15,7 @@ import { runSecurityChain } from '@/server/security/chain';
 const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(200).default(50),
   cursor: z.string().datetime().optional(),
-  actorId: z.string().uuid().optional(),
+  actorId: zUuid().optional(),
   service: z.string().optional(),
   severity: z.enum(['info', 'warning', 'critical']).optional(),
   from: z.string().datetime().optional(),

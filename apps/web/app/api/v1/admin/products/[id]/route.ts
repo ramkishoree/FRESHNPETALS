@@ -7,6 +7,7 @@ import {
 import { type AppError, BusinessRuleError, isOk, ok, type Result } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { stripUndefined } from '@/lib/strip-undefined';
 import { recordAuditEvent } from '@/server/audit/record-audit-event';
@@ -32,8 +33,8 @@ const patchBodySchema = z.object({
   name: z.string().min(3).max(120).optional(),
   shortDescription: z.string().optional(),
   description: z.string().min(100).optional(),
-  categoryId: z.string().uuid().optional(),
-  collectionId: z.string().uuid().optional(),
+  categoryId: zUuid().optional(),
+  collectionId: zUuid().optional(),
   basePrice: z.number().positive().optional(),
   salePrice: z.number().positive().optional(),
   seoTitle: z.string().max(60).optional(),

@@ -1,6 +1,7 @@
 'use client';
 
 import * as React from 'react';
+import { UUID_RE } from '@/lib/uuid';
 
 export interface CartLineItem {
   productId: string;
@@ -24,14 +25,7 @@ interface CartContextValue {
 
 const CartContext = React.createContext<CartContextValue | null>(null);
 const STORAGE_KEY = 'fnp-cart';
-/**
- * Matches Zod v4's `.uuid()` exactly so the cart never holds a productId
- * the checkout API would reject with 422. The products table default is
- * `uuid_generate_v7()` (RFC 9562 UUIDv7, version nibble = 7), so the
- * regex must accept versions 1–8 (not just v4) plus the nil UUID.
- */
-const UUID_RE =
-  /^(?:00000000-0000-0000-0000-000000000000|[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})$/i;
+// UUID_RE is imported from @/lib/uuid — PostgreSQL-compatible permissive regex.
 
 /**
  * `/api/v1/checkout` requires `lines[].productId` to be a real UUID

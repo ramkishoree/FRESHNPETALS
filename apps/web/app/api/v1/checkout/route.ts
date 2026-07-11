@@ -1,6 +1,7 @@
 import { BusinessRuleError, err } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { stripUndefined } from '@/lib/strip-undefined';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
@@ -10,9 +11,7 @@ import { startCheckout } from '@/server/checkout/start-checkout';
 
 /** Ch.16 §62 Checkout API — "Checkout protected by idempotency" (Ch.8 §102) is the payment webhook's job, not this endpoint's; this endpoint's own job is Ch.8 §92's pipeline up through "Create Razorpay Order." */
 const bodySchema = z.object({
-  lines: z
-    .array(z.object({ productId: z.string().uuid(), quantity: z.number().int().positive() }))
-    .min(1),
+  lines: z.array(z.object({ productId: zUuid(), quantity: z.number().int().positive() })).min(1),
   address: z.object({
     recipientName: z.string().min(1),
     phone: z.string().min(6),
@@ -25,7 +24,7 @@ const bodySchema = z.object({
     longitude: z.number().min(-180).max(180).optional(),
   }),
   couponCode: z.string().optional(),
-  deliverySlotId: z.string().uuid().optional(),
+  deliverySlotId: zUuid().optional(),
 });
 
 const checkout = createApiRoute({

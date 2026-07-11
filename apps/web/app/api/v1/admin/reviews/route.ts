@@ -1,6 +1,7 @@
 import { ok } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createApiRoute } from '@/server/http/route-handler';
 import { AdminCrudRepository } from '@/server/repositories/admin-crud-repository';
@@ -18,7 +19,7 @@ const querySchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(20),
   cursor: z.string().datetime().optional(),
   status: z.enum(['pending', 'approved', 'rejected']).optional(),
-  product_id: z.string().uuid().optional(),
+  product_id: zUuid().optional(),
 });
 
 const listReviews = createApiRoute({

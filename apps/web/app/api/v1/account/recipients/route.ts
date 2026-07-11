@@ -1,6 +1,7 @@
 import { BusinessRuleError, err, InfrastructureError, ok } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { createApiRoute } from '@/server/http/route-handler';
@@ -12,7 +13,7 @@ const createSchema = z.object({
   phone: z.string().min(6).max(20),
   relationship: z.string().max(60).optional(),
   defaultMessage: z.string().max(500).optional(),
-  addressId: z.string().uuid().optional(),
+  addressId: zUuid().optional(),
 });
 
 const listRecipients = createApiRoute({

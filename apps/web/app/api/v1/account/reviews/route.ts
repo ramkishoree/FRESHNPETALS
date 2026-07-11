@@ -1,6 +1,7 @@
 import { BusinessRuleError, err, InfrastructureError, ok } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { createApiRoute } from '@/server/http/route-handler';
@@ -8,8 +9,8 @@ import { runSecurityChain } from '@/server/security/chain';
 
 /** Ch.16 §80 Review API. "Verified Purchase Required" (Ch.8 §115) — checked here; RLS only enforces ownership, not purchase history. */
 const createSchema = z.object({
-  productId: z.string().uuid(),
-  orderId: z.string().uuid(),
+  productId: zUuid(),
+  orderId: zUuid(),
   rating: z.number().int().min(1).max(5),
   title: z.string().max(160).optional(),
   comment: z.string().max(2000).optional(),

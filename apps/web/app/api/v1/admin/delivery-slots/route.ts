@@ -1,9 +1,10 @@
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createAdminCrudCollectionRoute } from '@/server/http/admin-crud-route';
 
 /** Ch.16 §106 Delivery Slot Management API. */
 const schema = z.object({
-  delivery_group_id: z.string().uuid(),
+  delivery_group_id: zUuid(),
   label: z.string().min(1),
   start_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),
   end_time: z.string().regex(/^\d{2}:\d{2}(:\d{2})?$/),

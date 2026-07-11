@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createAdminCrudItemRoute } from '@/server/http/admin-crud-route';
 
 const schema = z.object({
@@ -9,9 +10,9 @@ const schema = z.object({
   min_cart_value: z.number().min(0).optional(),
   usage_limit_total: z.number().int().positive().optional(),
   usage_limit_per_user: z.number().int().positive().optional(),
-  applicable_category_id: z.string().uuid().optional(),
-  applicable_product_id: z.string().uuid().optional(),
-  applicable_outlet_id: z.string().uuid().optional(),
+  applicable_category_id: zUuid().optional(),
+  applicable_product_id: zUuid().optional(),
+  applicable_outlet_id: zUuid().optional(),
   starts_at: z.string().datetime().optional(),
   ends_at: z.string().datetime().optional(),
   active: z.boolean().optional(),

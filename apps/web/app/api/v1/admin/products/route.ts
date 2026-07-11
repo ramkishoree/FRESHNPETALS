@@ -6,6 +6,7 @@ import {
 import { isOk } from '@prana/core';
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
+import { zUuid } from '@/lib/uuid';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { stripUndefined } from '@/lib/strip-undefined';
 import { recordAuditEvent } from '@/server/audit/record-audit-event';
@@ -38,8 +39,8 @@ const createBodySchema = z.object({
   name: z.string().min(3).max(120),
   shortDescription: z.string().optional(),
   description: z.string().min(100),
-  categoryId: z.string().uuid(),
-  collectionId: z.string().uuid().optional(),
+  categoryId: zUuid(),
+  collectionId: zUuid().optional(),
   basePrice: z.number().positive(),
   salePrice: z.number().positive().optional(),
   seoTitle: z.string().max(60).optional(),
