@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table/data-table';
+import { ImageUploadField } from '@/components/admin/image-upload-field';
 import { LoadingState } from '@/components/states/loading-state';
 import { Button } from '@/components/ui/button';
 import {
@@ -324,6 +325,10 @@ function FieldInput({
       );
     case 'json':
       return <JsonFieldInput id={field.name} value={value} onChange={onChange} />;
+    case 'image':
+      return (
+        <ImageUploadField id={field.name} value={(value as string) ?? ''} onChange={onChange} />
+      );
     default:
       return (
         <Input

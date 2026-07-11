@@ -47,7 +47,7 @@ export default function BlogsPage() {
         { name: 'title', label: 'Title', type: 'text', required: true },
         { name: 'slug', label: 'Slug', type: 'text', required: true },
         { name: 'excerpt', label: 'Excerpt', type: 'textarea' },
-        { name: 'featured_image', label: 'Featured image URL', type: 'text' },
+        { name: 'featured_image', label: 'Featured image', type: 'image' },
         {
           name: 'status',
           label: 'Status',

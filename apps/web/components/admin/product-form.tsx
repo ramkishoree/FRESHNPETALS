@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
+import { ImageUploadField } from '@/components/admin/image-upload-field';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -219,12 +220,11 @@ export function ProductForm({
       </div>
 
       <div className="grid gap-1.5">
-        <Label htmlFor="featuredImage">Featured image URL *</Label>
-        <Input
+        <Label htmlFor="featuredImage">Featured image *</Label>
+        <ImageUploadField
           id="featuredImage"
-          required
           value={values.featuredImage}
-          onChange={(e) => set('featuredImage', e.target.value)}
+          onChange={(url) => set('featuredImage', url)}
         />
       </div>
 

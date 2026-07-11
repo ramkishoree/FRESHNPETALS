@@ -36,7 +36,7 @@ export default function CollectionsPage() {
         { name: 'name', label: 'Name', type: 'text', required: true },
         { name: 'slug', label: 'Slug', type: 'text', required: true },
         { name: 'description', label: 'Description', type: 'textarea' },
-        { name: 'hero_image', label: 'Hero image URL', type: 'text' },
+        { name: 'hero_image', label: 'Hero image', type: 'image' },
         { name: 'is_featured', label: 'Featured', type: 'boolean' },
         { name: 'starts_at', label: 'Starts at', type: 'datetime' },
         { name: 'ends_at', label: 'Ends at', type: 'datetime' },
