@@ -18,7 +18,9 @@ const listUsers = createApiRoute({
     let dbQuery = admin
       .from('users')
       .select(
-        'id, email, phone, full_name, status, last_login_at, created_at, user_roles(roles(name))',
+        // user_roles has two FKs to users (user_id, assigned_by) — PostgREST
+        // can't disambiguate an embed without naming the FK constraint.
+        'id, email, phone, full_name, status, last_login_at, created_at, user_roles!user_roles_user_id_fkey(roles(name))',
       )
       .is('deleted_at', null)
       .order('created_at', { ascending: false })
