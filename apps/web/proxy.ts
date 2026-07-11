@@ -34,20 +34,30 @@ function generateNonce(): string {
  *   - `frame-src` grants the Razorpay checkout.js script permission to
  *     embed its payment iframe at `https://api.razorpay.com`.
  *   - `connect-src` permits Razorpay's telemetry (lumberjack) endpoint.
+ *
+ * Google Maps (`lib/google-maps.ts`, checkout's delivery pin) loads via a
+ * plain injected `<script src="https://maps.googleapis.com/...">` — not
+ * the nonce'd `<Script>` component — so it needs an explicit script-src
+ * entry rather than relying on `strict-dynamic`; its Places/Geocoding
+ * calls also need `connect-src`. Google Analytics (gtag.js) needs the
+ * same shape of allowance; both are harmless to whitelist even when
+ * unconfigured (NEXT_PUBLIC_GOOGLE_MAPS_API_KEY / _GA_MEASUREMENT_ID
+ * unset just means the script never actually loads).
  */
 function buildCsp(nonce: string, supabaseUrl: string): string {
   const razorpayScript = 'https://checkout.razorpay.com';
+  const googleScripts = 'https://maps.googleapis.com https://www.googletagmanager.com';
   const scriptSrc =
     process.env.NODE_ENV === 'production'
-      ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${razorpayScript}`
-      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${razorpayScript}`;
+      ? `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' ${razorpayScript} ${googleScripts}`
+      : `script-src 'self' 'nonce-${nonce}' 'strict-dynamic' 'unsafe-eval' ${razorpayScript} ${googleScripts}`;
   return [
     "default-src 'self'",
     scriptSrc,
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self'",
-    `connect-src 'self' ${supabaseUrl} https://lumberjack.razorpay.com`,
+    `connect-src 'self' ${supabaseUrl} https://lumberjack.razorpay.com https://maps.googleapis.com https://www.google-analytics.com`,
     'frame-src https://api.razorpay.com https://checkout.razorpay.com',
     "frame-ancestors 'none'",
     "base-uri 'self'",

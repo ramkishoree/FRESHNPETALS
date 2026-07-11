@@ -32,6 +32,11 @@ const publicEnvSchema = z.object({
   // Optional: the WhatsApp Support button on order pages just doesn't
   // render without it.
   NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER: optionalString(),
+  // Customer-facing analytics (separate from — and never used inside —
+  // the admin panel, which has a hard no-analytics rule). Optional: the
+  // GA4 script just doesn't render without it.
+  NEXT_PUBLIC_GA_MEASUREMENT_ID: optionalString(),
+  NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: optionalString(),
 });
 
 const serverEnvSchema = publicEnvSchema.extend({
@@ -80,6 +85,8 @@ export function getPublicEnv(): PublicEnv {
     NEXT_PUBLIC_SUPABASE_URL: process.env['NEXT_PUBLIC_SUPABASE_URL'],
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env['NEXT_PUBLIC_SUPABASE_ANON_KEY'],
     NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER: process.env['NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER'],
+    NEXT_PUBLIC_GA_MEASUREMENT_ID: process.env['NEXT_PUBLIC_GA_MEASUREMENT_ID'],
+    NEXT_PUBLIC_GOOGLE_MAPS_API_KEY: process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'],
   });
   return cachedPublicEnv;
 }

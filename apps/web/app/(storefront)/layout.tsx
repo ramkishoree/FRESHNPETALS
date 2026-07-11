@@ -1,4 +1,6 @@
+import { headers } from 'next/headers';
 import { getPublicEnv } from '@/config/env';
+import { GoogleAnalytics } from '@/components/seo/google-analytics';
 import { JsonLd } from '@/components/seo/json-ld';
 import { SiteFooter } from '@/components/storefront/site-footer';
 import { SiteHeader } from '@/components/storefront/site-header';
@@ -14,10 +16,18 @@ export default async function StorefrontLayout({ children }: { children: React.R
     .order('sort_order', { ascending: true })
     .limit(8);
 
-  const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;
+  const env = getPublicEnv();
+  const appUrl = env.NEXT_PUBLIC_APP_URL;
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
 
   return (
     <div className="storefront-theme flex min-h-dvh flex-col">
+      {env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
+        <GoogleAnalytics
+          measurementId={env.NEXT_PUBLIC_GA_MEASUREMENT_ID}
+          {...(nonce ? { nonce } : {})}
+        />
+      )}
       {/* Organization schema, once, site-wide on every storefront page —
           not the admin panel, which has no reason to carry it. */}
       <JsonLd

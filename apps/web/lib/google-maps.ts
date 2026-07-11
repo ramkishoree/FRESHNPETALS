@@ -8,13 +8,14 @@
  *   const map = new maps.Map(element, { ... });
  */
 
-const API_KEY: string | undefined = process.env['NEXT_PUBLIC_GOOGLE_MAPS_API_KEY'];
+import { getPublicEnv } from '@/config/env';
 
 let pendingPromise: Promise<typeof google.maps> | null = null;
 
 export function loadGoogleMaps(): Promise<typeof google.maps> {
   if (pendingPromise) return pendingPromise;
 
+  const API_KEY = getPublicEnv().NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   if (!API_KEY) {
     pendingPromise = Promise.reject(new Error('NEXT_PUBLIC_GOOGLE_MAPS_API_KEY is not set.'));
     return pendingPromise;
