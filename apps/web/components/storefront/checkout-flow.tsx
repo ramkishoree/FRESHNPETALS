@@ -67,6 +67,32 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [isPaying, setIsPaying] = React.useState(false);
   const [scriptReady, setScriptReady] = React.useState(false);
 
+  /** Fetch full pricing breakdown (GST, delivery, grand total) from the
+   *  server so every charge is transparent before the customer pays. */
+  async function loadPricing(couponCode: string | null): Promise<PricingBreakdown | null> {
+    if (items.length === 0) return null;
+    try {
+      const response = await fetch('/api/v1/checkout/coupon-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          ...(couponCode ? { couponCode } : {}),
+        }),
+      });
+      const body = await response.json();
+      if (response.ok && body.success) {
+        setPricing(body.data.pricing);
+        return body.data.pricing;
+      }
+    } catch {
+      // Pricing preview is non-critical — silently fall back to client-side subtotal.
+    }
+    setPricing(null);
+    return null;
+  }
+
+  // Load addresses once on mount.
   React.useEffect(() => {
     async function loadAddresses() {
       const response = await fetch('/api/v1/account/addresses');
@@ -78,6 +104,13 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     }
     void loadAddresses();
   }, []);
+
+  // Load pricing once cart items are available (hydration may lag behind
+  // mount by one render cycle since the cart reads from localStorage).
+  React.useEffect(() => {
+    if (items.length === 0) return;
+    void loadPricing(null);
+  }, [items.length]);
 
   if (items.length === 0) {
     return (
@@ -125,36 +158,23 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   async function applyCoupon() {
     const code = couponInput.trim().toUpperCase();
     if (!code) {
-      setPricing(null);
       setAppliedCoupon(null);
       setCouponMessage(null);
+      await loadPricing(null);
       return;
     }
     setIsApplyingCoupon(true);
     setCouponMessage(null);
     try {
-      const response = await fetch('/api/v1/checkout/coupon-preview', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
-          couponCode: code,
-        }),
-      });
-      const body = await response.json();
-      if (!response.ok || !body.success) {
-        setPricing(null);
+      const result = await loadPricing(code);
+      if (result) {
+        setAppliedCoupon(code);
+        setCouponMessage(`"${code}" applied — discount reflected above.`);
+      } else {
         setAppliedCoupon(null);
-        setCouponMessage(body.error?.message ?? 'Could not apply that coupon.');
-        return;
+        setCouponMessage('Coupon could not be applied. Check the code or try another.');
       }
-      setPricing(body.data.pricing);
-      setAppliedCoupon(body.data.appliedCouponCode);
-      setCouponMessage(
-        body.data.appliedCouponCode ? `"${body.data.appliedCouponCode}" applied.` : null,
-      );
     } catch {
-      setPricing(null);
       setAppliedCoupon(null);
       setCouponMessage('Could not apply that coupon. Please try again.');
     } finally {
@@ -165,8 +185,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   function removeCoupon() {
     setCouponInput('');
     setAppliedCoupon(null);
-    setPricing(null);
     setCouponMessage(null);
+    void loadPricing(null);
   }
 
   async function payNow() {
@@ -392,29 +412,22 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 <span>−₹{pricing.couponDiscount}</span>
               </div>
             )}
-            {pricing && (
-              <>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-[var(--sf-ink-muted)]">Delivery fee</span>
-                  <span>{pricing.deliveryFee > 0 ? `₹${pricing.deliveryFee}` : 'Free'}</span>
-                </div>
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-[var(--sf-ink-muted)]">Tax</span>
-                  <span>₹{pricing.taxTotal}</span>
-                </div>
-              </>
-            )}
-            <div className="flex items-center justify-between pt-2">
-              <span className="text-[var(--sf-ink-muted)]">Total</span>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[var(--sf-ink-muted)]">GST (5%)</span>
+              <span>₹{pricing ? pricing.taxTotal : '—'}</span>
+            </div>
+            <div className="flex items-center justify-between text-sm">
+              <span className="text-[var(--sf-ink-muted)]">Delivery fee</span>
+              <span>
+                {pricing ? (pricing.deliveryFee > 0 ? `₹${pricing.deliveryFee}` : 'Free') : '—'}
+              </span>
+            </div>
+            <div className="flex items-center justify-between border-t border-[var(--sf-border)] pt-3">
+              <span className="font-display text-base">Grand total</span>
               <span className="font-display text-2xl text-[var(--sf-ink)]">
                 ₹{pricing ? pricing.grandTotal : subtotal}
               </span>
             </div>
-            {!pricing && (
-              <p className="text-caption mt-1">
-                Delivery fee and tax are confirmed on the payment screen.
-              </p>
-            )}
           </div>
 
           <button
@@ -423,7 +436,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             disabled={isPaying}
             className="btn btn-primary mt-6 flex w-full items-center justify-center px-7 py-4 text-sm disabled:opacity-60"
           >
-            {isPaying ? 'Processing...' : 'Pay now'}
+            {isPaying ? 'Processing...' : `Pay ₹${pricing ? pricing.grandTotal : subtotal}`}
           </button>
 
           <p className="text-caption mt-4 text-center">🔒 Payments secured by Razorpay</p>
