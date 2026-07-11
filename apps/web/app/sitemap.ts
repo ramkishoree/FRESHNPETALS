@@ -1,5 +1,6 @@
 import type { MetadataRoute } from 'next';
 import { getPublicEnv } from '@/config/env';
+import { slugify } from '@/lib/slugify';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 
 /** Ch.16 — no sitemap existed anywhere before this; SEO Specialist AI's
@@ -22,21 +23,26 @@ const STATIC_ROUTES = [
   '/privacy',
   '/terms',
   '/delivery-policy',
+  '/locations',
 ];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;
   const admin = createSupabaseAdminClient();
 
-  const [{ data: products }, { data: categories }, { data: blogs }] = await Promise.all([
-    admin.from('products').select('slug, updated_at').eq('status', 'published'),
-    admin
-      .from('categories')
-      .select('slug, updated_at')
-      .eq('is_active', true)
-      .is('deleted_at', null),
-    admin.from('blogs').select('slug, updated_at').eq('status', 'published'),
-  ]);
+  const [{ data: products }, { data: categories }, { data: blogs }, { data: outlets }] =
+    await Promise.all([
+      admin.from('products').select('slug, updated_at').eq('status', 'published'),
+      admin
+        .from('categories')
+        .select('slug, updated_at')
+        .eq('is_active', true)
+        .is('deleted_at', null),
+      admin.from('blogs').select('slug, updated_at').eq('status', 'published'),
+      admin.from('outlets').select('city').eq('is_active', true).is('deleted_at', null),
+    ]);
+
+  const cities = [...new Set((outlets ?? []).map((o) => o.city))];
 
   const staticEntries: MetadataRoute.Sitemap = STATIC_ROUTES.map((path) => ({
     url: `${appUrl}${path}`,
@@ -65,5 +71,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.5,
   }));
 
-  return [...staticEntries, ...productEntries, ...categoryEntries, ...blogEntries];
+  const locationEntries: MetadataRoute.Sitemap = cities.map((city) => ({
+    url: `${appUrl}/locations/${slugify(city)}`,
+    changeFrequency: 'monthly',
+    priority: 0.7,
+  }));
+
+  return [
+    ...staticEntries,
+    ...productEntries,
+    ...categoryEntries,
+    ...blogEntries,
+    ...locationEntries,
+  ];
 }

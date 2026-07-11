@@ -24,6 +24,7 @@ export function SiteFooter() {
           <FooterLink href="/contact">Contact</FooterLink>
           <FooterLink href="/faq">FAQ</FooterLink>
           <FooterLink href="/delivery-policy">Delivery policy</FooterLink>
+          <FooterLink href="/locations">Where we deliver</FooterLink>
         </div>
 
         <div className="space-y-2">
