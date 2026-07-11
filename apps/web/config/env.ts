@@ -1,6 +1,23 @@
 import { z } from 'zod';
 
 /**
+ * An env var left blank in a dashboard UI (Vercel included) is usually
+ * set as an empty string, not omitted entirely — `z.string().min(1)
+ * .optional()` does NOT treat those the same way (`.optional()` only
+ * excuses an absent/undefined key; an explicit `""` still fails
+ * `.min(1)`). Every "optional" field below is optional specifically so a
+ * blank value degrades a feature instead of crashing the whole app
+ * (Ch.14 §9-style graceful degradation) — so blank must be normalized to
+ * `undefined` *before* validation, not treated as a validation failure.
+ */
+function optionalString(schema: z.ZodString = z.string().min(1)) {
+  return z.preprocess((value) => (value === '' ? undefined : value), schema.optional());
+}
+function optionalEmail() {
+  return optionalString(z.string().email());
+}
+
+/**
  * Split public/server schemas so a server-only secret can never end up in
  * the client bundle by accident — importing `serverEnv` from a Client
  * Component is a type error waiting to happen, not just a convention.
@@ -14,7 +31,7 @@ const publicEnvSchema = z.object({
   // internal API identifier for that same number, used server-side only).
   // Optional: the WhatsApp Support button on order pages just doesn't
   // render without it.
-  NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER: z.string().min(1).optional(),
+  NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER: optionalString(),
 });
 
 const serverEnvSchema = publicEnvSchema.extend({
@@ -27,28 +44,28 @@ const serverEnvSchema = publicEnvSchema.extend({
   // "Only approved models may be used in production" already gates this
   // at the model-registry level too) rather than the whole app failing to
   // boot because one provider key is missing.
-  ANTHROPIC_API_KEY: z.string().min(1).optional(),
-  OPENAI_API_KEY: z.string().min(1).optional(),
-  GROQ_API_KEY: z.string().min(1).optional(),
+  ANTHROPIC_API_KEY: optionalString(),
+  OPENAI_API_KEY: optionalString(),
+  GROQ_API_KEY: optionalString(),
   // Ch.16 §135: "Server Only." Optional for the same reason as the AI
   // provider keys above — unconfigured means checkout's payment-order
   // step fails closed with a clear error, not a boot-time crash.
-  RAZORPAY_KEY_ID: z.string().min(1).optional(),
-  RAZORPAY_KEY_SECRET: z.string().min(1).optional(),
-  RAZORPAY_WEBHOOK_SECRET: z.string().min(1).optional(),
+  RAZORPAY_KEY_ID: optionalString(),
+  RAZORPAY_KEY_SECRET: optionalString(),
+  RAZORPAY_WEBHOOK_SECRET: optionalString(),
   // WhatsApp Support (Meta Cloud API direct — no BSP middleman). Optional:
   // unconfigured means order-alert/support-bot sends fail closed with a
   // clear error rather than a boot-time crash, same pattern as Razorpay/AI.
-  META_WHATSAPP_ACCESS_TOKEN: z.string().min(1).optional(),
-  META_WHATSAPP_PHONE_NUMBER_ID: z.string().min(1).optional(),
-  META_WHATSAPP_BUSINESS_ACCOUNT_ID: z.string().min(1).optional(),
-  META_WHATSAPP_APP_SECRET: z.string().min(1).optional(),
-  META_WHATSAPP_WEBHOOK_VERIFY_TOKEN: z.string().min(1).optional(),
-  META_WHATSAPP_OWNER_WA_ID: z.string().min(1).optional(),
+  META_WHATSAPP_ACCESS_TOKEN: optionalString(),
+  META_WHATSAPP_PHONE_NUMBER_ID: optionalString(),
+  META_WHATSAPP_BUSINESS_ACCOUNT_ID: optionalString(),
+  META_WHATSAPP_APP_SECRET: optionalString(),
+  META_WHATSAPP_WEBHOOK_VERIFY_TOKEN: optionalString(),
+  META_WHATSAPP_OWNER_WA_ID: optionalString(),
   // Order-placed/escalation owner email alert — optional, same fail-closed pattern.
-  RESEND_API_KEY: z.string().min(1).optional(),
-  RESEND_FROM_EMAIL: z.string().email().optional(),
-  OWNER_NOTIFICATION_EMAIL: z.string().email().optional(),
+  RESEND_API_KEY: optionalString(),
+  RESEND_FROM_EMAIL: optionalEmail(),
+  OWNER_NOTIFICATION_EMAIL: optionalEmail(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
