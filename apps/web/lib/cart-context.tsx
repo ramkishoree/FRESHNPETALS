@@ -24,6 +24,31 @@ interface CartContextValue {
 
 const CartContext = React.createContext<CartContextValue | null>(null);
 const STORAGE_KEY = 'fnp-cart';
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * `/api/v1/checkout` requires `lines[].productId` to be a real UUID
+ * (matching the `products` table's id column) — a cart line that doesn't
+ * satisfy that can never check out, just fail with a generic "Invalid
+ * request body" every time. Since the cart is persisted to localStorage
+ * indefinitely (no expiry), a line corrupted by a transient bug elsewhere
+ * (e.g. a broken product fetch during an outage) stays stuck forever
+ * unless hydration itself throws it out.
+ */
+function isValidCartItem(value: unknown): value is CartLineItem {
+  if (typeof value !== 'object' || value === null) return false;
+  const item = value as Partial<CartLineItem>;
+  return (
+    typeof item.productId === 'string' &&
+    UUID_RE.test(item.productId) &&
+    typeof item.slug === 'string' &&
+    typeof item.name === 'string' &&
+    typeof item.unitPrice === 'number' &&
+    (item.salePrice === null || typeof item.salePrice === 'number') &&
+    typeof item.quantity === 'number' &&
+    item.quantity > 0
+  );
+}
 
 /**
  * Ch.6/Ch.12 §24 Cart Experience — no `cart` table exists anywhere in
@@ -43,8 +68,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     // once (empty deps); doesn't cascade.
     try {
       const raw = window.localStorage.getItem(STORAGE_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (raw) setItems(JSON.parse(raw) as CartLineItem[]);
+      if (raw) {
+        const parsed: unknown = JSON.parse(raw);
+        const valid = Array.isArray(parsed) ? parsed.filter(isValidCartItem) : [];
+        // eslint-disable-next-line react-hooks/set-state-in-effect
+        setItems(valid);
+      }
     } catch {
       // Corrupt/unavailable storage — start with an empty cart rather than crash.
     }
@@ -57,6 +86,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items, isHydrated]);
 
   const addItem = React.useCallback((item: Omit<CartLineItem, 'quantity'>, quantity = 1) => {
+    if (!isValidCartItem({ ...item, quantity })) return;
     setItems((prev) => {
       const existing = prev.find((line) => line.productId === item.productId);
       if (existing) {
