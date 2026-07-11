@@ -103,17 +103,23 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       : manualAddress;
   }
 
+  /** Server Zod schema enforces: phone min(6), postalCode min(4) — front-end
+   *  must match or saved addresses with short values will get 422. */
   function findMissingAddressFields(address: typeof EMPTY_ADDRESS): string[] {
-    const labels: Record<keyof typeof EMPTY_ADDRESS, string> = {
-      recipientName: 'recipient name',
-      phone: 'phone number',
-      addressLine1: 'address',
-      city: 'city',
-      postalCode: 'postal code',
+    const rules: Record<keyof typeof EMPTY_ADDRESS, { label: string; min?: number }> = {
+      recipientName: { label: 'recipient name' },
+      phone: { label: 'phone number', min: 6 },
+      addressLine1: { label: 'address' },
+      city: { label: 'city' },
+      postalCode: { label: 'postal code', min: 4 },
     };
-    return (Object.keys(labels) as (keyof typeof EMPTY_ADDRESS)[])
-      .filter((key) => address[key].trim().length === 0)
-      .map((key) => labels[key]);
+    return (Object.keys(rules) as (keyof typeof EMPTY_ADDRESS)[])
+      .filter((key) => {
+        const val = address[key].trim();
+        const rule = rules[key];
+        return val.length === 0 || (rule.min !== undefined && val.length < rule.min);
+      })
+      .map((key) => rules[key].label);
   }
 
   async function applyCoupon() {
