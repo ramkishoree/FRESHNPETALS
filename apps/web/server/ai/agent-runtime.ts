@@ -89,7 +89,14 @@ export async function runAgentTask(
       routingPolicy: agent.routingPolicy,
       requiresStructuredOutput: true,
       jsonSchema: agent.outputSchema,
-      budgetScope: { scope: 'agent', scopeRef: agent.slug, period: 'monthly' },
+      // Default ceiling keeps every non-overridden agent's completion
+      // bounded rather than falling through to the provider's own (large)
+      // default — see agent-registry.ts's maxTokens doc comment.
+      maxTokens: agent.maxTokens ?? 2048,
+      // scopeRef must match what recordCost actually stores in
+      // ai_cost_tracking.agent_id (the resolved id, not the slug) or a
+      // per-agent budget limit would never find any matching spend.
+      budgetScope: { scope: 'agent', scopeRef: agentId, period: 'monthly' },
       killSwitchCheck: { agent: agent.slug },
       agentId,
       taskId,

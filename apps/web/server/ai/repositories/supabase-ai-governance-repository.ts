@@ -56,10 +56,9 @@ export class SupabaseAiGovernanceRepository {
     return data ? Number(data.limit_amount) : null;
   }
 
-  /** Sums ai_cost_tracking within the current period window. `scope`
-   * beyond 'global'/'provider' (agent/workflow) resolves to 0 until
-   * Phase 11 seeds real agents — the query shape is already correct for
-   * when it does. */
+  /** Sums ai_cost_tracking within the current period window, scoped to
+   * whichever dimension the budget applies to. `global` sums everything;
+   * every other scope filters to its matching column. */
   async getCurrentSpend(
     scope: BudgetScope,
     scopeRef: string | null,
@@ -70,7 +69,11 @@ export class SupabaseAiGovernanceRepository {
       .select('input_cost, output_cost')
       .gte('created_at', periodStart(period).toISOString());
 
-    if (scope === 'provider' && scopeRef) query = query.eq('provider', scopeRef);
+    if (scopeRef) {
+      if (scope === 'provider') query = query.eq('provider', scopeRef);
+      else if (scope === 'agent') query = query.eq('agent_id', scopeRef);
+      else if (scope === 'workflow') query = query.eq('workflow_run_id', scopeRef);
+    }
 
     const { data, error } = await query;
     if (error) throw new Error(error.message);

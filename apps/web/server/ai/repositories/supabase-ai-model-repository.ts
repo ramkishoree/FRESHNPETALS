@@ -43,7 +43,12 @@ export class SupabaseAiModelRepository {
       .select(
         'provider, model_name, approval_status, health, supports_structured_output, supports_tool_calling, context_window, input_cost_per_1k, output_cost_per_1k, avg_latency_ms, metadata',
       )
-      .eq('approval_status', 'approved');
+      .eq('approval_status', 'approved')
+      // Deterministic order so every RoutingPolicy's tie-break (each does
+      // strict >/< comparisons, which keep the first-seen candidate on a
+      // tie) never depends on Postgres's unspecified row-return order.
+      .order('provider', { ascending: true })
+      .order('model_name', { ascending: true });
 
     if (error) throw new Error(error.message);
     return ((data ?? []) as unknown as AiModelRow[]).map(mapRow);

@@ -187,6 +187,36 @@ describe('AiOrchestrator', () => {
     expect(deps.governanceRepo.recordCost).not.toHaveBeenCalled();
   });
 
+  it('blocks on an exceeded global budget even when the caller only asked for a per-agent scope with no limit configured', async () => {
+    // Regression: every real call site requests `scope: 'agent'`, but no
+    // per-agent budget row has ever been seeded — before the fix, an
+    // unconfigured agent-scope budget meant the check was skipped
+    // entirely, with nothing else standing in the way of runaway spend.
+    const getBudgetLimit = vi.fn(
+      async (scope: string) => (scope === 'global' ? 10 : null) as number | null,
+    );
+    const getCurrentSpend = vi.fn().mockResolvedValue(10);
+    const deps = makeDeps({
+      governanceRepo: {
+        getActiveKillSwitches: vi.fn().mockResolvedValue([]),
+        getBudgetLimit,
+        getCurrentSpend,
+        recordCost: vi.fn(),
+      },
+    });
+    const orchestrator = new AiOrchestrator(deps);
+
+    await expect(
+      orchestrator.execute({
+        ...baseInput,
+        budgetScope: { scope: 'agent', scopeRef: 'blog-writer-ai', period: 'monthly' },
+      }),
+    ).rejects.toMatchObject({ reason: 'budget_exceeded' });
+    // The always-on global check runs first and blocks before the
+    // caller's own (unconfigured) agent-scope check is even reached.
+    expect(getBudgetLimit).toHaveBeenCalledWith('global', null, 'monthly');
+  });
+
   it('allows a critical task past 100% budget only with an explicit override', async () => {
     const deps = makeDeps({
       governanceRepo: {

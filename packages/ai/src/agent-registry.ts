@@ -42,6 +42,12 @@ export interface AgentDefinition {
   routingPolicy: RoutingPolicy;
   systemPrompt: string;
   outputSchema: AgentOutputSchema;
+  /** Completion token ceiling for this agent's runs — an open-ended AI
+   * cost risk otherwise, since the OpenAI/Groq adapters let the model use
+   * its own (large) default when nothing is set. Omitted means the
+   * caller's own default applies; only agents whose real output genuinely
+   * needs more (e.g. a 2500+ word article) override it. */
+  maxTokens?: number;
 }
 
 const SUMMARY_CONFIDENCE_FIELDS = {
@@ -176,6 +182,10 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     name: 'Blog Writer AI',
     purpose: 'Generates high-quality evergreen and trending flower-related content.',
     category: 'Content',
+    // 2500+ word article + outline + FAQs + captions genuinely needs more
+    // than the default ceiling — every other agent's output is short
+    // enough that the default is plenty.
+    maxTokens: 8000,
     capabilities: ['Blog Writing', 'Content SEO'],
     tools: [
       'Read Blog Database',

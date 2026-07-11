@@ -36,6 +36,11 @@ export interface AiRequestInput {
   routingPolicy: RoutingPolicy;
   requiresStructuredOutput?: boolean;
   jsonSchema?: unknown;
+  /** Completion token ceiling passed straight to the provider adapter —
+   * left unset, OpenAI/Groq fall back to the model's own (large) default
+   * rather than a deliberate budget. Anthropic already defaults to 1024
+   * when unset. */
+  maxTokens?: number;
   budgetScope: BudgetScope;
   isCriticalTask?: boolean;
   allowCriticalBudgetOverride?: boolean;
@@ -121,6 +126,30 @@ export interface AiOrchestratorDeps {
 export class AiOrchestrator {
   constructor(private readonly deps: AiOrchestratorDeps) {}
 
+  private async enforceBudget(
+    budgetScope: BudgetScope,
+    isCriticalTask: boolean,
+    allowCriticalOverride: boolean,
+  ): Promise<void> {
+    const { scope, scopeRef, period } = budgetScope;
+    const limit = await this.deps.governanceRepo.getBudgetLimit(scope, scopeRef, period);
+    if (limit === null) return;
+
+    const currentSpend = await this.deps.governanceRepo.getCurrentSpend(scope, scopeRef, period);
+    const budgetCheck = checkBudget({
+      currentSpend,
+      limit,
+      isCriticalTask,
+      allowCriticalOverride,
+    });
+    if (!budgetCheck.allowed) {
+      throw new AiOrchestrationError(
+        'budget_exceeded',
+        `AI budget exceeded (${budgetCheck.utilizationPct.toFixed(0)}% of ${period} limit).`,
+      );
+    }
+  }
+
   async execute(input: AiRequestInput): Promise<AiRequestResult> {
     const switches = await this.deps.governanceRepo.getActiveKillSwitches();
     const killCheck = checkKillSwitches(switches, input.killSwitchCheck ?? {});
@@ -131,23 +160,22 @@ export class AiOrchestrator {
       );
     }
 
-    const { scope, scopeRef, period } = input.budgetScope;
-    const limit = await this.deps.governanceRepo.getBudgetLimit(scope, scopeRef, period);
-    if (limit !== null) {
-      const currentSpend = await this.deps.governanceRepo.getCurrentSpend(scope, scopeRef, period);
-      const budgetCheck = checkBudget({
-        currentSpend,
-        limit,
-        isCriticalTask: input.isCriticalTask ?? false,
-        allowCriticalOverride: input.allowCriticalBudgetOverride ?? false,
-      });
-      if (!budgetCheck.allowed) {
-        throw new AiOrchestrationError(
-          'budget_exceeded',
-          `AI budget exceeded (${budgetCheck.utilizationPct.toFixed(0)}% of ${period} limit).`,
-        );
-      }
-    }
+    // A global monthly ceiling always applies, on top of whatever specific
+    // scope the caller asked to be checked — an unconfigured or
+    // never-matched per-agent/per-workflow budget must never mean "no
+    // ceiling at all" (that was the actual bug: every call site here
+    // requests 'agent' scope, but no per-agent budget row has ever been
+    // seeded, so the check below alone always silently no-op'd).
+    await this.enforceBudget(
+      { scope: 'global', scopeRef: null, period: 'monthly' },
+      input.isCriticalTask ?? false,
+      input.allowCriticalBudgetOverride ?? false,
+    );
+    await this.enforceBudget(
+      input.budgetScope,
+      input.isCriticalTask ?? false,
+      input.allowCriticalBudgetOverride ?? false,
+    );
 
     const taskScan = scanForPromptInjection(input.taskInstructions);
     if (taskScan.blocked) {
@@ -229,6 +257,7 @@ export class AiOrchestrator {
           systemPrompt: assembledSystemPrompt,
           messages: [{ role: 'user', content: input.taskInstructions }],
           jsonSchema: input.jsonSchema,
+          ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
         });
         promptTokens = result.promptTokens;
         completionTokens = result.completionTokens;
@@ -238,6 +267,7 @@ export class AiOrchestrator {
           model: selected.modelName,
           systemPrompt: assembledSystemPrompt,
           messages: [{ role: 'user', content: input.taskInstructions }],
+          ...(input.maxTokens !== undefined ? { maxTokens: input.maxTokens } : {}),
         });
         promptTokens = result.promptTokens;
         completionTokens = result.completionTokens;

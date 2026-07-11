@@ -139,6 +139,10 @@ export async function handleInboundWhatsAppMessage(
       routingPolicy: 'fastest',
       requiresStructuredOutput: true,
       jsonSchema: AI_OUTPUT_SCHEMA,
+      // A WhatsApp reply + resolved flag is short — this is the
+      // highest-frequency AI caller (once per customer message), so an
+      // explicit ceiling matters more here than almost anywhere else.
+      maxTokens: 500,
       budgetScope: { scope: 'agent', scopeRef: 'whatsapp-support-bot', period: 'daily' },
       killSwitchCheck: { agent: 'whatsapp-support-bot' },
     });
