@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { getPublicEnv } from '@/config/env';
+import { JsonLd } from '@/components/seo/json-ld';
 import { formatDate } from '@/lib/format-date';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -57,7 +59,7 @@ export default async function BlogDetailPage({ params }: PageProps) {
 
   const { data: blog } = await supabase
     .from('blogs')
-    .select('id, title, featured_image, published_at, reading_time_minutes')
+    .select('id, title, excerpt, featured_image, published_at, reading_time_minutes')
     .eq('slug', slug)
     .eq('status', 'published')
     .maybeSingle();
@@ -69,8 +71,39 @@ export default async function BlogDetailPage({ params }: PageProps) {
     .eq('blog_id', blog.id)
     .order('position', { ascending: true });
 
+  const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;
+  const blogUrl = `${appUrl}/blog/${slug}`;
+
   return (
     <article className="container-brand max-w-3xl space-y-6 py-10">
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Article',
+          headline: blog.title,
+          ...(blog.excerpt ? { description: blog.excerpt } : {}),
+          ...(blog.featured_image ? { image: [blog.featured_image] } : {}),
+          ...(blog.published_at ? { datePublished: blog.published_at } : {}),
+          author: { '@type': 'Organization', name: 'Fresh & Petals' },
+          publisher: {
+            '@type': 'Organization',
+            name: 'Fresh & Petals',
+            logo: { '@type': 'ImageObject', url: `${appUrl}/icon.svg` },
+          },
+          mainEntityOfPage: blogUrl,
+        }}
+      />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: appUrl },
+            { '@type': 'ListItem', position: 2, name: 'Blog', item: `${appUrl}/blog` },
+            { '@type': 'ListItem', position: 3, name: blog.title, item: blogUrl },
+          ],
+        }}
+      />
       <header className="space-y-2">
         <h1 className="text-hero text-foreground font-bold">{blog.title}</h1>
         <p className="text-caption text-muted-foreground">

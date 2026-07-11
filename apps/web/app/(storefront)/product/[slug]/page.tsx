@@ -10,6 +10,8 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
+import { getPublicEnv } from '@/config/env';
+import { JsonLd } from '@/components/seo/json-ld';
 import { ReviewCard } from '@/components/commerce/review-card';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { ProductActions } from '@/components/storefront/product-actions';
@@ -64,8 +66,72 @@ export default async function ProductDetailPage({ params }: PageProps) {
     .order('created_at', { ascending: false })
     .limit(10);
 
+  const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;
+  const productUrl = `${appUrl}/product/${product.slug}`;
+  const displayPrice = priceRow?.sale_price ?? priceRow?.base_price ?? 0;
+  const approvedReviews = reviews ?? [];
+
   return (
     <div className="container-brand py-10">
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'Product',
+          name: product.name,
+          description: product.short_description ?? product.description ?? undefined,
+          sku: product.sku,
+          ...(product.featured_image ? { image: [product.featured_image] } : {}),
+          offers: {
+            '@type': 'Offer',
+            url: productUrl,
+            priceCurrency: 'INR',
+            price: Number(displayPrice),
+            // Product detail only ever renders a `published` product (the
+            // query above filters on it), and this app treats "published"
+            // as "available for purchase" everywhere else too (see
+            // server/checkout/start-checkout.ts) — real-time per-outlet
+            // stock isn't fetched on this page, so this mirrors that same
+            // existing status semantic rather than a live inventory check.
+            availability: 'https://schema.org/InStock',
+          },
+          ...(approvedReviews.length > 0
+            ? {
+                aggregateRating: {
+                  '@type': 'AggregateRating',
+                  ratingValue: (
+                    approvedReviews.reduce((sum, r) => sum + r.rating, 0) / approvedReviews.length
+                  ).toFixed(1),
+                  reviewCount: approvedReviews.length,
+                },
+              }
+            : {}),
+        }}
+      />
+      <JsonLd
+        data={{
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Home', item: appUrl },
+            ...(category
+              ? [
+                  {
+                    '@type': 'ListItem',
+                    position: 2,
+                    name: category.name,
+                    item: `${appUrl}/shop/${category.slug}`,
+                  },
+                ]
+              : []),
+            {
+              '@type': 'ListItem',
+              position: category ? 3 : 2,
+              name: product.name,
+              item: productUrl,
+            },
+          ],
+        }}
+      />
       <Breadcrumb className="mb-8">
         <BreadcrumbList className="text-caption">
           <BreadcrumbItem>
