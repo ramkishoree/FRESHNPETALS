@@ -14,6 +14,7 @@ export interface Job<TPayload = Record<string, unknown>> {
 }
 
 export interface JobQueue {
+  enqueue(jobType: string, payload: Record<string, unknown>): Promise<void>;
   claimNext(jobType: string, workerId: string): Promise<Job | null>;
   markCompleted(jobId: string): Promise<void>;
   markFailed(jobId: string, errorMessage: string, nextRetryAt: Date | null): Promise<void>;

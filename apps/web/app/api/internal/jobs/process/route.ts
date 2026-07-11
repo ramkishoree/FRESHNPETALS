@@ -5,6 +5,7 @@ import { getServerEnv } from '@/config/env';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/server/logger';
 import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
+import { handleInvoiceGenerate } from '@/server/invoices/generate-invoice-job';
 
 function isAuthorized(authHeader: string | null, cronSecret: string): boolean {
   const expected = `Bearer ${cronSecret}`;
@@ -32,9 +33,16 @@ async function handleSamplePing(job: { payload: Record<string, unknown> }): Prom
   logger.info('worker.sample_ping', { payload: job.payload });
 }
 
-const JOB_HANDLERS: Record<string, (job: { payload: Record<string, unknown> }) => Promise<void>> = {
-  'sample.ping': handleSamplePing,
-};
+/** Handlers that need the admin client are built per-invocation, not as a
+ * module-level const, since the client itself is request-scoped. */
+function buildJobHandlers(
+  admin: ReturnType<typeof createSupabaseAdminClient>,
+): Record<string, (job: { payload: Record<string, unknown> }) => Promise<void>> {
+  return {
+    'sample.ping': handleSamplePing,
+    'invoice.generate': (job) => handleInvoiceGenerate(admin, job),
+  };
+}
 
 /**
  * Ch.8 §41 "Reservation expires automatically" — a periodic sweep, not a
@@ -73,9 +81,10 @@ async function runWorker(request: NextRequest): Promise<NextResponse> {
 
   await sweepExpiredReservations(admin);
 
-  for (const jobType of Object.keys(JOB_HANDLERS)) {
+  const jobHandlers = buildJobHandlers(admin);
+  for (const jobType of Object.keys(jobHandlers)) {
     for (let i = 0; i < MAX_JOBS_PER_INVOCATION; i++) {
-      const handler = JOB_HANDLERS[jobType];
+      const handler = jobHandlers[jobType];
       if (!handler) break;
       const outcome = await processNextJob(queue, jobType, workerId, handler);
       outcomes[outcome] = (outcomes[outcome] ?? 0) + 1;

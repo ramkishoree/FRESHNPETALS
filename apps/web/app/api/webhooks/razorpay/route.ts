@@ -1,8 +1,11 @@
+import { processNextJob } from '@prana/operations';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { handleInvoiceGenerate } from '@/server/invoices/generate-invoice-job';
 import { logger } from '@/server/logger';
 import { verifyWebhookSignature } from '@/server/payments/razorpay-adapter';
+import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
 import { notifyOwnerOrderPlaced } from '@/server/support/notify-owner';
 
 interface RazorpayWebhookPayload {
@@ -109,6 +112,28 @@ export async function POST(request: NextRequest) {
           grandTotal: Number(order.grand_total),
           currency: order.currency,
         });
+
+        // Queued (not just called directly) so a transient PDF/storage
+        // failure gets the job queue's exponential-backoff retry via the
+        // next cron sweep — but also attempted immediately right here so
+        // the customer isn't left waiting on a once-daily cron for
+        // something this time-sensitive. Failure here is caught and
+        // logged, never allowed to fail the webhook itself (Razorpay would
+        // just retry the whole webhook, re-triggering checkout_complete's
+        // idempotency path for no benefit).
+        try {
+          const jobQueue = new SupabaseJobQueue(admin);
+          await jobQueue.enqueue('invoice.generate', { orderId: order.id });
+          const workerId = `webhook-${correlationId.slice(0, 8)}`;
+          await processNextJob(jobQueue, 'invoice.generate', workerId, (job) =>
+            handleInvoiceGenerate(admin, job),
+          );
+        } catch (cause) {
+          logger.error('webhook.razorpay.invoice_generate_failed', {
+            correlationId,
+            message: cause instanceof Error ? cause.message : String(cause),
+          });
+        }
       }
     } else if (event.event === 'payment.failed') {
       const payment = event.payload.payment?.entity;

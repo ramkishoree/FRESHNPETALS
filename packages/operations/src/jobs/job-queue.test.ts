@@ -11,6 +11,10 @@ class FakeJobQueue implements JobQueue {
 
   constructor(private job: Job | null) {}
 
+  enqueue(): Promise<void> {
+    return Promise.resolve();
+  }
+
   claimNext(): Promise<Job | null> {
     const job = this.job;
     this.job = null; // simulate the row being claimed — a second call finds nothing

@@ -18,6 +18,13 @@ interface JobRow {
 export class SupabaseJobQueue implements JobQueue {
   constructor(private readonly client: SupabaseClient) {}
 
+  async enqueue(jobType: string, payload: Record<string, unknown>): Promise<void> {
+    const { error } = await this.client
+      .from('jobs')
+      .insert({ job_type: jobType, payload, status: 'queued' });
+    if (error) throw new Error(error.message);
+  }
+
   async claimNext(jobType: string, workerId: string): Promise<Job | null> {
     const { data, error } = await this.client.rpc('claim_next_job', {
       p_job_type: jobType,
