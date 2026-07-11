@@ -32,7 +32,7 @@ const listAddresses = createApiRoute({
     const { data, error } = await supabase
       .from('customer_addresses')
       .select(
-        'id, label, recipient_name, phone, address_line_1, address_line_2, city, state, postal_code, is_default, delivery_notes',
+        'id, label, recipient_name, phone, address_line_1, address_line_2, city, state, postal_code, latitude, longitude, is_default, delivery_notes',
       )
       .eq('customer_id', customer.id)
       .is('deleted_at', null)

@@ -16,6 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCart } from '@/lib/cart-context';
+import { useLocation } from '@/lib/use-location';
 
 declare global {
   interface Window {
@@ -33,6 +34,8 @@ interface SavedAddress {
   city: string;
   state: string | null;
   postal_code: string;
+  latitude: number | null;
+  longitude: number | null;
 }
 
 const EMPTY_ADDRESS = {
@@ -53,10 +56,19 @@ interface PricingBreakdown {
   grandTotal: number;
 }
 
-/** Ch.12 §26 Checkout Experience — "Single-page checkout. Progress indicator always visible." */
+/**
+ * Ch.12 §26 Checkout Experience — "Single-page checkout." Delivery fee is
+ * computed from the delivery *address* (saved-address coordinates or GPS
+ * fallback), never from the user's current GPS position alone, so the fee is
+ * always tied to where the package is going — not where the customer happens
+ * to be standing. The GPS prompt itself is handled site-wide by the header
+ * (Ch.12 §19), so it cannot be bypassed by denying at the last minute.
+ */
 export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const { items, subtotal, clear } = useCart();
   const router = useRouter();
+  const { coords: gpsCoords } = useLocation();
+
   const [addresses, setAddresses] = React.useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = React.useState<string>('new');
   const [manualAddress, setManualAddress] = React.useState(EMPTY_ADDRESS);
@@ -67,38 +79,32 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [couponMessage, setCouponMessage] = React.useState<string | null>(null);
   const [isPaying, setIsPaying] = React.useState(false);
   const [scriptReady, setScriptReady] = React.useState(false);
-  const [gpsCoords, setGpsCoords] = React.useState<{ lat: number; lng: number } | null>(null);
-  const [gpsState, setGpsState] = React.useState<
-    'idle' | 'loading' | 'ok' | 'denied' | 'unavailable'
-  >('idle');
 
-  /** Request browser GPS once on mount. Updates `gpsCoords` and `gpsState`. */
-  React.useEffect(() => {
-    if (!navigator.geolocation) {
-      setGpsState('unavailable');
-      return;
+  // ---- Helpers ----------------------------------------------------------------
+
+  /** Coordinates of the *delivery address* itself (not the customer's
+   *  current GPS). For saved addresses we use the stored lat/lng (most
+   *  accurate); for new typed addresses we fall back to the GPS coords
+   *  obtained by the header-level location prompt.  Returns `null` when
+   *  no coordinates are available at all — the server falls back to the
+   *  standard flat delivery fee. */
+  function resolveAddressCoords(): { lat: number; lng: number } | null {
+    if (selectedAddressId !== 'new') {
+      const saved = addresses.find((a) => a.id === selectedAddressId);
+      if (saved?.latitude != null && saved?.longitude != null) {
+        return { lat: saved.latitude, lng: saved.longitude };
+      }
     }
-    setGpsState('loading');
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        setGpsCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setGpsState('ok');
-      },
-      (err) => {
-        setGpsState(err.code === err.PERMISSION_DENIED ? 'denied' : 'unavailable');
-      },
-      { enableHighAccuracy: false, timeout: 8000, maximumAge: 300_000 },
-    );
-  }, []);
+    return gpsCoords;
+  }
 
   /** Fetch full pricing breakdown (GST, delivery, grand total) from the
-   *  server so every charge is transparent before the customer pays. */
-  async function loadPricing(
-    couponCode: string | null,
-    coords?: { lat: number; lng: number } | null,
-  ): Promise<PricingBreakdown | null> {
+   *  server so every charge is transparent before the customer pays. Uses
+   *  the delivery address coordinates so the fee is driven by where the
+   *  package is going. */
+  async function loadPricing(couponCode: string | null): Promise<PricingBreakdown | null> {
     if (items.length === 0) return null;
-    const coordinates = coords ?? gpsCoords;
+    const addressCoords = resolveAddressCoords();
     try {
       const response = await fetch('/api/v1/checkout/coupon-preview', {
         method: 'POST',
@@ -106,8 +112,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         body: JSON.stringify({
           lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           ...(couponCode ? { couponCode } : {}),
-          ...(coordinates
-            ? { addressLatitude: coordinates.lat, addressLongitude: coordinates.lng }
+          ...(addressCoords
+            ? { addressLatitude: addressCoords.lat, addressLongitude: addressCoords.lng }
             : {}),
         }),
       });
@@ -123,6 +129,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     return null;
   }
 
+  // ---- Effects ----------------------------------------------------------------
+
   // Load addresses once on mount.
   React.useEffect(() => {
     async function loadAddresses() {
@@ -134,17 +142,17 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       }
     }
     void loadAddresses();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load pricing once cart items are available (hydration may lag behind
-  // mount by one render cycle since the cart reads from localStorage).
-  // Also reload when GPS coords arrive so the distance-based delivery fee
-  // is always up to date.
+  // Load pricing when cart items or delivery address selection changes.
   React.useEffect(() => {
     if (items.length === 0) return;
-    void loadPricing(null, gpsCoords);
+    void loadPricing(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length, gpsCoords]);
+  }, [items.length, selectedAddressId, manualAddress, gpsCoords]);
+
+  // ---- Guard (empty cart) ----------------------------------------------------
 
   if (items.length === 0) {
     return (
@@ -153,6 +161,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       </div>
     );
   }
+
+  // ---- Address resolution ----------------------------------------------------
 
   function resolveAddress() {
     if (selectedAddressId === 'new') return manualAddress;
@@ -170,8 +180,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       : manualAddress;
   }
 
-  /** Server Zod schema enforces: phone min(6), postalCode min(4) — front-end
-   *  must match or saved addresses with short values will get 422. */
+  /** Server Zod schema enforces: phone min(6), postalCode min(4). */
   function findMissingAddressFields(address: typeof EMPTY_ADDRESS): string[] {
     const rules: Record<keyof typeof EMPTY_ADDRESS, { label: string; min?: number }> = {
       recipientName: { label: 'recipient name' },
@@ -189,18 +198,20 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       .map((key) => rules[key].label);
   }
 
+  // ---- Coupon ----------------------------------------------------------------
+
   async function applyCoupon() {
     const code = couponInput.trim().toUpperCase();
     if (!code) {
       setAppliedCoupon(null);
       setCouponMessage(null);
-      await loadPricing(null, gpsCoords);
+      await loadPricing(null);
       return;
     }
     setIsApplyingCoupon(true);
     setCouponMessage(null);
     try {
-      const result = await loadPricing(code, gpsCoords);
+      const result = await loadPricing(code);
       if (result) {
         setAppliedCoupon(code);
         setCouponMessage(`"${code}" applied — discount reflected above.`);
@@ -220,8 +231,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     setCouponInput('');
     setAppliedCoupon(null);
     setCouponMessage(null);
-    void loadPricing(null, gpsCoords);
+    void loadPricing(null);
   }
+
+  // ---- Payment ---------------------------------------------------------------
 
   async function payNow() {
     const address = resolveAddress();
@@ -230,6 +243,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       toast.error(`Please fill in: ${missing.join(', ')}.`);
       return;
     }
+
+    const addressCoords = resolveAddressCoords();
 
     setIsPaying(true);
     try {
@@ -240,7 +255,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           address: {
             ...address,
-            ...(gpsCoords ? { latitude: gpsCoords.lat, longitude: gpsCoords.lng } : {}),
+            ...(addressCoords ? { latitude: addressCoords.lat, longitude: addressCoords.lng } : {}),
           },
           ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
         }),
@@ -261,9 +276,6 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         amount,
         currency,
         name: 'Fresh & Petals',
-        // Ch.8 §89 Principle 5: this handler never creates the order —
-        // it only sends the customer to a page that waits for the
-        // server-verified webhook to do that.
         handler: () => {
           clear();
           router.push(`/checkout/${checkoutSessionId}/processing`);
@@ -278,6 +290,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       setIsPaying(false);
     }
   }
+
+  // ---- Render ----------------------------------------------------------------
 
   return (
     <div className="container-brand py-14">
@@ -469,14 +483,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                   ) : (
                     'Free'
                   )
-                ) : gpsState === 'loading' ? (
-                  <span className="text-xs text-[var(--sf-ink-muted)]">Locating…</span>
-                ) : gpsState === 'denied' || gpsState === 'unavailable' ? (
-                  <span className="text-xs text-[var(--sf-ink-muted)]">
-                    Enable GPS for accurate fee
-                  </span>
                 ) : (
-                  '—'
+                  <span className="text-xs text-[var(--sf-ink-muted)]">
+                    Set delivery location in the header
+                  </span>
                 )}
               </span>
             </div>
