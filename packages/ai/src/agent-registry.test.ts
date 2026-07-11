@@ -18,8 +18,16 @@ const DANGEROUS_TOOLS = [
 ];
 
 describe('agent-registry', () => {
-  it('ships exactly the 11 v1 employees named in Ch.9 §7', () => {
-    expect(AI_EMPLOYEES).toHaveLength(11);
+  it('ships exactly the 4 autonomous employees the owner kept (SEO, Blog, Marketing, Inventory)', () => {
+    expect(AI_EMPLOYEES).toHaveLength(4);
+    expect(new Set(AI_EMPLOYEES.map((a) => a.slug))).toEqual(
+      new Set([
+        'seo-specialist-ai',
+        'blog-writer-ai',
+        'marketing-manager-ai',
+        'inventory-manager-ai',
+      ]),
+    );
   });
 
   it('has unique slugs', () => {
@@ -45,7 +53,7 @@ describe('agent-registry', () => {
   });
 
   it('finds an agent by slug', () => {
-    expect(getAgentDefinition('product-manager-ai')?.name).toBe('Product Manager AI');
+    expect(getAgentDefinition('seo-specialist-ai')?.name).toBe('SEO Specialist AI');
     expect(getAgentDefinition('does-not-exist')).toBeUndefined();
   });
 
@@ -56,8 +64,8 @@ describe('agent-registry', () => {
   });
 
   it('checks whether a tool is granted to an agent', () => {
-    const productManager = getAgentDefinition('product-manager-ai')!;
-    expect(isToolGrantedToAgent(productManager, 'Save Draft')).toBe(true);
-    expect(isToolGrantedToAgent(productManager, 'Publish Product')).toBe(false);
+    const seoSpecialist = getAgentDefinition('seo-specialist-ai')!;
+    expect(isToolGrantedToAgent(seoSpecialist, 'Save Draft')).toBe(true);
+    expect(isToolGrantedToAgent(seoSpecialist, 'Publish Changes')).toBe(false);
   });
 });

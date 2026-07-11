@@ -38,7 +38,7 @@ describe('runAgentTask', () => {
 
     const result = await runAgentTask(
       { orchestrator, taskRepo },
-      { agentSlug: 'product-manager-ai', taskInstructions: 'draft a rose bouquet listing' },
+      { agentSlug: 'seo-specialist-ai', taskInstructions: 'draft a rose bouquet listing' },
     );
 
     expect(isErr(result)).toBe(true);
@@ -66,7 +66,7 @@ describe('runAgentTask', () => {
 
     const result = await runAgentTask(
       { orchestrator, taskRepo },
-      { agentSlug: 'product-manager-ai', taskInstructions: 'draft a rose bouquet listing' },
+      { agentSlug: 'seo-specialist-ai', taskInstructions: 'draft a rose bouquet listing' },
     );
 
     expect(isOk(result)).toBe(true);
@@ -79,7 +79,7 @@ describe('runAgentTask', () => {
     );
     expect(orchestrator.execute).toHaveBeenCalledWith(
       expect.objectContaining({
-        promptName: 'product-manager-ai',
+        promptName: 'seo-specialist-ai',
         agentId: 'agent-db-id',
         taskId: 'task-id',
       }),
@@ -98,7 +98,7 @@ describe('runAgentTask', () => {
 
     const result = await runAgentTask(
       { orchestrator, taskRepo },
-      { agentSlug: 'product-manager-ai', taskInstructions: 'draft a rose bouquet listing' },
+      { agentSlug: 'seo-specialist-ai', taskInstructions: 'draft a rose bouquet listing' },
     );
 
     expect(isErr(result)).toBe(true);
@@ -124,7 +124,7 @@ describe('runAgentTask', () => {
 
     const result = await runAgentTask(
       { orchestrator, taskRepo },
-      { agentSlug: 'product-manager-ai', taskInstructions: 'draft a rose bouquet listing' },
+      { agentSlug: 'seo-specialist-ai', taskInstructions: 'draft a rose bouquet listing' },
     );
 
     expect(isErr(result)).toBe(true);

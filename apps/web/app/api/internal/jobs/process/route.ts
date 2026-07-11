@@ -6,7 +6,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { logger } from '@/server/logger';
 import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
 import { handleInvoiceGenerate } from '@/server/invoices/generate-invoice-job';
-import { runWeeklyAutomationIfDue } from '@/server/ai/weekly-automation';
+import { runScheduledAgentsIfDue } from '@/server/ai/agent-scheduler';
 import { sweepReviewRequestNudges } from '@/server/reviews/review-nudge-sweep';
 
 function isAuthorized(authHeader: string | null, cronSecret: string): boolean {
@@ -84,9 +84,14 @@ async function runWorker(request: NextRequest): Promise<NextResponse> {
   await sweepExpiredReservations(admin);
   await sweepReviewRequestNudges(admin);
 
-  const weeklyAutomation = await runWeeklyAutomationIfDue(admin);
-  if (weeklyAutomation.ran) {
-    logger.info('worker.weekly_automation_triggered', { results: weeklyAutomation.results });
+  const scheduledOutcomes = await runScheduledAgentsIfDue(admin);
+  for (const outcome of scheduledOutcomes) {
+    if (outcome.ran) {
+      logger.info('worker.agent_scheduler_triggered', {
+        jobName: outcome.jobName,
+        results: outcome.results,
+      });
+    }
   }
 
   const jobHandlers = buildJobHandlers(admin);
