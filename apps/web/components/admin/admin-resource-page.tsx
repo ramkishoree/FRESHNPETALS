@@ -220,6 +220,49 @@ export function AdminResourcePage<TRow extends ResourceRow>({
   );
 }
 
+/**
+ * Raw-JSON editor for jsonb columns the generic field system has no
+ * typed sub-form for (offers.conditions/reward — freeform by design,
+ * used differently per offer_type). Only commits to the parent's
+ * formValues once the typed text actually parses; an in-progress edit
+ * that's momentarily invalid JSON doesn't wipe out the last-known-good
+ * value or submit garbage.
+ */
+function JsonFieldInput({
+  id,
+  value,
+  onChange,
+}: {
+  id: string;
+  value: unknown;
+  onChange: (value: unknown) => void;
+}) {
+  const [text, setText] = React.useState(() => JSON.stringify(value ?? {}, null, 2));
+  const [error, setError] = React.useState<string | null>(null);
+
+  return (
+    <div className="space-y-1">
+      <Textarea
+        id={id}
+        value={text}
+        rows={6}
+        className="font-mono text-xs"
+        onChange={(event) => {
+          const raw = event.target.value;
+          setText(raw);
+          try {
+            onChange(raw.trim() === '' ? {} : JSON.parse(raw));
+            setError(null);
+          } catch {
+            setError('Not valid JSON yet — keep typing.');
+          }
+        }}
+      />
+      {error && <p className="text-caption text-destructive">{error}</p>}
+    </div>
+  );
+}
+
 function FieldInput({
   field,
   value,
@@ -279,6 +322,8 @@ function FieldInput({
           }
         />
       );
+    case 'json':
+      return <JsonFieldInput id={field.name} value={value} onChange={onChange} />;
     default:
       return (
         <Input

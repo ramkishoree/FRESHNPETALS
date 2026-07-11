@@ -34,6 +34,7 @@ function makeCoupon(overrides: Partial<CouponRecord> = {}): CouponRecord {
     discountValue: 10,
     maxDiscountAmount: null,
     minCartValue: 0,
+    eligibilityType: 'general',
     startsAt: null,
     endsAt: null,
     active: true,
@@ -159,6 +160,48 @@ describe('validateCoupon', () => {
 
   it('accepts a valid coupon', () => {
     expect(validateCoupon(makeCoupon(), 1000, now)).toHaveLength(0);
+  });
+
+  it('rejects a first_order coupon for a customer who has already ordered', () => {
+    const coupon = makeCoupon({ eligibilityType: 'first_order' });
+    const violations = validateCoupon(coupon, 1000, now, { customerOrderCount: 2 });
+    expect(violations.length).toBeGreaterThan(0);
+  });
+
+  it('accepts a first_order coupon for a customer with zero prior orders', () => {
+    const coupon = makeCoupon({ eligibilityType: 'first_order' });
+    expect(validateCoupon(coupon, 1000, now, { customerOrderCount: 0 })).toHaveLength(0);
+    // Omitted entirely defaults to 0 too (guest/unknown context).
+    expect(validateCoupon(coupon, 1000, now)).toHaveLength(0);
+  });
+
+  it('rejects a birthday coupon when the customer has no date of birth on file', () => {
+    const coupon = makeCoupon({ eligibilityType: 'birthday' });
+    const violations = validateCoupon(coupon, 1000, now, { customerDateOfBirth: null });
+    expect(violations.length).toBeGreaterThan(0);
+  });
+
+  it("rejects a birthday coupon outside the customer's birthday month", () => {
+    // `now` is June 2026; a March birthday should not qualify.
+    const coupon = makeCoupon({ eligibilityType: 'birthday' });
+    const violations = validateCoupon(coupon, 1000, now, {
+      customerDateOfBirth: '1995-03-15',
+    });
+    expect(violations.length).toBeGreaterThan(0);
+  });
+
+  it("accepts a birthday coupon during the customer's birthday month", () => {
+    const coupon = makeCoupon({ eligibilityType: 'birthday' });
+    const violations = validateCoupon(coupon, 1000, now, {
+      customerDateOfBirth: '1995-06-15',
+    });
+    expect(violations).toHaveLength(0);
+  });
+
+  it('has no extra eligibility gate for corporate/influencer/employee coupons', () => {
+    for (const eligibilityType of ['corporate', 'influencer', 'employee'] as const) {
+      expect(validateCoupon(makeCoupon({ eligibilityType }), 1000, now)).toHaveLength(0);
+    }
   });
 });
 

@@ -102,12 +102,21 @@ export function computePricing(params: {
   };
 }
 
+/** Ch.8 §73: who the coupon is for — orthogonal to discountType (the
+ * mechanism). 'corporate'/'influencer'/'employee' have no system-enforced
+ * eligibility check beyond the ones every coupon gets — in practice
+ * they're restricted by not publishing the code, the same way most real
+ * small-business coupon systems actually work, not by identity matching. */
+export type CouponEligibilityType =
+  'general' | 'first_order' | 'birthday' | 'corporate' | 'influencer' | 'employee';
+
 export interface CouponRecord {
   code: string;
   discountType: 'percentage' | 'fixed' | 'free_delivery' | 'free_gift';
   discountValue: number;
   maxDiscountAmount: number | null;
   minCartValue: number;
+  eligibilityType: CouponEligibilityType;
   startsAt: string | null;
   endsAt: string | null;
   active: boolean;
@@ -115,8 +124,21 @@ export interface CouponRecord {
   usageLimitTotal: number | null;
 }
 
+export interface CouponEligibilityContext {
+  /** Number of completed orders this customer has — 0 means this would
+   * be their first. Omit when unknown (e.g. guest checkout preview). */
+  customerOrderCount?: number;
+  /** ISO date string (YYYY-MM-DD) — null/omitted means not on file yet. */
+  customerDateOfBirth?: string | null;
+}
+
 /** Ch.8 §74 Coupon Validation Rules. */
-export function validateCoupon(coupon: CouponRecord, cartSubtotal: number, now: Date): string[] {
+export function validateCoupon(
+  coupon: CouponRecord,
+  cartSubtotal: number,
+  now: Date,
+  eligibility: CouponEligibilityContext = {},
+): string[] {
   const violations: string[] = [];
   if (!coupon.active) violations.push('This coupon is no longer active.');
   if (coupon.startsAt && new Date(coupon.startsAt) > now)
@@ -127,6 +149,16 @@ export function validateCoupon(coupon: CouponRecord, cartSubtotal: number, now: 
   }
   if (coupon.usageLimitTotal != null && coupon.timesUsed >= coupon.usageLimitTotal) {
     violations.push('This coupon has reached its usage limit.');
+  }
+  if (coupon.eligibilityType === 'first_order' && (eligibility.customerOrderCount ?? 0) > 0) {
+    violations.push('This coupon is only valid on your first order.');
+  }
+  if (coupon.eligibilityType === 'birthday') {
+    if (!eligibility.customerDateOfBirth) {
+      violations.push('This coupon requires your birthday on file.');
+    } else if (new Date(eligibility.customerDateOfBirth).getMonth() !== now.getMonth()) {
+      violations.push('This coupon is only valid during your birthday month.');
+    }
   }
   return violations;
 }

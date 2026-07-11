@@ -6,6 +6,9 @@ const schema = z.object({
   description: z.string().optional(),
   discount_type: z.enum(['percentage', 'fixed', 'free_delivery', 'free_gift']).optional(),
   discount_value: z.number().min(0).optional(),
+  eligibility_type: z
+    .enum(['general', 'first_order', 'birthday', 'corporate', 'influencer', 'employee'])
+    .optional(),
   max_discount_amount: z.number().positive().optional(),
   min_cart_value: z.number().min(0).optional(),
   usage_limit_total: z.number().int().positive().optional(),

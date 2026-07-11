@@ -1,7 +1,9 @@
 import type { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { zUuid } from '@/lib/uuid';
+import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { createApiRoute } from '@/server/http/route-handler';
+import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { runSecurityChain } from '@/server/security/chain';
 import { previewCheckoutPricing } from '@/server/checkout/preview-pricing';
 
@@ -18,15 +20,23 @@ const bodySchema = z.object({
 
 const couponPreview = createApiRoute({
   bodySchema,
-  handler: async ({ body }) =>
-    previewCheckoutPricing({
+  handler: async ({ body }) => {
+    // Resolved server-side from the session, never trusted from the
+    // request body — needed to check first_order/birthday-eligibility
+    // coupon types.
+    const supabase = await createSupabaseServerClient();
+    const customer = await getCurrentCustomer(supabase);
+
+    return previewCheckoutPricing({
       lines: body.lines,
       ...(body.couponCode ? { couponCode: body.couponCode } : {}),
+      ...(customer ? { customerId: customer.id } : {}),
       ...(body.addressLatitude != null && body.addressLongitude != null
         ? { addressLatitude: body.addressLatitude, addressLongitude: body.addressLongitude }
         : {}),
       ...(body.selectedOutletId ? { selectedOutletId: body.selectedOutletId } : {}),
-    }),
+    });
+  },
 });
 
 export async function POST(request: NextRequest) {

@@ -9,6 +9,7 @@ interface CouponRow extends Record<string, unknown> {
   code: string;
   discount_type: string;
   discount_value: number;
+  eligibility_type: string | null;
   times_used: number;
   active: boolean;
 }
@@ -17,6 +18,7 @@ const columns: ColumnDef<CouponRow>[] = [
   { accessorKey: 'code', header: 'Code' },
   { accessorKey: 'discount_type', header: 'Type' },
   { accessorKey: 'discount_value', header: 'Value' },
+  { accessorKey: 'eligibility_type', header: 'Who' },
   { accessorKey: 'times_used', header: 'Times used' },
   {
     accessorKey: 'active',
@@ -58,6 +60,22 @@ export default function CouponsPage() {
           ],
         },
         { name: 'discount_value', label: 'Discount value', type: 'number', required: true },
+        {
+          name: 'eligibility_type',
+          label: 'Who can use it',
+          type: 'select',
+          options: [
+            { label: 'Anyone', value: 'general' },
+            { label: "First order only (customer's first order)", value: 'first_order' },
+            {
+              label: "Birthday month (needs the customer's date of birth on file)",
+              value: 'birthday',
+            },
+            { label: 'Corporate (share the code privately)', value: 'corporate' },
+            { label: 'Influencer (share the code privately)', value: 'influencer' },
+            { label: 'Employee (share the code privately)', value: 'employee' },
+          ],
+        },
         { name: 'max_discount_amount', label: 'Max discount amount', type: 'number' },
         { name: 'min_cart_value', label: 'Minimum cart value', type: 'number' },
         { name: 'usage_limit_total', label: 'Total usage limit', type: 'number' },

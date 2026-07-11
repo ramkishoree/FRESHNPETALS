@@ -21,6 +21,7 @@ import {
 } from '@prana/commerce';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { resolveActiveOffer } from '@/server/checkout/resolve-offer';
+import { resolveCouponEligibilityContext } from '@/server/checkout/coupon-eligibility';
 import { createRazorpayOrder, isRazorpayConfigured } from '@/server/payments/razorpay-adapter';
 
 export interface StartCheckoutInput {
@@ -218,7 +219,7 @@ export async function startCheckout(
     const { data: couponRow } = await admin
       .from('coupons')
       .select(
-        'id, code, discount_type, discount_value, max_discount_amount, min_cart_value, starts_at, ends_at, active, times_used, usage_limit_total',
+        'id, code, discount_type, eligibility_type, discount_value, max_discount_amount, min_cart_value, starts_at, ends_at, active, times_used, usage_limit_total',
       )
       .eq('code', input.couponCode.toUpperCase())
       .maybeSingle();
@@ -234,6 +235,7 @@ export async function startCheckout(
       maxDiscountAmount:
         couponRow.max_discount_amount != null ? Number(couponRow.max_discount_amount) : null,
       minCartValue: Number(couponRow.min_cart_value),
+      eligibilityType: couponRow.eligibility_type,
       startsAt: couponRow.starts_at,
       endsAt: couponRow.ends_at,
       active: couponRow.active,
@@ -242,7 +244,8 @@ export async function startCheckout(
     };
 
     const subtotal = validatedLines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
-    const couponViolations = validateCoupon(coupon, subtotal, new Date());
+    const eligibility = await resolveCouponEligibilityContext(admin, input.customerId);
+    const couponViolations = validateCoupon(coupon, subtotal, new Date(), eligibility);
     if (couponViolations.length > 0) {
       return err(new BusinessRuleError(couponViolations.join(' ')));
     }

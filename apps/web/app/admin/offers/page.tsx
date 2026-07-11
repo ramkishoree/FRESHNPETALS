@@ -56,7 +56,21 @@ export default function OffersPage() {
             { label: 'Free delivery', value: 'free_delivery' },
           ],
         },
-        { name: 'priority', label: 'Priority', type: 'number' },
+        { name: 'priority', label: 'Priority (lower number = applies first)', type: 'number' },
+        {
+          name: 'conditions',
+          label:
+            'Conditions (JSON) — e.g. {"minCartValue": 999, "productIds": [...], "categoryIds": [...]}',
+          type: 'json',
+        },
+        {
+          name: 'reward',
+          label:
+            'Reward (JSON) — percentage/fixed: {"discountValue": 10, "maxDiscountAmount": 200}. ' +
+            'buy_x_get_y: {"buyProductId": "...", "buyQuantity": 2, "getQuantity": 1} (same product). ' +
+            'free_gift: {"giftProductId": "...", "giftQuantity": 1}. free_delivery: {} (no fields needed).',
+          type: 'json',
+        },
         { name: 'starts_at', label: 'Starts at', type: 'datetime' },
         { name: 'ends_at', label: 'Ends at', type: 'datetime' },
         { name: 'active', label: 'Active', type: 'boolean' },
