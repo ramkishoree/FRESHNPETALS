@@ -20,6 +20,7 @@ export interface AiEmployeeCardData {
   slug: string;
   name: string;
   purpose: string;
+  exampleTask: string;
   category: string;
   capabilities: string[];
   kpis: { label: string; target: string }[];
@@ -89,6 +90,15 @@ export function AiEmployeeCard({
               <span className="text-destructive">{employee.failedCount} failed</span>
             )}
           </div>
+          {employee.kpis.length > 0 && (
+            <div className="text-caption text-muted-foreground space-y-0.5">
+              {employee.kpis.map((kpi) => (
+                <div key={kpi.label}>
+                  {kpi.label}: <span className="text-foreground">{kpi.target}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <Dialog open={open} onOpenChange={setOpen}>
@@ -106,7 +116,7 @@ export function AiEmployeeCard({
             <Textarea
               value={instructions}
               onChange={(e) => setInstructions(e.target.value)}
-              placeholder="e.g. Draft a listing for a dozen red roses in a glass vase."
+              placeholder={`e.g. ${employee.exampleTask}`}
               rows={4}
             />
             <DialogFooter>

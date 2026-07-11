@@ -33,6 +33,10 @@ export interface AgentDefinition {
   slug: string;
   name: string;
   purpose: string;
+  /** A concrete, realistic task instruction — shown in the admin UI so an
+   * operator knows what kind of instruction this agent actually expects,
+   * rather than guessing from `purpose` alone. */
+  exampleTask: string;
   category: string;
   capabilities: string[];
   tools: string[];
@@ -62,6 +66,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     name: 'Product Manager AI',
     purpose:
       'Assists the administrator in creating, improving, organizing and publishing products. Replaces repetitive data entry while maintaining administrator control over all customer-facing content.',
+    exampleTask: 'Draft a new product: a dozen red roses in a glass vase, priced around ₹999.',
     category: 'Commerce',
     capabilities: [
       'Product Creation',
@@ -137,6 +142,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'seo-specialist-ai',
     name: 'SEO Specialist AI',
     purpose: 'Maintains technical and on-page SEO health across products and blog content.',
+    exampleTask: 'Audit all published products for missing meta descriptions and alt text.',
     category: 'SEO',
     capabilities: ['SEO Audit', 'Schema Generation', 'Metadata Optimization', 'Internal Linking'],
     tools: [
@@ -181,6 +187,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'blog-writer-ai',
     name: 'Blog Writer AI',
     purpose: 'Generates high-quality evergreen and trending flower-related content.',
+    exampleTask: 'Write an article on the best flowers to send for a housewarming gift in India.',
     category: 'Content',
     // 2500+ word article + outline + FAQs + captions genuinely needs more
     // than the default ceiling — every other agent's output is short
@@ -231,6 +238,8 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'marketing-manager-ai',
     name: 'Marketing Manager AI',
     purpose: 'Generates campaigns that increase revenue.',
+    exampleTask:
+      'Propose a Raksha Bandhan campaign built around our anniversary and birthday bouquets.',
     category: 'Marketing',
     capabilities: ['Campaign Creation', 'Offer Suggestion'],
     tools: [
@@ -278,6 +287,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'inventory-manager-ai',
     name: 'Inventory Manager AI',
     purpose: 'Optimizes inventory before stock problems occur.',
+    exampleTask: 'Review current stock and flag anything at risk of selling out this week.',
     category: 'Inventory',
     capabilities: ['Inventory Monitoring', 'Demand Prediction'],
     tools: ['Read Inventory', 'Read Orders', 'Read Analytics', 'Report Generator'],
@@ -314,6 +324,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'pricing-analyst-ai',
     name: 'Pricing Analyst AI',
     purpose: 'Optimizes pricing while maintaining profitability.',
+    exampleTask: 'Suggest pricing or bundle changes to improve margin on the sympathy category.',
     category: 'Commerce',
     capabilities: ['Pricing Optimization'],
     tools: [
@@ -352,6 +363,8 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'analytics-analyst-ai',
     name: 'Analytics Analyst AI',
     purpose: 'Transforms analytics into actionable recommendations.',
+    exampleTask:
+      "Summarize this month's revenue and conversion trends with concrete recommendations.",
     category: 'Analytics',
     capabilities: ['Business Analysis', 'Revenue Reporting'],
     tools: ['Read Orders', 'Read Analytics', 'Read Customers', 'Report Generator'],
@@ -389,6 +402,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'customer-insights-ai',
     name: 'Customer Insights AI',
     purpose: 'Understands customer behaviour.',
+    exampleTask: 'Analyze recent orders and suggest new bundles based on buying patterns.',
     category: 'Analytics',
     capabilities: ['Customer Behaviour Analysis'],
     tools: ['Read Customers', 'Read Orders', 'Read Analytics', 'Report Generator'],
@@ -422,6 +436,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'review-manager-ai',
     name: 'Review Manager AI',
     purpose: 'Maintains trust through review analysis.',
+    exampleTask: "Analyze this month's reviews for sentiment trends and flag anything suspicious.",
     category: 'Customer Service',
     capabilities: ['Review Moderation', 'Trust Analysis'],
     tools: ['Read Reviews', 'Report Generator'],
@@ -454,6 +469,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'automation-coordinator-ai',
     name: 'Automation Coordinator AI',
     purpose: 'Manages recurring AI workflows.',
+    exampleTask: "Summarize the status of this week's scheduled AI workflows.",
     category: 'Automation',
     capabilities: ['Workflow Coordination'],
     tools: ['Read Analytics', 'Read Orders', 'Report Generator'],
@@ -486,6 +502,7 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     slug: 'operations-assistant-ai',
     name: 'Operations Assistant AI',
     purpose: "Becomes the administrator's daily assistant.",
+    exampleTask: 'Give me a daily briefing on orders, revenue, and pending tasks.',
     category: 'Operations',
     capabilities: ['Daily Briefing', 'Task Summarization'],
     tools: ['Read Orders', 'Read Products', 'Read Analytics', 'Report Generator'],

@@ -21,6 +21,15 @@ function extractText(content: Anthropic.Messages.ContentBlock[]): string {
     .join('');
 }
 
+// Claude routinely wraps JSON in a ```json ... ``` fence despite an explicit
+// "no markdown fences" instruction — a prompt instruction alone isn't
+// reliable (unlike OpenAI/Groq's real response_format: json_object mode).
+// Strip a fence if present before parsing, rather than trusting the model.
+export function stripMarkdownFence(raw: string): string {
+  const match = raw.match(/^```(?:json)?\s*\n?([\s\S]*?)\n?```$/);
+  return match?.[1] ? match[1].trim() : raw;
+}
+
 /**
  * Ch.14 §7/§8: the only file allowed to import the `@anthropic-ai/sdk`
  * package. Claude has no native JSON-schema response mode (unlike OpenAI's
@@ -69,7 +78,7 @@ export class AnthropicAdapter implements ProviderAdapter {
       messages: input.messages,
     });
 
-    const raw = extractText(response.content).trim();
+    const raw = stripMarkdownFence(extractText(response.content).trim());
     return {
       data: JSON.parse(raw) as T,
       promptTokens: response.usage.input_tokens ?? 0,
