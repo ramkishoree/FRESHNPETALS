@@ -23,9 +23,12 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 export interface PreviewPricingInput {
   lines: CartLineInput[];
   couponCode?: string;
-  /** Customer's GPS coordinates for distance-based delivery fee calculation. */
+  /** Delivery pin coordinates from Google Maps (where the customer wants delivery). */
   addressLatitude?: number;
   addressLongitude?: number;
+  /** When the customer has manually selected an outlet, use it instead of
+   *  the nearest auto-detect. */
+  selectedOutletId?: string;
 }
 
 export interface PreviewPricingResult {
@@ -91,8 +94,9 @@ export async function previewCheckoutPricing(
     });
   }
 
-  // Distance-based delivery fee: find the nearest active outlet and compute
-  // straight-line distance from the customer's GPS coordinates.
+  // Distance-based delivery fee: compute the straight-line distance from the
+  // delivery pin (Google Maps) to the selected outlet. If no outlet has been
+  // explicitly selected by the customer, fall back to the nearest active outlet.
   let deliveryDistanceKm: number | undefined;
   if (input.addressLatitude != null && input.addressLongitude != null) {
     const { data: outlets, error: outletsError } = await admin
@@ -100,21 +104,26 @@ export async function previewCheckoutPricing(
       .select('id, latitude, longitude, delivery_radius_km, is_active')
       .eq('is_active', true);
     if (!outletsError && outlets) {
+      const candidates = outlets.map((o) => ({
+        id: o.id,
+        latitude: Number(o.latitude),
+        longitude: Number(o.longitude),
+        deliveryRadiusKm: Number(o.delivery_radius_km),
+        isActive: o.is_active,
+      }));
+
+      // When the customer picked a specific outlet, compute distance to it.
+      // Otherwise auto-select the nearest active outlet.
+      const outletSubset = input.selectedOutletId
+        ? candidates.filter((c) => c.id === input.selectedOutletId)
+        : candidates;
+
       const ranked = rankOutletsByDistance(
-        outlets.map((o) => ({
-          id: o.id,
-          latitude: Number(o.latitude),
-          longitude: Number(o.longitude),
-          deliveryRadiusKm: Number(o.delivery_radius_km),
-          isActive: o.is_active,
-        })),
+        outletSubset,
         input.addressLatitude,
         input.addressLongitude,
       );
-      const nearest = ranked.at(0);
-      if (nearest) {
-        deliveryDistanceKm = nearest.distanceKm;
-      }
+      deliveryDistanceKm = ranked.at(0)?.distanceKm;
     }
   }
 

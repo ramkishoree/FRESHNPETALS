@@ -25,6 +25,9 @@ const bodySchema = z.object({
   }),
   couponCode: z.string().optional(),
   deliverySlotId: zUuid().optional(),
+  /** Customer-selected outlet (picked from the outlet selector). When
+   *  omitted the server auto-selects the nearest outlet with stock. */
+  selectedOutletId: zUuid().optional(),
 });
 
 const checkout = createApiRoute({
@@ -41,6 +44,7 @@ const checkout = createApiRoute({
       address: stripUndefined(body.address),
       ...(body.couponCode ? { couponCode: body.couponCode } : {}),
       ...(body.deliverySlotId ? { deliverySlotId: body.deliverySlotId } : {}),
+      ...(body.selectedOutletId ? { selectedOutletId: body.selectedOutletId } : {}),
     });
   },
 });

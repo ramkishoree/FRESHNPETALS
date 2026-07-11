@@ -28,6 +28,9 @@ export interface StartCheckoutInput {
   address: CheckoutAddressInput;
   couponCode?: string;
   deliverySlotId?: string;
+  /** When the customer has manually selected an outlet, skip auto-ranking
+   *  and use this one (after verifying it has sufficient inventory). */
+  selectedOutletId?: string;
 }
 
 export interface StartCheckoutResult {
@@ -103,41 +106,92 @@ export async function startCheckout(
     return err(new InfrastructureError('Failed to load outlets.', { cause: outletsError.message }));
   }
 
-  const ranked =
-    input.address.latitude != null && input.address.longitude != null
-      ? rankOutletsByDistance(
-          (outlets ?? []).map((o) => ({
-            id: o.id,
-            latitude: Number(o.latitude),
-            longitude: Number(o.longitude),
-            deliveryRadiusKm: Number(o.delivery_radius_km),
-            isActive: o.is_active,
-          })),
-          input.address.latitude,
-          input.address.longitude,
-        )
-      : (outlets ?? []).map((o) => ({
-          outlet: { id: o.id, latitude: 0, longitude: 0, deliveryRadiusKm: 0, isActive: true },
-          distanceKm: 0,
-        }));
-
   let selectedOutletId: string | null = null;
   let deliveryDistanceKm: number | undefined;
-  for (const candidate of ranked) {
-    const { data: inventoryRows } = await admin
+
+  if (input.selectedOutletId) {
+    // Customer explicitly chose an outlet — verify it exists, is active,
+    // and has enough stock for every item.
+    const chosen = (outlets ?? []).find((o) => o.id === input.selectedOutletId);
+    if (!chosen) {
+      return err(
+        new BusinessRuleError('The selected outlet is no longer available.', { httpStatus: 409 }),
+      );
+    }
+
+    const { data: invRows } = await admin
       .from('inventory')
       .select('product_id, available_quantity')
-      .eq('outlet_id', candidate.outlet.id)
+      .eq('outlet_id', chosen.id)
       .in('product_id', productIds);
 
     const hasAllStock = validatedLines.every((line) => {
-      const row = inventoryRows?.find((i) => i.product_id === line.productId);
+      const row = invRows?.find((i) => i.product_id === line.productId);
       return row && row.available_quantity >= line.quantity;
     });
-    if (hasAllStock) {
-      selectedOutletId = candidate.outlet.id;
-      deliveryDistanceKm = candidate.distanceKm;
-      break;
+
+    if (!hasAllStock) {
+      return err(
+        new BusinessRuleError(
+          'The selected outlet does not have enough stock. Please try another.',
+          { httpStatus: 409 },
+        ),
+      );
+    }
+
+    selectedOutletId = chosen.id;
+    if (input.address.latitude != null && input.address.longitude != null) {
+      const ranked = rankOutletsByDistance(
+        [
+          {
+            id: chosen.id,
+            latitude: Number(chosen.latitude),
+            longitude: Number(chosen.longitude),
+            deliveryRadiusKm: Number(chosen.delivery_radius_km),
+            isActive: chosen.is_active,
+          },
+        ],
+        input.address.latitude,
+        input.address.longitude,
+      );
+      deliveryDistanceKm = ranked.at(0)?.distanceKm;
+    }
+  } else {
+    // Auto-rank: try outlets nearest-first until one has full inventory.
+    const ranked =
+      input.address.latitude != null && input.address.longitude != null
+        ? rankOutletsByDistance(
+            (outlets ?? []).map((o) => ({
+              id: o.id,
+              latitude: Number(o.latitude),
+              longitude: Number(o.longitude),
+              deliveryRadiusKm: Number(o.delivery_radius_km),
+              isActive: o.is_active,
+            })),
+            input.address.latitude,
+            input.address.longitude,
+          )
+        : (outlets ?? []).map((o) => ({
+            outlet: { id: o.id, latitude: 0, longitude: 0, deliveryRadiusKm: 0, isActive: true },
+            distanceKm: 0,
+          }));
+
+    for (const candidate of ranked) {
+      const { data: inventoryRows } = await admin
+        .from('inventory')
+        .select('product_id, available_quantity')
+        .eq('outlet_id', candidate.outlet.id)
+        .in('product_id', productIds);
+
+      const hasAllStock = validatedLines.every((line) => {
+        const row = inventoryRows?.find((i) => i.product_id === line.productId);
+        return row && row.available_quantity >= line.quantity;
+      });
+      if (hasAllStock) {
+        selectedOutletId = candidate.outlet.id;
+        deliveryDistanceKm = candidate.distanceKm;
+        break;
+      }
     }
   }
 

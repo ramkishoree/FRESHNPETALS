@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { PriceDisplay } from '@/components/commerce/price-display';
+import { DeliveryMap, type MapLocation } from '@/components/storefront/delivery-map';
+import { OutletSelector, type OutletWithStock } from '@/components/storefront/outlet-selector';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,7 +18,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useCart } from '@/lib/cart-context';
-import { useLocation } from '@/lib/use-location';
 
 declare global {
   interface Window {
@@ -57,17 +58,21 @@ interface PricingBreakdown {
 }
 
 /**
- * Ch.12 §26 Checkout Experience — "Single-page checkout." Delivery fee is
- * computed from the delivery *address* (saved-address coordinates or GPS
- * fallback), never from the user's current GPS position alone, so the fee is
- * always tied to where the package is going — not where the customer happens
- * to be standing. The GPS prompt itself is handled site-wide by the header
- * (Ch.12 §19), so it cannot be bypassed by denying at the last minute.
+ * Ch.12 §26 Checkout Experience — "Single-page checkout." The customer:
+ *   1. Drops a pin on Google Maps (or searches via Places autocomplete).
+ *   2. Sees every outlet ranked by distance, with stock for each cart item.
+ *   3. Picks which outlet fulfills the order.
+ *   4. Enters address details (recipient, phone, etc.).
+ *   5. Applies a coupon if they have one.
+ *   6. Pays.
+ *
+ * Delivery fee is computed from the selected outlet to the delivery pin —
+ * not from the customer's current GPS position — so the fee is always
+ * tied to where the package is going and which outlet they choose.
  */
 export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const { items, subtotal, clear } = useCart();
   const router = useRouter();
-  const { coords: gpsCoords } = useLocation();
 
   const [addresses, setAddresses] = React.useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = React.useState<string>('new');
@@ -80,31 +85,25 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [isPaying, setIsPaying] = React.useState(false);
   const [scriptReady, setScriptReady] = React.useState(false);
 
+  // ---- Outlet selection state ------------------------------------------------
+  const [outlets, setOutlets] = React.useState<OutletWithStock[]>([]);
+  const [deliveryPin, setDeliveryPin] = React.useState<MapLocation | null>(null);
+  const [selectedOutletId, setSelectedOutletId] = React.useState<string | null>(null);
+
   // ---- Helpers ----------------------------------------------------------------
 
-  /** Coordinates of the *delivery address* itself (not the customer's
-   *  current GPS). For saved addresses we use the stored lat/lng (most
-   *  accurate); for new typed addresses we fall back to the GPS coords
-   *  obtained by the header-level location prompt.  Returns `null` when
-   *  no coordinates are available at all — the server falls back to the
+  /** Coordinates from the delivery pin (Google Maps). If the pin hasn't
+   *  been placed yet, returns null and the server falls back to the
    *  standard flat delivery fee. */
-  function resolveAddressCoords(): { lat: number; lng: number } | null {
-    if (selectedAddressId !== 'new') {
-      const saved = addresses.find((a) => a.id === selectedAddressId);
-      if (saved?.latitude != null && saved?.longitude != null) {
-        return { lat: saved.latitude, lng: saved.longitude };
-      }
-    }
-    return gpsCoords;
+  function resolveDeliveryCoords(): { lat: number; lng: number } | null {
+    return deliveryPin ? { lat: deliveryPin.lat, lng: deliveryPin.lng } : null;
   }
 
-  /** Fetch full pricing breakdown (GST, delivery, grand total) from the
-   *  server so every charge is transparent before the customer pays. Uses
-   *  the delivery address coordinates so the fee is driven by where the
-   *  package is going. */
+  /** Fetch pricing from the server using the delivery pin coords and the
+   *  selected outlet (if any). Never trusts client-side prices. */
   async function loadPricing(couponCode: string | null): Promise<PricingBreakdown | null> {
     if (items.length === 0) return null;
-    const addressCoords = resolveAddressCoords();
+    const coords = resolveDeliveryCoords();
     try {
       const response = await fetch('/api/v1/checkout/coupon-preview', {
         method: 'POST',
@@ -112,9 +111,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         body: JSON.stringify({
           lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           ...(couponCode ? { couponCode } : {}),
-          ...(addressCoords
-            ? { addressLatitude: addressCoords.lat, addressLongitude: addressCoords.lng }
-            : {}),
+          ...(coords ? { addressLatitude: coords.lat, addressLongitude: coords.lng } : {}),
+          ...(selectedOutletId ? { selectedOutletId } : {}),
         }),
       });
       const body = await response.json();
@@ -131,7 +129,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   // ---- Effects ----------------------------------------------------------------
 
-  // Load addresses once on mount.
+  // Load saved addresses on mount.
   React.useEffect(() => {
     async function loadAddresses() {
       const response = await fetch('/api/v1/account/addresses');
@@ -145,12 +143,57 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load pricing when cart items or delivery address selection changes.
+  // Fetch outlets with stock for the cart items on mount.
+  React.useEffect(() => {
+    if (items.length === 0) return;
+    const productIds = items.map((i) => i.productId).join(',');
+    (async () => {
+      try {
+        const res = await fetch(
+          `/api/v1/outlets/with-stock?productIds=${encodeURIComponent(productIds)}`,
+        );
+        const body = await res.json();
+        if (res.ok && body.success) {
+          setOutlets(body.data);
+        }
+      } catch {
+        // Non-critical — the user will see an error if they try to pay.
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length]);
+
+  // Auto-select the nearest outlet when the delivery pin changes.
+  React.useEffect(() => {
+    if (!deliveryPin || outlets.length === 0) return;
+
+    // Find the nearest outlet by Haversine distance.
+    let nearest: OutletWithStock | undefined = outlets[0];
+    let minDist = Infinity;
+    for (const o of outlets) {
+      const dLat = ((o.latitude - deliveryPin.lat) * Math.PI) / 180;
+      const dLon = ((o.longitude - deliveryPin.lng) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) ** 2 +
+        Math.cos((deliveryPin.lat * Math.PI) / 180) *
+          Math.cos((o.latitude * Math.PI) / 180) *
+          Math.sin(dLon / 2) ** 2;
+      const dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      if (dist < minDist) {
+        minDist = dist;
+        nearest = o;
+      }
+    }
+    if (nearest) setSelectedOutletId(nearest.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deliveryPin]);
+
+  // Re-fetch pricing when outlet selection or delivery pin changes.
   React.useEffect(() => {
     if (items.length === 0) return;
     void loadPricing(null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items.length, selectedAddressId, manualAddress, gpsCoords]);
+  }, [selectedOutletId, deliveryPin, items.length]);
 
   // ---- Guard (empty cart) ----------------------------------------------------
 
@@ -180,7 +223,6 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       : manualAddress;
   }
 
-  /** Server Zod schema enforces: phone min(6), postalCode min(4). */
   function findMissingAddressFields(address: typeof EMPTY_ADDRESS): string[] {
     const rules: Record<keyof typeof EMPTY_ADDRESS, { label: string; min?: number }> = {
       recipientName: { label: 'recipient name' },
@@ -244,7 +286,12 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       return;
     }
 
-    const addressCoords = resolveAddressCoords();
+    if (!selectedOutletId) {
+      toast.error('Please select a delivery outlet on the map.');
+      return;
+    }
+
+    const coords = resolveDeliveryCoords();
 
     setIsPaying(true);
     try {
@@ -253,9 +300,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          selectedOutletId,
           address: {
             ...address,
-            ...(addressCoords ? { latitude: addressCoords.lat, longitude: addressCoords.lng } : {}),
+            ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
           },
           ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
         }),
@@ -303,15 +351,45 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       />
 
       <header className="mb-10 text-center">
-        <p className="eyebrow mb-2">Almost there</p>
+        <p className="eyebrow mb-2">Choose your delivery</p>
         <h1 className="text-h1">Checkout</h1>
         <BrandDivider className="mt-6" />
       </header>
 
       <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr]">
         <div className="space-y-8">
+          {/* ---- Pin your delivery location (Google Maps) ---- */}
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
-            <h2 className="text-h4 mb-4">Deliver to</h2>
+            <h2 className="text-h4 mb-4">Pin your delivery location</h2>
+            <DeliveryMap onLocationChange={(loc) => setDeliveryPin(loc)} />
+          </section>
+
+          {/* ---- Outlet selector ---- */}
+          {outlets.length > 0 && (
+            <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
+              <h2 className="text-h4 mb-4">Select outlet</h2>
+              <OutletSelector
+                outlets={outlets}
+                cartItems={items.map((i) => ({
+                  productId: i.productId,
+                  name: i.name,
+                  quantity: i.quantity,
+                }))}
+                deliveryPin={deliveryPin}
+                selectedOutletId={selectedOutletId}
+                onSelect={(id) => setSelectedOutletId(id)}
+              />
+            </section>
+          )}
+
+          {/* ---- Delivery address ---- */}
+          <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
+            <h2 className="text-h4 mb-4">Delivery details</h2>
+            {deliveryPin && (
+              <p className="text-caption mb-4 text-[var(--sf-ink-muted)]">
+                📍 {deliveryPin.formattedAddress}
+              </p>
+            )}
 
             {addresses.length > 0 && (
               <div className="mb-6">
@@ -391,6 +469,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             )}
           </section>
 
+          {/* ---- Coupon ---- */}
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Have a coupon?</h2>
             {appliedCoupon ? (
@@ -438,6 +517,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           </section>
         </div>
 
+        {/* ---- Order summary sidebar ---- */}
         <aside className="h-fit rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface-2)] p-6 lg:sticky lg:top-24">
           <h2 className="text-h4 mb-4">Order summary</h2>
           <ul className="space-y-3">
@@ -485,7 +565,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                   )
                 ) : (
                   <span className="text-xs text-[var(--sf-ink-muted)]">
-                    Set delivery location in the header
+                    {deliveryPin ? 'Calculating…' : 'Pin your location first'}
                   </span>
                 )}
               </span>

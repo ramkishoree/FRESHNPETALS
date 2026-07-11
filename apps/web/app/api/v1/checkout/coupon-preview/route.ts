@@ -9,9 +9,11 @@ import { previewCheckoutPricing } from '@/server/checkout/preview-pricing';
 const bodySchema = z.object({
   lines: z.array(z.object({ productId: zUuid(), quantity: z.number().int().positive() })).min(1),
   couponCode: z.string().optional(),
-  /** Customer's GPS coordinates for distance-based delivery fee preview. */
+  /** Delivery pin coordinates from Google Maps. */
   addressLatitude: z.number().min(-90).max(90).optional(),
   addressLongitude: z.number().min(-180).max(180).optional(),
+  /** When the customer has picked a specific outlet, use it for distance calculation. */
+  selectedOutletId: zUuid().optional(),
 });
 
 const couponPreview = createApiRoute({
@@ -23,6 +25,7 @@ const couponPreview = createApiRoute({
       ...(body.addressLatitude != null && body.addressLongitude != null
         ? { addressLatitude: body.addressLatitude, addressLongitude: body.addressLongitude }
         : {}),
+      ...(body.selectedOutletId ? { selectedOutletId: body.selectedOutletId } : {}),
     }),
 });
 
