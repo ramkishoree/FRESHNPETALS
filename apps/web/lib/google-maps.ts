@@ -28,7 +28,13 @@ export function loadGoogleMaps(): Promise<typeof google.maps> {
 
   pendingPromise = new Promise((resolve, reject) => {
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places&loading=async`;
+    // Deliberately the classic (non loading=async) loader: `loading=async`
+    // switches Maps to lazy per-library imports via google.maps.importLibrary(),
+    // under which `libraries=places` alone does not attach Geocoder (it lives
+    // in the separate `geocoding` library) until explicitly imported — which
+    // caused "Geocoder is not a constructor" at runtime. Listing both
+    // libraries here loads them synchronously before `onload` fires.
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${API_KEY}&libraries=places,geocoding`;
     script.async = true;
     script.defer = true;
     script.onload = () => {
