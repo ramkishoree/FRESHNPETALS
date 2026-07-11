@@ -4,7 +4,34 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": [".next/**", "!.next/cache/**", "dist/**"]
+      "outputs": [".next/**", "!.next/cache/**", "dist/**"],
+      "env": [
+        "NEXT_PUBLIC_APP_URL",
+        "NEXT_PUBLIC_SUPABASE_URL",
+        "NEXT_PUBLIC_SUPABASE_ANON_KEY",
+        "NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER",
+        "NEXT_PUBLIC_GA_MEASUREMENT_ID",
+        "NEXT_PUBLIC_GOOGLE_MAPS_API_KEY",
+        "SUPABASE_SERVICE_ROLE_KEY",
+        "UPSTASH_REDIS_REST_URL",
+        "UPSTASH_REDIS_REST_TOKEN",
+        "CRON_SECRET",
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "GROQ_API_KEY",
+        "RAZORPAY_KEY_ID",
+        "RAZORPAY_KEY_SECRET",
+        "RAZORPAY_WEBHOOK_SECRET",
+        "META_WHATSAPP_ACCESS_TOKEN",
+        "META_WHATSAPP_PHONE_NUMBER_ID",
+        "META_WHATSAPP_BUSINESS_ACCOUNT_ID",
+        "META_WHATSAPP_APP_SECRET",
+        "META_WHATSAPP_WEBHOOK_VERIFY_TOKEN",
+        "META_WHATSAPP_OWNER_WA_ID",
+        "RESEND_API_KEY",
+        "RESEND_FROM_EMAIL",
+        "OWNER_NOTIFICATION_EMAIL"
+      ]
     },
     "dev": {
       "cache": false,
