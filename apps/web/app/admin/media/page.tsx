@@ -1,7 +1,9 @@
 'use client';
 
 import type { ColumnDef } from '@tanstack/react-table';
+import * as React from 'react';
 import { AdminResourcePage } from '@/components/admin/admin-resource-page';
+import { MediaUploadButton } from '@/components/admin/media-upload-button';
 
 interface MediaRow extends Record<string, unknown> {
   id: string;
@@ -17,33 +19,45 @@ const columns: ColumnDef<MediaRow>[] = [
 ];
 
 /**
- * Ch.12 §56 Media Library. The file bytes go straight to Supabase Storage
- * via a signed upload URL (a direct-to-storage widget, deferred — Phase 9
- * is the first page that actually needs uploads flowing end-to-end); this
- * registers/edits an asset's metadata once a file exists at `storage_path`.
+ * Ch.12 §56 Media Library. Real uploads go through MediaUploadButton →
+ * /api/v1/admin/media/upload, which converts every file to WebP
+ * server-side before it ever reaches storage. AdminResourcePage's own
+ * "Add Asset" dialog stays too, for registering an asset that already
+ * exists at a known storage_path (e.g. seeded/migrated content) without
+ * re-uploading it.
  */
 export default function MediaLibraryPage() {
+  // Forces AdminResourcePage to remount (and refetch) after a real
+  // upload — it has no exposed refresh() method of its own.
+  const [refreshKey, setRefreshKey] = React.useState(0);
+
   return (
-    <AdminResourcePage
-      title="Media"
-      singularLabel="Asset"
-      description="Registered assets (filename, alt text, tags). Upload flow lands with Phase 9."
-      endpoint="/api/v1/admin/media"
-      columns={columns}
-      searchPlaceholder="Search media..."
-      fields={[
-        { name: 'filename', label: 'Filename', type: 'text', required: true },
-        {
-          name: 'mime_type',
-          label: 'MIME type',
-          type: 'text',
-          required: true,
-          placeholder: 'image/webp',
-        },
-        { name: 'storage_path', label: 'Storage path', type: 'text', required: true },
-        { name: 'cdn_url', label: 'CDN URL', type: 'text' },
-        { name: 'alt_text', label: 'Alt text', type: 'text' },
-      ]}
-    />
+    <div className="space-y-4">
+      <div className="flex justify-end">
+        <MediaUploadButton onUploaded={() => setRefreshKey((k) => k + 1)} />
+      </div>
+      <AdminResourcePage
+        key={refreshKey}
+        title="Media"
+        singularLabel="Asset"
+        description="Every upload is converted to WebP automatically."
+        endpoint="/api/v1/admin/media"
+        columns={columns}
+        searchPlaceholder="Search media..."
+        fields={[
+          { name: 'filename', label: 'Filename', type: 'text', required: true },
+          {
+            name: 'mime_type',
+            label: 'MIME type',
+            type: 'text',
+            required: true,
+            placeholder: 'image/webp',
+          },
+          { name: 'storage_path', label: 'Storage path', type: 'text', required: true },
+          { name: 'cdn_url', label: 'CDN URL', type: 'text' },
+          { name: 'alt_text', label: 'Alt text', type: 'text' },
+        ]}
+      />
+    </div>
   );
 }
