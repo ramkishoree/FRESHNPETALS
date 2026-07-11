@@ -20,6 +20,7 @@ import {
   type ValidatedCartLine,
 } from '@prana/commerce';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { resolveActiveOffer } from '@/server/checkout/resolve-offer';
 import { createRazorpayOrder, isRazorpayConfigured } from '@/server/payments/razorpay-adapter';
 
 export interface StartCheckoutInput {
@@ -60,7 +61,7 @@ export async function startCheckout(
 
   const { data: products, error: productsError } = await admin
     .from('products')
-    .select('id, sku, name, status, product_prices(base_price, sale_price)')
+    .select('id, sku, name, status, category_id, product_prices(base_price, sale_price)')
     .in('id', productIds);
   if (productsError) {
     return err(
@@ -96,6 +97,9 @@ export async function startCheckout(
       unitPrice,
     });
   }
+  const cartCategoryIds = [
+    ...new Set((products ?? []).map((p) => p.category_id).filter((id): id is string => !!id)),
+  ];
 
   // Ch.8 §96 Outlet Assignment Engine.
   const { data: outlets, error: outletsError } = await admin
@@ -252,9 +256,22 @@ export async function startCheckout(
     };
   }
 
+  const cartSubtotalForOffers = validatedLines.reduce(
+    (sum, line) => sum + line.unitPrice * line.quantity,
+    0,
+  );
+  const { offerDiscount, freeDeliveryFromOffer } = await resolveActiveOffer(
+    admin,
+    cartSubtotalForOffers,
+    validatedLines.map((line) => line.productId),
+    cartCategoryIds,
+  );
+
   const pricing = computePricing({
     lines: validatedLines,
     couponDiscount,
+    offerDiscount,
+    freeDeliveryFromOffer,
     deliveryDistanceKm: deliveryDistanceKm ?? null,
   });
 
@@ -273,6 +290,7 @@ export async function startCheckout(
       subtotal: pricing.subtotal,
       discountTotal: pricing.discountTotal,
       couponDiscount: pricing.couponDiscount,
+      offerDiscount: pricing.offerDiscount,
       deliveryFee: pricing.deliveryFee,
       deliveryDistanceKm: pricing.deliveryDistanceKm,
       taxTotal: pricing.taxTotal,

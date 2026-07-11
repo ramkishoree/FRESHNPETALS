@@ -1,16 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import {
   calculateCouponDiscount,
+  calculateOfferDiscount,
   computeDeliveryFee,
   computePricing,
   type CouponRecord,
+  isOfferEligible,
+  type OfferRecord,
   PER_KM_FEE,
   rankOutletsByDistance,
+  selectBestOffer,
   STANDARD_DELIVERY_FEE,
   STANDARD_DELIVERY_KM,
   validateCartIsNotEmpty,
   validateCoupon,
 } from './checkout';
+
+function makeOffer(overrides: Partial<OfferRecord> = {}): OfferRecord {
+  return {
+    id: 'offer-1',
+    offerType: 'percentage',
+    priority: 6,
+    conditions: {},
+    reward: { discountValue: 10 },
+    ...overrides,
+  };
+}
 
 function makeCoupon(overrides: Partial<CouponRecord> = {}): CouponRecord {
   return {
@@ -221,5 +236,85 @@ describe('rankOutletsByDistance', () => {
     );
     expect(result[0]?.outlet.id).toBe('near');
     expect(result[1]?.outlet.id).toBe('far');
+  });
+});
+
+describe('isOfferEligible', () => {
+  it('rejects a cart below the offer minimum', () => {
+    const offer = makeOffer({ conditions: { minCartValue: 1000 } });
+    expect(isOfferEligible(offer, 500, [], [])).toBe(false);
+    expect(isOfferEligible(offer, 1000, [], [])).toBe(true);
+  });
+
+  it('requires at least one matching product when productIds is set', () => {
+    const offer = makeOffer({ conditions: { productIds: ['p1', 'p2'] } });
+    expect(isOfferEligible(offer, 0, ['p3'], [])).toBe(false);
+    expect(isOfferEligible(offer, 0, ['p1'], [])).toBe(true);
+  });
+
+  it('requires at least one matching category when categoryIds is set', () => {
+    const offer = makeOffer({ conditions: { categoryIds: ['c1'] } });
+    expect(isOfferEligible(offer, 0, [], ['c2'])).toBe(false);
+    expect(isOfferEligible(offer, 0, [], ['c1'])).toBe(true);
+  });
+
+  it('has no conditions to fail when none are configured', () => {
+    expect(isOfferEligible(makeOffer({ conditions: {} }), 0, [], [])).toBe(true);
+  });
+});
+
+describe('selectBestOffer', () => {
+  it('returns null when nothing is eligible', () => {
+    const offer = makeOffer({ conditions: { minCartValue: 5000 } });
+    expect(selectBestOffer([offer], 100, [], [])).toBeNull();
+  });
+
+  it('picks the lower-priority-number (higher precedence) offer per Ch.8 §72', () => {
+    const low = makeOffer({ id: 'flash-sale', priority: 2 });
+    const high = makeOffer({ id: 'automatic-promo', priority: 6 });
+    expect(selectBestOffer([high, low], 1000, [], [])?.id).toBe('flash-sale');
+  });
+
+  it('never selects a buy_x_get_y or free_gift offer — not wired to pricing', () => {
+    const unsupported = makeOffer({ offerType: 'buy_x_get_y', priority: 1 });
+    const supported = makeOffer({ offerType: 'fixed', priority: 6 });
+    expect(selectBestOffer([unsupported, supported], 1000, [], [])?.offerType).toBe('fixed');
+  });
+});
+
+describe('calculateOfferDiscount', () => {
+  it('applies a percentage offer capped at maxDiscountAmount', () => {
+    const offer = makeOffer({
+      offerType: 'percentage',
+      reward: { discountValue: 20, maxDiscountAmount: 100 },
+    });
+    expect(calculateOfferDiscount(offer, 1000)).toBe(100);
+    expect(calculateOfferDiscount(offer, 300)).toBe(60);
+  });
+
+  it('applies a fixed offer capped at the cart subtotal', () => {
+    const offer = makeOffer({ offerType: 'fixed', reward: { discountValue: 200 } });
+    expect(calculateOfferDiscount(offer, 1000)).toBe(200);
+    expect(calculateOfferDiscount(offer, 100)).toBe(100);
+  });
+
+  it('contributes 0 to the discount line for free_delivery — it zeroes the fee instead', () => {
+    expect(calculateOfferDiscount(makeOffer({ offerType: 'free_delivery' }), 1000)).toBe(0);
+  });
+});
+
+describe('computePricing with an offer applied', () => {
+  const lines = [{ productId: 'p1', sku: 'SKU1', name: 'Rose', quantity: 1, unitPrice: 1000 }];
+
+  it('combines coupon and offer discounts, capped at the subtotal', () => {
+    const result = computePricing({ lines, couponDiscount: 800, offerDiscount: 500 });
+    expect(result.discountTotal).toBe(1000);
+    expect(result.couponDiscount).toBe(800);
+    expect(result.offerDiscount).toBe(500);
+  });
+
+  it('zeroes the delivery fee when freeDeliveryFromOffer is true, ignoring distance', () => {
+    const result = computePricing({ lines, deliveryDistanceKm: 20, freeDeliveryFromOffer: true });
+    expect(result.deliveryFee).toBe(0);
   });
 });

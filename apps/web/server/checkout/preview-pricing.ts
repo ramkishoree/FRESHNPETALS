@@ -19,6 +19,7 @@ import {
   type ValidatedCartLine,
 } from '@prana/commerce';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { resolveActiveOffer } from '@/server/checkout/resolve-offer';
 
 export interface PreviewPricingInput {
   lines: CartLineInput[];
@@ -57,7 +58,7 @@ export async function previewCheckoutPricing(
 
   const { data: products, error: productsError } = await admin
     .from('products')
-    .select('id, sku, name, status, product_prices(base_price, sale_price)')
+    .select('id, sku, name, status, category_id, product_prices(base_price, sale_price)')
     .in('id', productIds);
   if (productsError) {
     return err(
@@ -93,6 +94,9 @@ export async function previewCheckoutPricing(
       unitPrice,
     });
   }
+  const cartCategoryIds = [
+    ...new Set((products ?? []).map((p) => p.category_id).filter((id): id is string => !!id)),
+  ];
 
   // Distance-based delivery fee: compute the straight-line distance from the
   // delivery pin (Google Maps) to the selected outlet. If no outlet has been
@@ -166,9 +170,22 @@ export async function previewCheckoutPricing(
     appliedCouponCode = coupon.code;
   }
 
+  const cartSubtotalForOffers = validatedLines.reduce(
+    (sum, line) => sum + line.unitPrice * line.quantity,
+    0,
+  );
+  const { offerDiscount, freeDeliveryFromOffer } = await resolveActiveOffer(
+    admin,
+    cartSubtotalForOffers,
+    validatedLines.map((line) => line.productId),
+    cartCategoryIds,
+  );
+
   const pricing = computePricing({
     lines: validatedLines,
     couponDiscount,
+    offerDiscount,
+    freeDeliveryFromOffer,
     deliveryDistanceKm: deliveryDistanceKm ?? null,
   });
   return ok({ pricing, appliedCouponCode });

@@ -51,6 +51,7 @@ interface PricingBreakdown {
   subtotal: number;
   discountTotal: number;
   couponDiscount: number;
+  offerDiscount: number;
   deliveryFee: number;
   deliveryDistanceKm: number | null;
   taxTotal: number;
@@ -553,6 +554,12 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
               <div className="flex items-center justify-between text-sm text-[var(--green)]">
                 <span>Coupon discount</span>
                 <span>−₹{pricing.couponDiscount}</span>
+              </div>
+            )}
+            {pricing && pricing.offerDiscount > 0 && (
+              <div className="flex items-center justify-between text-sm text-[var(--green)]">
+                <span>Offer applied</span>
+                <span>−₹{pricing.offerDiscount}</span>
               </div>
             )}
             <div className="flex items-center justify-between text-sm">

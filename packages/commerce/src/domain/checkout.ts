@@ -29,6 +29,7 @@ export interface PricingBreakdown {
   subtotal: number;
   discountTotal: number;
   couponDiscount: number;
+  offerDiscount: number;
   deliveryFee: number;
   deliveryDistanceKm: number | null;
   taxTotal: number;
@@ -70,14 +71,21 @@ export function computeDeliveryFee(distanceKm: number | null | undefined): numbe
 export function computePricing(params: {
   lines: ValidatedCartLine[];
   couponDiscount?: number;
+  offerDiscount?: number;
+  /** True when the best-priority applicable offer is a free_delivery type. */
+  freeDeliveryFromOffer?: boolean;
   deliveryDistanceKm?: number | null;
 }): PricingBreakdown {
   const subtotal = params.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
   const couponDiscount = Math.min(params.couponDiscount ?? 0, subtotal);
-  const discountTotal = couponDiscount;
+  const offerDiscount = Math.min(params.offerDiscount ?? 0, subtotal);
+  // Ch.8 §72 Offer Priority picks one offer, and a coupon is a separate,
+  // customer-entered code — both are allowed to apply at once, but their
+  // combined discount can never exceed the subtotal.
+  const discountTotal = Math.min(couponDiscount + offerDiscount, subtotal);
   const afterDiscount = subtotal - discountTotal;
   const deliveryDistanceKm = params.deliveryDistanceKm ?? null;
-  const deliveryFee = computeDeliveryFee(deliveryDistanceKm);
+  const deliveryFee = params.freeDeliveryFromOffer ? 0 : computeDeliveryFee(deliveryDistanceKm);
   const taxTotal = Math.round(afterDiscount * TAX_RATE * 100) / 100;
   const grandTotal = afterDiscount + deliveryFee + taxTotal;
 
@@ -85,6 +93,7 @@ export function computePricing(params: {
     subtotal,
     discountTotal,
     couponDiscount,
+    offerDiscount,
     deliveryFee,
     deliveryDistanceKm:
       deliveryDistanceKm != null ? Math.round(deliveryDistanceKm * 10) / 10 : null,
@@ -131,6 +140,95 @@ export function calculateCouponDiscount(coupon: CouponRecord, cartSubtotal: numb
     return Math.min(coupon.discountValue, cartSubtotal);
   }
   // free_delivery / free_gift affect delivery fee / fulfillment, not the discount line — 0 here by design.
+  return 0;
+}
+
+/**
+ * Ch.8 §69-72 Offer Engine. The `offers` table stores `conditions`/`reward`
+ * as freeform jsonb (no fixed sub-schema exists anywhere yet — this is the
+ * first code to actually read them), so this is the contract those fields
+ * are interpreted against: `conditions.minCartValue`/`productIds`/
+ * `categoryIds` gate eligibility; `reward.discountValue`/
+ * `maxDiscountAmount` drive the discount for percentage/fixed offers.
+ *
+ * Only percentage/fixed/free_delivery are applied to pricing here —
+ * buy_x_get_y and free_gift both require injecting an extra line item
+ * into the order (with its own inventory allocation), a materially
+ * bigger checkout-pipeline change than a discount/fee adjustment, and are
+ * deliberately left unwired rather than half-implemented.
+ */
+export interface OfferRecord {
+  id: string;
+  offerType: 'percentage' | 'fixed' | 'buy_x_get_y' | 'free_gift' | 'free_delivery';
+  /** Ch.8 §72: lower number = higher precedence (1 = highest). */
+  priority: number;
+  conditions: {
+    minCartValue?: number;
+    productIds?: string[];
+    categoryIds?: string[];
+  };
+  reward: {
+    discountValue?: number;
+    maxDiscountAmount?: number;
+  };
+}
+
+const PRICING_OFFER_TYPES = new Set<OfferRecord['offerType']>([
+  'percentage',
+  'fixed',
+  'free_delivery',
+]);
+
+export function isOfferEligible(
+  offer: OfferRecord,
+  cartSubtotal: number,
+  cartProductIds: string[],
+  cartCategoryIds: string[],
+): boolean {
+  if (cartSubtotal < (offer.conditions.minCartValue ?? 0)) return false;
+  if (
+    offer.conditions.productIds?.length &&
+    !offer.conditions.productIds.some((id) => cartProductIds.includes(id))
+  ) {
+    return false;
+  }
+  if (
+    offer.conditions.categoryIds?.length &&
+    !offer.conditions.categoryIds.some((id) => cartCategoryIds.includes(id))
+  ) {
+    return false;
+  }
+  return true;
+}
+
+/** Ch.8 §72: "Only the highest priority compatible offer applies." */
+export function selectBestOffer(
+  offers: OfferRecord[],
+  cartSubtotal: number,
+  cartProductIds: string[],
+  cartCategoryIds: string[],
+): OfferRecord | null {
+  const eligible = offers.filter(
+    (offer) =>
+      PRICING_OFFER_TYPES.has(offer.offerType) &&
+      isOfferEligible(offer, cartSubtotal, cartProductIds, cartCategoryIds),
+  );
+  if (eligible.length === 0) return null;
+  return eligible.reduce((best, offer) => (offer.priority < best.priority ? offer : best));
+}
+
+export function calculateOfferDiscount(offer: OfferRecord, cartSubtotal: number): number {
+  if (offer.offerType === 'percentage') {
+    const raw = cartSubtotal * ((offer.reward.discountValue ?? 0) / 100);
+    return offer.reward.maxDiscountAmount != null
+      ? Math.min(raw, offer.reward.maxDiscountAmount)
+      : raw;
+  }
+  if (offer.offerType === 'fixed') {
+    return Math.min(offer.reward.discountValue ?? 0, cartSubtotal);
+  }
+  // free_delivery zeroes the delivery fee instead — 0 here by design, same
+  // pattern as calculateCouponDiscount's free_delivery/free_gift case.
   return 0;
 }
 
