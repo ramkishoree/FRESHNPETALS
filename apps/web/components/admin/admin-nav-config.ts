@@ -1,18 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import {
-  Boxes,
-  FileText,
-  LayoutDashboard,
-  Megaphone,
-  MessageCircle,
-  Package,
-  Settings,
-  ShieldCheck,
-  ShoppingCart,
-  Sparkles,
-  Store,
-  Users,
-} from 'lucide-react';
+import { LayoutDashboard, Megaphone, Settings, ShoppingCart, Store } from 'lucide-react';
 
 export interface AdminNavItem {
   label: string;
@@ -22,63 +9,59 @@ export interface AdminNavItem {
 }
 
 /**
- * Ch.12 §43 Sidebar list, expanded with Ch.6 §Administrator Navigation's
- * fuller module set as sub-items (Ch.12 §58: "Avoid deep nesting. Maximum
- * 3 levels" — this is 2). AI Assistant/Automation Center point at stub
- * pages: Phase 11 builds the agents behind them, this phase only builds
- * the shell so the nav item isn't a dead link.
+ * Ch.12 §43 Sidebar, consolidated to 4 top-level groups (plus Dashboard)
+ * per the owner's explicit request — the previous 10-row flat list read
+ * as clutter even though every one of those pages is genuinely wired.
+ * Nothing here was removed; every page below still exists and works,
+ * just grouped by what it's actually for rather than listed flat.
  */
 export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
   {
-    label: 'Orders',
-    href: '/admin/orders',
-    icon: ShoppingCart,
-  },
-  {
-    label: 'Products',
+    label: 'Shop',
     href: '/admin/products',
-    icon: Package,
+    icon: Store,
     children: [
-      { label: 'All products', href: '/admin/products' },
+      { label: 'Products', href: '/admin/products' },
       { label: 'Categories', href: '/admin/categories' },
       { label: 'Collections', href: '/admin/collections' },
+      { label: 'Inventory', href: '/admin/inventory' },
+      { label: 'Outlets', href: '/admin/outlets' },
     ],
   },
-  { label: 'Inventory', href: '/admin/inventory', icon: Boxes },
-  { label: 'Customers', href: '/admin/customers', icon: Users },
   {
-    label: 'Marketing',
-    href: '/admin/coupons',
-    icon: Megaphone,
+    label: 'Sales',
+    href: '/admin/orders',
+    icon: ShoppingCart,
     children: [
+      { label: 'Orders', href: '/admin/orders' },
+      { label: 'Customers', href: '/admin/customers' },
       { label: 'Coupons', href: '/admin/coupons' },
       { label: 'Offers', href: '/admin/offers' },
-      { label: 'Announcements', href: '/admin/announcements' },
-    ],
-  },
-  {
-    label: 'Content',
-    href: '/admin/blogs',
-    icon: FileText,
-    children: [
-      { label: 'Blogs', href: '/admin/blogs' },
-      { label: 'Pages', href: '/admin/pages' },
-      { label: 'Media library', href: '/admin/media' },
       { label: 'Reviews', href: '/admin/reviews' },
     ],
   },
-  { label: 'Outlets', href: '/admin/outlets', icon: Store },
-  { label: 'AI Workspace', href: '/admin/ai', icon: Sparkles },
-  { label: 'Support Inbox', href: '/admin/support', icon: MessageCircle },
   {
-    label: 'Security',
-    href: '/admin/audit',
-    icon: ShieldCheck,
+    label: 'Marketing',
+    href: '/admin/ai',
+    icon: Megaphone,
     children: [
-      { label: 'Audit log', href: '/admin/audit' },
-      { label: 'Users & roles', href: '/admin/users' },
+      { label: 'AI Workspace', href: '/admin/ai' },
+      { label: 'Blogs', href: '/admin/blogs' },
+      { label: 'Pages', href: '/admin/pages' },
+      { label: 'Media library', href: '/admin/media' },
+      { label: 'Announcements', href: '/admin/announcements' },
+      { label: 'Support Inbox', href: '/admin/support' },
     ],
   },
-  { label: 'Settings', href: '/admin/settings', icon: Settings },
+  {
+    label: 'Admin',
+    href: '/admin/settings',
+    icon: Settings,
+    children: [
+      { label: 'Settings', href: '/admin/settings' },
+      { label: 'Users & roles', href: '/admin/users' },
+      { label: 'Audit log', href: '/admin/audit' },
+    ],
+  },
 ] as const;
