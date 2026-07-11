@@ -1,10 +1,18 @@
 import 'server-only';
-import { calculateOfferDiscount, selectBestOffer, type OfferRecord } from '@prana/commerce';
+import {
+  calculateOfferDiscount,
+  resolveOfferBonusItem,
+  selectBestOffer,
+  type OfferBonusItem,
+  type OfferRecord,
+} from '@prana/commerce';
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export interface ResolvedOffer {
+  offerId: string | null;
   offerDiscount: number;
   freeDeliveryFromOffer: boolean;
+  bonusItem: OfferBonusItem | null;
 }
 
 interface OfferRow {
@@ -27,6 +35,7 @@ export async function resolveActiveOffer(
   cartSubtotal: number,
   cartProductIds: string[],
   cartCategoryIds: string[],
+  cartQuantityByProduct: Record<string, number> = {},
 ): Promise<ResolvedOffer> {
   const nowIso = new Date().toISOString();
   const { data: offerRows } = await admin
@@ -44,11 +53,20 @@ export async function resolveActiveOffer(
     reward: row.reward ?? {},
   }));
 
-  const best = selectBestOffer(offers, cartSubtotal, cartProductIds, cartCategoryIds);
-  if (!best) return { offerDiscount: 0, freeDeliveryFromOffer: false };
+  const best = selectBestOffer(
+    offers,
+    cartSubtotal,
+    cartProductIds,
+    cartCategoryIds,
+    cartQuantityByProduct,
+  );
+  if (!best)
+    return { offerId: null, offerDiscount: 0, freeDeliveryFromOffer: false, bonusItem: null };
 
   return {
+    offerId: best.id,
     offerDiscount: calculateOfferDiscount(best, cartSubtotal),
     freeDeliveryFromOffer: best.offerType === 'free_delivery',
+    bonusItem: resolveOfferBonusItem(best),
   };
 }

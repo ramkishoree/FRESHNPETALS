@@ -9,6 +9,7 @@ import {
   type OfferRecord,
   PER_KM_FEE,
   rankOutletsByDistance,
+  resolveOfferBonusItem,
   selectBestOffer,
   STANDARD_DELIVERY_FEE,
   STANDARD_DELIVERY_KM,
@@ -304,6 +305,36 @@ describe('isOfferEligible', () => {
   it('has no conditions to fail when none are configured', () => {
     expect(isOfferEligible(makeOffer({ conditions: {} }), 0, [], [])).toBe(true);
   });
+
+  it('rejects a buy_x_get_y offer when the cart has fewer than buyQuantity of buyProductId', () => {
+    const offer = makeOffer({
+      offerType: 'buy_x_get_y',
+      reward: { buyProductId: 'p1', buyQuantity: 2, getQuantity: 1 },
+    });
+    expect(isOfferEligible(offer, 0, ['p1'], [], { p1: 1 })).toBe(false);
+    expect(isOfferEligible(offer, 0, ['p1'], [], { p1: 2 })).toBe(true);
+    expect(isOfferEligible(offer, 0, ['p1'], [], { p1: 5 })).toBe(true);
+  });
+
+  it('rejects a buy_x_get_y offer with no buyProductId configured', () => {
+    const offer = makeOffer({ offerType: 'buy_x_get_y', reward: { buyQuantity: 2 } });
+    expect(isOfferEligible(offer, 0, [], [], { p1: 10 })).toBe(false);
+  });
+
+  it('rejects a free_gift offer with no giftProductId configured', () => {
+    const offer = makeOffer({ offerType: 'free_gift', reward: {} });
+    expect(isOfferEligible(offer, 1000, [], [])).toBe(false);
+  });
+
+  it('accepts a free_gift offer with a giftProductId once the cart minimum is met', () => {
+    const offer = makeOffer({
+      offerType: 'free_gift',
+      conditions: { minCartValue: 999 },
+      reward: { giftProductId: 'gift-1' },
+    });
+    expect(isOfferEligible(offer, 500, [], [])).toBe(false);
+    expect(isOfferEligible(offer, 999, [], [])).toBe(true);
+  });
 });
 
 describe('selectBestOffer', () => {
@@ -318,10 +349,36 @@ describe('selectBestOffer', () => {
     expect(selectBestOffer([high, low], 1000, [], [])?.id).toBe('flash-sale');
   });
 
-  it('never selects a buy_x_get_y or free_gift offer — not wired to pricing', () => {
-    const unsupported = makeOffer({ offerType: 'buy_x_get_y', priority: 1 });
-    const supported = makeOffer({ offerType: 'fixed', priority: 6 });
-    expect(selectBestOffer([unsupported, supported], 1000, [], [])?.offerType).toBe('fixed');
+  it('lets a higher-priority buy_x_get_y offer beat a lower-priority percentage offer — one winner overall, not one per type', () => {
+    const bogo = makeOffer({
+      id: 'bogo',
+      offerType: 'buy_x_get_y',
+      priority: 1,
+      reward: { buyProductId: 'p1', buyQuantity: 1, getQuantity: 1 },
+    });
+    const percentageOffer = makeOffer({
+      id: 'percentage-offer',
+      offerType: 'percentage',
+      priority: 6,
+    });
+    const winner = selectBestOffer([bogo, percentageOffer], 1000, ['p1'], [], { p1: 1 });
+    expect(winner?.id).toBe('bogo');
+  });
+
+  it('skips an ineligible buy_x_get_y offer (not enough qualifying units) even at top priority', () => {
+    const bogo = makeOffer({
+      id: 'bogo',
+      offerType: 'buy_x_get_y',
+      priority: 1,
+      reward: { buyProductId: 'p1', buyQuantity: 3, getQuantity: 1 },
+    });
+    const percentageOffer = makeOffer({
+      id: 'percentage-offer',
+      offerType: 'percentage',
+      priority: 6,
+    });
+    const winner = selectBestOffer([bogo, percentageOffer], 1000, ['p1'], [], { p1: 1 });
+    expect(winner?.id).toBe('percentage-offer');
   });
 });
 
@@ -343,6 +400,55 @@ describe('calculateOfferDiscount', () => {
 
   it('contributes 0 to the discount line for free_delivery — it zeroes the fee instead', () => {
     expect(calculateOfferDiscount(makeOffer({ offerType: 'free_delivery' }), 1000)).toBe(0);
+  });
+
+  it('contributes 0 to the discount line for buy_x_get_y/free_gift — they grant a bonus item instead', () => {
+    expect(
+      calculateOfferDiscount(
+        makeOffer({ offerType: 'buy_x_get_y', reward: { buyProductId: 'p1', buyQuantity: 2 } }),
+        1000,
+      ),
+    ).toBe(0);
+    expect(
+      calculateOfferDiscount(
+        makeOffer({ offerType: 'free_gift', reward: { giftProductId: 'g1' } }),
+        1000,
+      ),
+    ).toBe(0);
+  });
+});
+
+describe('resolveOfferBonusItem', () => {
+  it('resolves a buy_x_get_y bonus, defaulting getQuantity to 1', () => {
+    const offer = makeOffer({
+      offerType: 'buy_x_get_y',
+      reward: { buyProductId: 'p1', buyQuantity: 2 },
+    });
+    expect(resolveOfferBonusItem(offer)).toEqual({ productId: 'p1', quantity: 1 });
+  });
+
+  it('resolves a buy_x_get_y bonus with an explicit getQuantity', () => {
+    const offer = makeOffer({
+      offerType: 'buy_x_get_y',
+      reward: { buyProductId: 'p1', buyQuantity: 2, getQuantity: 3 },
+    });
+    expect(resolveOfferBonusItem(offer)).toEqual({ productId: 'p1', quantity: 3 });
+  });
+
+  it('resolves a free_gift bonus, defaulting giftQuantity to 1', () => {
+    const offer = makeOffer({ offerType: 'free_gift', reward: { giftProductId: 'gift-1' } });
+    expect(resolveOfferBonusItem(offer)).toEqual({ productId: 'gift-1', quantity: 1 });
+  });
+
+  it('returns null for percentage/fixed/free_delivery — they have no bonus item', () => {
+    expect(resolveOfferBonusItem(makeOffer({ offerType: 'percentage' }))).toBeNull();
+    expect(resolveOfferBonusItem(makeOffer({ offerType: 'fixed' }))).toBeNull();
+    expect(resolveOfferBonusItem(makeOffer({ offerType: 'free_delivery' }))).toBeNull();
+  });
+
+  it('returns null for a buy_x_get_y/free_gift offer missing its product id', () => {
+    expect(resolveOfferBonusItem(makeOffer({ offerType: 'buy_x_get_y', reward: {} }))).toBeNull();
+    expect(resolveOfferBonusItem(makeOffer({ offerType: 'free_gift', reward: {} }))).toBeNull();
   });
 });
 

@@ -39,6 +39,11 @@ export interface PreviewPricingInput {
 export interface PreviewPricingResult {
   pricing: PricingBreakdown;
   appliedCouponCode: string | null;
+  /** buy_x_get_y/free_gift's bonus item, shown so the customer can see
+   * "+1 free X" before paying — informational only here (no outlet is
+   * necessarily selected yet during preview), startCheckout re-checks
+   * real stock at the actual selected outlet before ever granting it. */
+  bonusItem: { productId: string; productName: string; quantity: number } | null;
 }
 
 /**
@@ -182,12 +187,34 @@ export async function previewCheckoutPricing(
     (sum, line) => sum + line.unitPrice * line.quantity,
     0,
   );
-  const { offerDiscount, freeDeliveryFromOffer } = await resolveActiveOffer(
+  const cartQuantityByProduct: Record<string, number> = {};
+  for (const line of validatedLines) {
+    cartQuantityByProduct[line.productId] =
+      (cartQuantityByProduct[line.productId] ?? 0) + line.quantity;
+  }
+  const { offerDiscount, freeDeliveryFromOffer, bonusItem } = await resolveActiveOffer(
     admin,
     cartSubtotalForOffers,
     validatedLines.map((line) => line.productId),
     cartCategoryIds,
+    cartQuantityByProduct,
   );
+
+  let bonusItemDisplay: PreviewPricingResult['bonusItem'] = null;
+  if (bonusItem) {
+    const { data: bonusProduct } = await admin
+      .from('products')
+      .select('name')
+      .eq('id', bonusItem.productId)
+      .maybeSingle();
+    if (bonusProduct) {
+      bonusItemDisplay = {
+        productId: bonusItem.productId,
+        productName: bonusProduct.name,
+        quantity: bonusItem.quantity,
+      };
+    }
+  }
 
   const pricing = computePricing({
     lines: validatedLines,
@@ -196,5 +223,5 @@ export async function previewCheckoutPricing(
     freeDeliveryFromOffer,
     deliveryDistanceKm: deliveryDistanceKm ?? null,
   });
-  return ok({ pricing, appliedCouponCode });
+  return ok({ pricing, appliedCouponCode, bonusItem: bonusItemDisplay });
 }

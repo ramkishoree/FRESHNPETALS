@@ -263,12 +263,59 @@ export async function startCheckout(
     (sum, line) => sum + line.unitPrice * line.quantity,
     0,
   );
-  const { offerDiscount, freeDeliveryFromOffer } = await resolveActiveOffer(
+  const cartQuantityByProduct: Record<string, number> = {};
+  for (const line of validatedLines) {
+    cartQuantityByProduct[line.productId] =
+      (cartQuantityByProduct[line.productId] ?? 0) + line.quantity;
+  }
+  const { offerDiscount, freeDeliveryFromOffer, bonusItem } = await resolveActiveOffer(
     admin,
     cartSubtotalForOffers,
     validatedLines.map((line) => line.productId),
     cartCategoryIds,
+    cartQuantityByProduct,
   );
+
+  // Ch.8 §69-72 buy_x_get_y / free_gift — a genuinely free extra line item,
+  // reserved from the same already-selected outlet's real stock exactly
+  // like every paid line above. If that outlet doesn't have it, the
+  // bonus is silently skipped rather than failing a paying customer's
+  // checkout over a free extra (Ch.8 §97 "never create impossible
+  // orders" applies just as much to a bonus item as a paid one).
+  if (bonusItem) {
+    const { data: bonusProduct } = await admin
+      .from('products')
+      .select('id, sku, name, status')
+      .eq('id', bonusItem.productId)
+      .eq('status', 'published')
+      .maybeSingle();
+
+    if (bonusProduct) {
+      const { data: bonusInventory } = await admin
+        .from('inventory')
+        .select('available_quantity')
+        .eq('product_id', bonusItem.productId)
+        .eq('outlet_id', selectedOutletId)
+        .maybeSingle();
+
+      if ((bonusInventory?.available_quantity ?? 0) >= bonusItem.quantity) {
+        // Always its own line at unitPrice 0, even if the same product is
+        // already a paid line — merging quantities in would charge the
+        // full price for what's supposed to be free. checkout_start's
+        // reservation loop and checkout_complete's order_items insert
+        // both key off the line array, not product-id uniqueness, so two
+        // lines for the same product reserve/record correctly as two
+        // sequential steps rather than colliding.
+        validatedLines.push({
+          productId: bonusProduct.id,
+          sku: bonusProduct.sku,
+          name: `${bonusProduct.name} (free gift)`,
+          quantity: bonusItem.quantity,
+          unitPrice: 0,
+        });
+      }
+    }
+  }
 
   const pricing = computePricing({
     lines: validatedLines,

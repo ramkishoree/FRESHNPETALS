@@ -81,6 +81,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [couponInput, setCouponInput] = React.useState('');
   const [appliedCoupon, setAppliedCoupon] = React.useState<string | null>(null);
   const [pricing, setPricing] = React.useState<PricingBreakdown | null>(null);
+  const [bonusItem, setBonusItem] = React.useState<{
+    productName: string;
+    quantity: number;
+  } | null>(null);
   const [isApplyingCoupon, setIsApplyingCoupon] = React.useState(false);
   const [couponMessage, setCouponMessage] = React.useState<string | null>(null);
   const [isPaying, setIsPaying] = React.useState(false);
@@ -130,12 +134,14 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       const body = await response.json();
       if (response.ok && body.success) {
         setPricing(body.data.pricing);
+        setBonusItem(body.data.bonusItem ?? null);
         return body.data.pricing;
       }
     } catch {
       // Pricing preview is non-critical — silently fall back to client-side subtotal.
     }
     setPricing(null);
+    setBonusItem(null);
     return null;
   }
 
@@ -560,6 +566,14 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
               <div className="flex items-center justify-between text-sm text-[var(--green)]">
                 <span>Offer applied</span>
                 <span>−₹{pricing.offerDiscount}</span>
+              </div>
+            )}
+            {bonusItem && (
+              <div className="flex items-center justify-between text-sm text-[var(--green)]">
+                <span>🎁 Free gift</span>
+                <span>
+                  +{bonusItem.quantity} {bonusItem.productName}
+                </span>
               </div>
             )}
             <div className="flex items-center justify-between text-sm">

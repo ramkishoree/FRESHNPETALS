@@ -181,13 +181,15 @@ export function calculateCouponDiscount(coupon: CouponRecord, cartSubtotal: numb
  * first code to actually read them), so this is the contract those fields
  * are interpreted against: `conditions.minCartValue`/`productIds`/
  * `categoryIds` gate eligibility; `reward.discountValue`/
- * `maxDiscountAmount` drive the discount for percentage/fixed offers.
+ * `maxDiscountAmount` drive percentage/fixed; `reward.buyProductId`/
+ * `buyQuantity`/`getQuantity` drive buy_x_get_y (same-product only — "buy
+ * category A get product B" needs a materially bigger matching engine and
+ * isn't supported); `reward.giftProductId`/`giftQuantity` drive free_gift.
  *
- * Only percentage/fixed/free_delivery are applied to pricing here —
- * buy_x_get_y and free_gift both require injecting an extra line item
- * into the order (with its own inventory allocation), a materially
- * bigger checkout-pipeline change than a discount/fee adjustment, and are
- * deliberately left unwired rather than half-implemented.
+ * All five offer types compete in one priority ranking (Ch.8 §72: "only
+ * the highest priority compatible offer applies" — not one winner per
+ * type), so a buy_x_get_y offer and a percentage offer are mutually
+ * exclusive, not stacked, exactly like two percentage offers would be.
  */
 export interface OfferRecord {
   id: string;
@@ -202,20 +204,25 @@ export interface OfferRecord {
   reward: {
     discountValue?: number;
     maxDiscountAmount?: number;
+    buyProductId?: string;
+    buyQuantity?: number;
+    getQuantity?: number;
+    giftProductId?: string;
+    giftQuantity?: number;
   };
 }
 
-const PRICING_OFFER_TYPES = new Set<OfferRecord['offerType']>([
-  'percentage',
-  'fixed',
-  'free_delivery',
-]);
+export interface OfferBonusItem {
+  productId: string;
+  quantity: number;
+}
 
 export function isOfferEligible(
   offer: OfferRecord,
   cartSubtotal: number,
   cartProductIds: string[],
   cartCategoryIds: string[],
+  cartQuantityByProduct: Record<string, number> = {},
 ): boolean {
   if (cartSubtotal < (offer.conditions.minCartValue ?? 0)) return false;
   if (
@@ -230,6 +237,14 @@ export function isOfferEligible(
   ) {
     return false;
   }
+  if (offer.offerType === 'buy_x_get_y') {
+    const buyQuantity = offer.reward.buyQuantity ?? 0;
+    const inCart = offer.reward.buyProductId
+      ? (cartQuantityByProduct[offer.reward.buyProductId] ?? 0)
+      : 0;
+    if (!offer.reward.buyProductId || buyQuantity <= 0 || inCart < buyQuantity) return false;
+  }
+  if (offer.offerType === 'free_gift' && !offer.reward.giftProductId) return false;
   return true;
 }
 
@@ -239,11 +254,10 @@ export function selectBestOffer(
   cartSubtotal: number,
   cartProductIds: string[],
   cartCategoryIds: string[],
+  cartQuantityByProduct: Record<string, number> = {},
 ): OfferRecord | null {
-  const eligible = offers.filter(
-    (offer) =>
-      PRICING_OFFER_TYPES.has(offer.offerType) &&
-      isOfferEligible(offer, cartSubtotal, cartProductIds, cartCategoryIds),
+  const eligible = offers.filter((offer) =>
+    isOfferEligible(offer, cartSubtotal, cartProductIds, cartCategoryIds, cartQuantityByProduct),
   );
   if (eligible.length === 0) return null;
   return eligible.reduce((best, offer) => (offer.priority < best.priority ? offer : best));
@@ -259,9 +273,27 @@ export function calculateOfferDiscount(offer: OfferRecord, cartSubtotal: number)
   if (offer.offerType === 'fixed') {
     return Math.min(offer.reward.discountValue ?? 0, cartSubtotal);
   }
-  // free_delivery zeroes the delivery fee instead — 0 here by design, same
-  // pattern as calculateCouponDiscount's free_delivery/free_gift case.
+  // free_delivery zeroes the delivery fee instead, and buy_x_get_y/
+  // free_gift add a bonus line item instead (resolveOfferBonusItem) — 0
+  // here by design for all three, same pattern as calculateCouponDiscount's
+  // free_delivery/free_gift case.
   return 0;
+}
+
+/** The free line item a buy_x_get_y or free_gift offer grants, once
+ * `selectBestOffer` has already confirmed it's the winning offer — a
+ * flat grant per qualifying offer (not scaled by how many multiples of
+ * buyQuantity are in the cart), matching how most real "Buy 2 Get 1
+ * Free" small-business promos are actually run rather than allowing
+ * unbounded stacking from one large order. */
+export function resolveOfferBonusItem(offer: OfferRecord): OfferBonusItem | null {
+  if (offer.offerType === 'buy_x_get_y' && offer.reward.buyProductId) {
+    return { productId: offer.reward.buyProductId, quantity: offer.reward.getQuantity ?? 1 };
+  }
+  if (offer.offerType === 'free_gift' && offer.reward.giftProductId) {
+    return { productId: offer.reward.giftProductId, quantity: offer.reward.giftQuantity ?? 1 };
+  }
+  return null;
 }
 
 export interface OutletCandidate {
