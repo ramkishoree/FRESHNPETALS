@@ -7,6 +7,7 @@ import { logger } from '@/server/logger';
 import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
 import { handleInvoiceGenerate } from '@/server/invoices/generate-invoice-job';
 import { runWeeklyAutomationIfDue } from '@/server/ai/weekly-automation';
+import { sweepReviewRequestNudges } from '@/server/reviews/review-nudge-sweep';
 
 function isAuthorized(authHeader: string | null, cronSecret: string): boolean {
   const expected = `Bearer ${cronSecret}`;
@@ -81,6 +82,7 @@ async function runWorker(request: NextRequest): Promise<NextResponse> {
   const outcomes: Record<string, number> = { processed: 0, empty: 0, failed: 0 };
 
   await sweepExpiredReservations(admin);
+  await sweepReviewRequestNudges(admin);
 
   const weeklyAutomation = await runWeeklyAutomationIfDue(admin);
   if (weeklyAutomation.ran) {

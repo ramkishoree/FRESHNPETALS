@@ -318,6 +318,20 @@ export async function startCheckout(
         }),
       );
     }
+    if (message.includes('is fully booked')) {
+      return err(
+        new BusinessRuleError('That delivery slot just filled up. Please pick another.', {
+          httpStatus: 409,
+        }),
+      );
+    }
+    if (message.includes('is not available')) {
+      return err(
+        new BusinessRuleError('That delivery slot is no longer available. Please pick another.', {
+          httpStatus: 409,
+        }),
+      );
+    }
     return err(new InfrastructureError('Failed to start checkout.', { cause: message }));
   }
 
