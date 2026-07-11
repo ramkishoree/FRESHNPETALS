@@ -36,6 +36,26 @@ const JOB_HANDLERS: Record<string, (job: { payload: Record<string, unknown> }) =
   'sample.ping': handleSamplePing,
 };
 
+/**
+ * Ch.8 §41 "Reservation expires automatically" — a periodic sweep, not a
+ * discrete enqueued job (nothing ever enqueues "check for abandoned
+ * carts"; it just needs to run every cron tick). Vercel Hobby's cron cap
+ * is once-daily, so an abandoned checkout's stock can stay reserved for
+ * up to ~24h rather than the intended 15 minutes — far better than the
+ * "forever" this replaces, but worth a tighter external trigger later if
+ * that gap ever matters in practice.
+ */
+async function sweepExpiredReservations(admin: ReturnType<typeof createSupabaseAdminClient>) {
+  const { data, error } = await admin.rpc('checkout_expire_stale_sessions', {
+    p_batch_limit: 500,
+  });
+  if (error) {
+    logger.error('worker.reservation_sweep_failed', { message: error.message });
+    return;
+  }
+  logger.info('worker.reservation_sweep', { releasedCount: data });
+}
+
 async function runWorker(request: NextRequest): Promise<NextResponse> {
   const authHeader = request.headers.get('authorization');
   const env = getServerEnv();
@@ -46,9 +66,12 @@ async function runWorker(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const queue = new SupabaseJobQueue(createSupabaseAdminClient());
+  const admin = createSupabaseAdminClient();
+  const queue = new SupabaseJobQueue(admin);
   const workerId = `vercel-cron-${crypto.randomUUID().slice(0, 8)}`;
   const outcomes: Record<string, number> = { processed: 0, empty: 0, failed: 0 };
+
+  await sweepExpiredReservations(admin);
 
   for (const jobType of Object.keys(JOB_HANDLERS)) {
     for (let i = 0; i < MAX_JOBS_PER_INVOCATION; i++) {
