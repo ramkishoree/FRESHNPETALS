@@ -5,12 +5,22 @@ import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 /** Ch.16 §72 Customer Profile API — account overview + navigation into the rest of Ch.6/§Account IA. */
-export default async function AccountOverviewPage() {
+export default async function AccountOverviewPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ confirmed?: string }>;
+}) {
   const supabase = await createSupabaseServerClient();
   const customer = await getCurrentCustomer(supabase);
+  const { confirmed } = await searchParams;
 
   return (
     <div className="space-y-8">
+      {confirmed === '1' && (
+        <div className="rounded-card border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm text-green-700">
+          Email confirmed! You&apos;re all set.
+        </div>
+      )}
       <div>
         <h1 className="text-h2 text-foreground font-bold">My account</h1>
         {customer?.email && <p className="text-body text-muted-foreground">{customer.email}</p>}

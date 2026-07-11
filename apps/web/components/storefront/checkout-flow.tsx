@@ -41,6 +41,15 @@ const EMPTY_ADDRESS = {
   postalCode: '',
 };
 
+interface PricingBreakdown {
+  subtotal: number;
+  discountTotal: number;
+  couponDiscount: number;
+  deliveryFee: number;
+  taxTotal: number;
+  grandTotal: number;
+}
+
 /** Ch.12 §26 Checkout Experience — "Single-page checkout. Progress indicator always visible." */
 export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const { items, subtotal, clear } = useCart();
@@ -48,7 +57,11 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [addresses, setAddresses] = React.useState<SavedAddress[]>([]);
   const [selectedAddressId, setSelectedAddressId] = React.useState<string>('new');
   const [manualAddress, setManualAddress] = React.useState(EMPTY_ADDRESS);
-  const [couponCode, setCouponCode] = React.useState('');
+  const [couponInput, setCouponInput] = React.useState('');
+  const [appliedCoupon, setAppliedCoupon] = React.useState<string | null>(null);
+  const [pricing, setPricing] = React.useState<PricingBreakdown | null>(null);
+  const [isApplyingCoupon, setIsApplyingCoupon] = React.useState(false);
+  const [couponMessage, setCouponMessage] = React.useState<string | null>(null);
   const [isPaying, setIsPaying] = React.useState(false);
   const [scriptReady, setScriptReady] = React.useState(false);
 
@@ -72,32 +85,97 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     );
   }
 
+  function resolveAddress() {
+    if (selectedAddressId === 'new') return manualAddress;
+    const saved = addresses.find((a) => a.id === selectedAddressId);
+    return saved
+      ? {
+          recipientName: saved.recipient_name,
+          phone: saved.phone,
+          addressLine1: saved.address_line_1,
+          city: saved.city,
+          postalCode: saved.postal_code,
+        }
+      : manualAddress;
+  }
+
+  function findMissingAddressFields(address: typeof EMPTY_ADDRESS): string[] {
+    const labels: Record<keyof typeof EMPTY_ADDRESS, string> = {
+      recipientName: 'recipient name',
+      phone: 'phone number',
+      addressLine1: 'address',
+      city: 'city',
+      postalCode: 'postal code',
+    };
+    return (Object.keys(labels) as (keyof typeof EMPTY_ADDRESS)[])
+      .filter((key) => address[key].trim().length === 0)
+      .map((key) => labels[key]);
+  }
+
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) {
+      setPricing(null);
+      setAppliedCoupon(null);
+      setCouponMessage(null);
+      return;
+    }
+    setIsApplyingCoupon(true);
+    setCouponMessage(null);
+    try {
+      const response = await fetch('/api/v1/checkout/coupon-preview', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
+          couponCode: code,
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        setPricing(null);
+        setAppliedCoupon(null);
+        setCouponMessage(body.error?.message ?? 'Could not apply that coupon.');
+        return;
+      }
+      setPricing(body.data.pricing);
+      setAppliedCoupon(body.data.appliedCouponCode);
+      setCouponMessage(
+        body.data.appliedCouponCode ? `"${body.data.appliedCouponCode}" applied.` : null,
+      );
+    } catch {
+      setPricing(null);
+      setAppliedCoupon(null);
+      setCouponMessage('Could not apply that coupon. Please try again.');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  }
+
+  function removeCoupon() {
+    setCouponInput('');
+    setAppliedCoupon(null);
+    setPricing(null);
+    setCouponMessage(null);
+  }
+
   async function payNow() {
+    const address = resolveAddress();
+    const missing = findMissingAddressFields(address);
+    if (missing.length > 0) {
+      toast.error(`Please fill in: ${missing.join(', ')}.`);
+      return;
+    }
+
     setIsPaying(true);
     try {
-      const address =
-        selectedAddressId === 'new'
-          ? manualAddress
-          : (() => {
-              const saved = addresses.find((a) => a.id === selectedAddressId);
-              return saved
-                ? {
-                    recipientName: saved.recipient_name,
-                    phone: saved.phone,
-                    addressLine1: saved.address_line_1,
-                    city: saved.city,
-                    postalCode: saved.postal_code,
-                  }
-                : manualAddress;
-            })();
-
       const response = await fetch('/api/v1/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           address,
-          ...(couponCode ? { couponCode } : {}),
+          ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
         }),
       });
       const body = await response.json();
@@ -179,6 +257,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 <div className="sm:col-span-2">
                   <Label className="text-caption mb-1.5 block">Recipient name</Label>
                   <Input
+                    required
                     value={manualAddress.recipientName}
                     onChange={(e) =>
                       setManualAddress((a) => ({ ...a, recipientName: e.target.value }))
@@ -189,6 +268,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 <div className="sm:col-span-2">
                   <Label className="text-caption mb-1.5 block">Phone</Label>
                   <Input
+                    required
+                    type="tel"
                     value={manualAddress.phone}
                     onChange={(e) => setManualAddress((a) => ({ ...a, phone: e.target.value }))}
                     className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
@@ -197,6 +278,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 <div className="sm:col-span-2">
                   <Label className="text-caption mb-1.5 block">Address</Label>
                   <Input
+                    required
                     value={manualAddress.addressLine1}
                     onChange={(e) =>
                       setManualAddress((a) => ({ ...a, addressLine1: e.target.value }))
@@ -207,6 +289,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 <div>
                   <Label className="text-caption mb-1.5 block">City</Label>
                   <Input
+                    required
                     value={manualAddress.city}
                     onChange={(e) => setManualAddress((a) => ({ ...a, city: e.target.value }))}
                     className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
@@ -215,6 +298,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 <div>
                   <Label className="text-caption mb-1.5 block">Postal code</Label>
                   <Input
+                    required
                     value={manualAddress.postalCode}
                     onChange={(e) =>
                       setManualAddress((a) => ({ ...a, postalCode: e.target.value }))
@@ -228,12 +312,48 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Have a coupon?</h2>
-            <Input
-              value={couponCode}
-              onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-              placeholder="WELCOME10"
-              className="max-w-xs rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] uppercase tracking-wide"
-            />
+            {appliedCoupon ? (
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="btn btn-gold px-4 py-2 text-sm">{appliedCoupon} applied</span>
+                <button
+                  type="button"
+                  onClick={removeCoupon}
+                  className="text-caption underline underline-offset-2"
+                >
+                  Remove
+                </button>
+              </div>
+            ) : (
+              <div className="flex max-w-xs gap-2">
+                <Input
+                  value={couponInput}
+                  onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      void applyCoupon();
+                    }
+                  }}
+                  placeholder="WELCOME10"
+                  className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] uppercase tracking-wide"
+                />
+                <button
+                  type="button"
+                  onClick={applyCoupon}
+                  disabled={isApplyingCoupon || !couponInput.trim()}
+                  className="btn btn-outline shrink-0 px-4 py-2 text-sm disabled:opacity-60"
+                >
+                  {isApplyingCoupon ? 'Applying...' : 'Apply'}
+                </button>
+              </div>
+            )}
+            {couponMessage && (
+              <p
+                className={`text-caption mt-2 ${appliedCoupon ? 'text-[var(--green)]' : 'text-[var(--sale)]'}`}
+              >
+                {couponMessage}
+              </p>
+            )}
           </section>
         </div>
 
@@ -251,14 +371,40 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             ))}
           </ul>
 
-          <div className="mt-5 border-t border-[var(--sf-border)] pt-4">
-            <div className="flex items-center justify-between">
+          <div className="mt-5 space-y-2 border-t border-[var(--sf-border)] pt-4">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-[var(--sf-ink-muted)]">Subtotal</span>
-              <span className="font-display text-2xl text-[var(--sf-ink)]">₹{subtotal}</span>
+              <span>₹{pricing ? pricing.subtotal : subtotal}</span>
             </div>
-            <p className="text-caption mt-2">
-              Delivery fee, tax, and any coupon discount are confirmed on the payment screen.
-            </p>
+            {pricing && pricing.couponDiscount > 0 && (
+              <div className="flex items-center justify-between text-sm text-[var(--green)]">
+                <span>Coupon discount</span>
+                <span>−₹{pricing.couponDiscount}</span>
+              </div>
+            )}
+            {pricing && (
+              <>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--sf-ink-muted)]">Delivery fee</span>
+                  <span>{pricing.deliveryFee > 0 ? `₹${pricing.deliveryFee}` : 'Free'}</span>
+                </div>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-[var(--sf-ink-muted)]">Tax</span>
+                  <span>₹{pricing.taxTotal}</span>
+                </div>
+              </>
+            )}
+            <div className="flex items-center justify-between pt-2">
+              <span className="text-[var(--sf-ink-muted)]">Total</span>
+              <span className="font-display text-2xl text-[var(--sf-ink)]">
+                ₹{pricing ? pricing.grandTotal : subtotal}
+              </span>
+            </div>
+            {!pricing && (
+              <p className="text-caption mt-1">
+                Delivery fee and tax are confirmed on the payment screen.
+              </p>
+            )}
           </div>
 
           <button

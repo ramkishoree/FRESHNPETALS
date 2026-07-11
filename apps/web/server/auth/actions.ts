@@ -13,6 +13,8 @@ import { checkLockout, recordLoginAttempt } from './lockout';
 export interface ActionResult {
   success: boolean;
   error?: string;
+  /** True only when the sole reason sign-in failed is an unconfirmed email — lets a poller distinguish "still waiting" from a real credential failure, without that polling ever counting toward login lockout. */
+  pending?: boolean;
 }
 
 const emailSchema = z.string().trim().toLowerCase().email();
@@ -63,7 +65,7 @@ export async function signUpWithPassword(input: {
     email: parsed.data.email,
     password: parsed.data.password,
     options: {
-      emailRedirectTo: `${getPublicEnv().NEXT_PUBLIC_APP_URL}/auth/callback`,
+      emailRedirectTo: `${getPublicEnv().NEXT_PUBLIC_APP_URL}/auth/callback?next=${encodeURIComponent('/account?confirmed=1')}`,
       ...(parsed.data.fullName ? { data: { full_name: parsed.data.fullName } } : {}),
     },
   });
@@ -92,6 +94,10 @@ export async function signInWithPassword(input: {
 
   const supabase = await createSupabaseServerClient();
   const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+  if (error?.code === 'email_not_confirmed') {
+    return { success: false, pending: true, error: 'Email not confirmed yet.' };
+  }
 
   if (error || !data.session || !data.user) {
     await recordLoginAttempt({
