@@ -62,7 +62,10 @@ function buildCsp(nonce: string, supabaseUrl: string): string {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: https:",
     "font-src 'self' https://fonts.gstatic.com",
-    `connect-src 'self' ${supabaseUrl} https://lumberjack.razorpay.com https://maps.googleapis.com https://www.google-analytics.com`,
+    // PlaceAutocompleteElement (the modern Places widget) calls
+    // places.googleapis.com directly via XHR/RPC — a different host than
+    // the maps.googleapis.com script itself loads from.
+    `connect-src 'self' ${supabaseUrl} https://lumberjack.razorpay.com https://maps.googleapis.com https://places.googleapis.com https://www.google-analytics.com`,
     'frame-src https://api.razorpay.com https://checkout.razorpay.com',
     "frame-ancestors 'none'",
     "base-uri 'self'",
