@@ -55,6 +55,7 @@ export default async function HomePage() {
         .from('offers')
         .select('id, name, description')
         .eq('active', true)
+        .is('deleted_at', null)
         .limit(1)
         .maybeSingle(),
       supabase

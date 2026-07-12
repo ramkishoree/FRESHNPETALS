@@ -3,7 +3,7 @@ import type { Product, ProductRepository, ProductStatus } from '@prana/commerce'
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const SELECT_COLUMNS =
-  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity)';
+  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at))';
 
 export interface ProductPriceRow {
   base_price: string | number;
@@ -12,6 +12,14 @@ export interface ProductPriceRow {
 
 export interface ProductInventoryRow {
   available_quantity: number;
+  // A soft-deleted outlet's own `is_active` flag is never flipped to
+  // false (a real, separate bug — deleted_at is set but is_active stays
+  // true), so a stale outlet's inventory row would otherwise still count
+  // toward "in stock" — deleted_at is the one that's actually reliable.
+  outlets:
+    | { is_active: boolean; deleted_at: string | null }
+    | { is_active: boolean; deleted_at: string | null }[]
+    | null;
 }
 
 export interface ProductRow {
@@ -45,10 +53,12 @@ export function mapRow(row: ProductRow): Product {
     // Summed across every active outlet's inventory row (see Product's own
     // doc comment) — a product with no inventory rows at all reads as 0,
     // same as one that's been fully sold out everywhere.
-    availableQuantity: (row.inventory ?? []).reduce(
-      (sum, inv) => sum + Number(inv.available_quantity),
-      0,
-    ),
+    availableQuantity: (row.inventory ?? [])
+      .filter((inv) => {
+        const outlet = Array.isArray(inv.outlets) ? inv.outlets[0] : inv.outlets;
+        return outlet != null && outlet.is_active && !outlet.deleted_at;
+      })
+      .reduce((sum, inv) => sum + Number(inv.available_quantity), 0),
   };
 }
 

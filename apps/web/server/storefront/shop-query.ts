@@ -1,7 +1,7 @@
 import type { Product, ProductStatus } from '@prana/commerce';
 
 export const PRODUCT_SELECT_COLUMNS =
-  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity)';
+  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at))';
 
 interface ProductPriceRow {
   base_price: string | number;
@@ -10,6 +10,10 @@ interface ProductPriceRow {
 
 interface ProductInventoryRow {
   available_quantity: number;
+  outlets:
+    | { is_active: boolean; deleted_at: string | null }
+    | { is_active: boolean; deleted_at: string | null }[]
+    | null;
 }
 
 interface ProductRow {
@@ -40,10 +44,12 @@ export function mapProductRow(row: ProductRow): Product {
     status: row.status,
     basePrice: priceRow ? Number(priceRow.base_price) : 0,
     salePrice: priceRow?.sale_price != null ? Number(priceRow.sale_price) : null,
-    availableQuantity: (row.inventory ?? []).reduce(
-      (sum, inv) => sum + Number(inv.available_quantity),
-      0,
-    ),
+    availableQuantity: (row.inventory ?? [])
+      .filter((inv) => {
+        const outlet = Array.isArray(inv.outlets) ? inv.outlets[0] : inv.outlets;
+        return outlet != null && outlet.is_active && !outlet.deleted_at;
+      })
+      .reduce((sum, inv) => sum + Number(inv.available_quantity), 0),
   };
 }
 

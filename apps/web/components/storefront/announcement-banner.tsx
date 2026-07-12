@@ -25,6 +25,7 @@ export async function AnnouncementBanner() {
     .from('announcements')
     .select('id, title, message, image_url, offers(name)')
     .eq('enabled', true)
+    .is('deleted_at', null)
     .or(`start_date.is.null,start_date.lte.${nowIso}`)
     .or(`end_date.is.null,end_date.gte.${nowIso}`)
     .order('priority', { ascending: false })

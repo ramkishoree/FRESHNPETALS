@@ -16,7 +16,15 @@ interface WishlistProductRow {
     | { base_price: string | number; sale_price: string | number | null }
     | { base_price: string | number; sale_price: string | number | null }[]
     | null;
-  inventory: { available_quantity: number }[] | null;
+  inventory:
+    | {
+        available_quantity: number;
+        outlets:
+          | { is_active: boolean; deleted_at: string | null }
+          | { is_active: boolean; deleted_at: string | null }[]
+          | null;
+      }[]
+    | null;
 }
 
 interface WishlistEntry {
@@ -40,10 +48,12 @@ function mapEntry(entry: WishlistEntry): Product | null {
     status: product.status,
     basePrice: priceRow ? Number(priceRow.base_price) : 0,
     salePrice: priceRow?.sale_price != null ? Number(priceRow.sale_price) : null,
-    availableQuantity: (product.inventory ?? []).reduce(
-      (sum, inv) => sum + Number(inv.available_quantity),
-      0,
-    ),
+    availableQuantity: (product.inventory ?? [])
+      .filter((inv) => {
+        const outlet = Array.isArray(inv.outlets) ? inv.outlets[0] : inv.outlets;
+        return outlet != null && outlet.is_active && !outlet.deleted_at;
+      })
+      .reduce((sum, inv) => sum + Number(inv.available_quantity), 0),
   };
 }
 

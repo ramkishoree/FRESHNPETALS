@@ -114,7 +114,8 @@ export async function previewCheckoutPricing(
     const { data: outlets, error: outletsError } = await admin
       .from('outlets')
       .select('id, latitude, longitude, delivery_radius_km, is_active')
-      .eq('is_active', true);
+      .eq('is_active', true)
+      .is('deleted_at', null);
     if (!outletsError && outlets) {
       const candidates = outlets.map((o) => ({
         id: o.id,
@@ -148,6 +149,7 @@ export async function previewCheckoutPricing(
         'id, code, discount_type, eligibility_type, discount_value, max_discount_amount, min_cart_value, starts_at, ends_at, active, times_used, usage_limit_total',
       )
       .eq('code', input.couponCode.toUpperCase())
+      .is('deleted_at', null)
       .maybeSingle();
 
     if (!couponRow) {
