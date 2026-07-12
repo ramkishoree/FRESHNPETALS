@@ -108,6 +108,14 @@ export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProp
             includedRegionCodes: ['IN'],
           });
           autocompleteElement.placeholder = 'Search your delivery address…';
+          // The element's Shadow DOM defaults to an intrinsic width
+          // (~400px) regardless of its container — on a phone-width
+          // screen that alone forces the whole checkout grid wider than
+          // the viewport (a CSS grid item without min-width:0 expands to
+          // fit its widest child), producing real horizontal page scroll.
+          // Explicit inline width, not just a container class, since a
+          // custom element's own default sizing otherwise wins.
+          autocompleteElement.style.width = '100%';
           searchContainerRef.current.appendChild(autocompleteElement);
           autocompleteElementRef.current = autocompleteElement;
 
@@ -153,7 +161,7 @@ export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProp
           internally and takes ownership of this container's DOM subtree,
           same reasoning as the map container below: this div must never
           have React-rendered children. */}
-      <div ref={searchContainerRef} />
+      <div ref={searchContainerRef} className="w-full" />
 
       {/* Map container — `mapRef`'s own div must never have React-rendered
           children. Once Google Maps calls `new maps.Map(mapRef.current)` it

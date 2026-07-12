@@ -343,8 +343,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         <BrandDivider className="mt-6" />
       </header>
 
-      <div className="grid gap-10 lg:grid-cols-[1.5fr_1fr]">
-        <div className="space-y-8">
+      <div className="grid min-w-0 gap-10 lg:grid-cols-[1.5fr_1fr]">
+        <div className="min-w-0 space-y-8">
           {/* ---- Pin your delivery location (Google Maps) ---- */}
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Pin your delivery location</h2>
