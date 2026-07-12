@@ -45,6 +45,16 @@ class FakeInventoryRepository implements InventoryRepository {
     };
     return Promise.resolve(this.record);
   }
+
+  setStock(productId: string, outletId: string, quantity: number): Promise<InventoryRecord> {
+    this.record = {
+      ...(this.record ?? makeRecord({ productId, outletId })),
+      productId,
+      outletId,
+      physicalQuantity: quantity,
+    };
+    return Promise.resolve(this.record);
+  }
 }
 
 describe('AdjustInventoryService', () => {

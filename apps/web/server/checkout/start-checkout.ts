@@ -71,10 +71,6 @@ export async function startCheckout(
     );
   }
 
-  // Validate existence/status now, but don't resolve unitPrice yet — an
-  // outlet-specific price override (product_outlet_overrides) can only be
-  // looked up once the fulfilling outlet is known, and outlet selection
-  // below only needs product ids/quantities, not price.
   for (const line of input.lines) {
     const product = products?.find((p) => p.id === line.productId);
     if (!product) {
@@ -88,6 +84,26 @@ export async function startCheckout(
       );
     }
   }
+
+  // Owner's explicit call: price and sale price are the same at every
+  // outlet — resolved straight from the product's global price row, same
+  // as before per-outlet overrides ever existed.
+  const validatedLines: ValidatedCartLine[] = input.lines.map((line) => {
+    const product = products!.find((p) => p.id === line.productId)!;
+    const priceRow = Array.isArray(product.product_prices)
+      ? product.product_prices[0]
+      : product.product_prices;
+    const basePrice = Number(priceRow?.base_price ?? 0);
+    const salePrice = priceRow?.sale_price != null ? Number(priceRow.sale_price) : null;
+    return {
+      productId: product.id,
+      sku: product.sku,
+      name: product.name,
+      quantity: line.quantity,
+      unitPrice: salePrice ?? basePrice,
+    };
+  });
+
   const cartCategoryIds = [
     ...new Set((products ?? []).map((p) => p.category_id).filter((id): id is string => !!id)),
   ];
@@ -201,42 +217,6 @@ export async function startCheckout(
       ),
     );
   }
-
-  // Owner's explicit call: price/sale price can be overridden per outlet
-  // (product_outlet_overrides). Resolved only now that the fulfilling
-  // outlet is known — never trusts anything from the request, exactly
-  // like the global price this replaces (Ch.8 §89 Principle 1).
-  const { data: overrideRows } = await admin
-    .from('product_outlet_overrides')
-    .select('product_id, base_price_override, sale_price_override')
-    .eq('outlet_id', selectedOutletId)
-    .in('product_id', productIds);
-  const overrideByProduct = new Map((overrideRows ?? []).map((o) => [o.product_id, o]));
-
-  const validatedLines: ValidatedCartLine[] = input.lines.map((line) => {
-    const product = products!.find((p) => p.id === line.productId)!;
-    const priceRow = Array.isArray(product.product_prices)
-      ? product.product_prices[0]
-      : product.product_prices;
-    const override = overrideByProduct.get(line.productId);
-    const basePrice =
-      override?.base_price_override != null
-        ? Number(override.base_price_override)
-        : Number(priceRow?.base_price ?? 0);
-    const salePrice =
-      override?.sale_price_override != null
-        ? Number(override.sale_price_override)
-        : priceRow?.sale_price != null
-          ? Number(priceRow.sale_price)
-          : null;
-    return {
-      productId: product.id,
-      sku: product.sku,
-      name: product.name,
-      quantity: line.quantity,
-      unitPrice: salePrice ?? basePrice,
-    };
-  });
 
   // Ch.8 §74 Coupon Validation.
   let couponDiscount = 0;

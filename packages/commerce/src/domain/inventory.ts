@@ -35,6 +35,15 @@ export interface InventoryRepository extends ReadRepository<InventoryRecord> {
     adjustment: AdminInventoryAdjustment,
     actorId: string,
   ): Promise<InventoryRecord>;
+  /** Sets (not deltas) an outlet's stock, creating the row on first use —
+   *  every product/outlet pair has no row until an admin touches it once. */
+  setStock(
+    productId: string,
+    outletId: string,
+    quantity: number,
+    actorId: string,
+    reason?: string,
+  ): Promise<InventoryRecord>;
 }
 
 /**
@@ -58,6 +67,21 @@ export function validateAdminInventoryAdjustment(adjustment: AdminInventoryAdjus
   }
   if (adjustment.transactionType === 'damage' && !adjustment.reason?.trim()) {
     violations.push('A reason is required when recording damage.');
+  }
+
+  return violations;
+}
+
+/** Per-outlet stock is the one thing that's allowed to vary by outlet
+ *  (owner's explicit call — price/sale price/photo stay uniform). */
+export function validateSetOutletStock(quantity: number): string[] {
+  const violations: string[] = [];
+
+  if (!Number.isInteger(quantity)) {
+    violations.push('Quantity must be a whole number.');
+  }
+  if (quantity < 0) {
+    violations.push('Quantity cannot be negative.');
   }
 
   return violations;

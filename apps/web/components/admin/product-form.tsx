@@ -5,7 +5,7 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import { ImageUploadField } from '@/components/admin/image-upload-field';
 import { ProductMediaGallery } from '@/components/admin/product-media-gallery';
-import { ProductOutletOverrides } from '@/components/admin/product-outlet-overrides';
+import { ProductOutletStock } from '@/components/admin/product-outlet-stock';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -227,12 +227,11 @@ export function ProductForm({
       </div>
 
       <div className="grid gap-1.5">
-        <Label>Stock &amp; pricing per outlet</Label>
+        <Label>Stock per outlet</Label>
         <p className="text-caption text-muted-foreground -mt-1">
-          Every outlet uses the price and photo above by default — only set something here if this
-          outlet is different.
+          Price, sale price, and photo are the same everywhere — only stock varies by outlet.
         </p>
-        <ProductOutletOverrides productId={productId} />
+        <ProductOutletStock productId={productId} />
       </div>
 
       <div className="flex gap-3">

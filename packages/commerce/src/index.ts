@@ -1,4 +1,5 @@
 export * from './application/admin/adjust-inventory';
+export * from './application/admin/set-outlet-stock';
 export * from './application/admin/create-product';
 export * from './application/admin/list-admin-products';
 export * from './application/admin/update-product';

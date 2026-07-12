@@ -95,4 +95,22 @@ export class SupabaseInventoryRepository implements InventoryRepository {
     if (error) throw new Error(error.message);
     return mapRow(data as unknown as InventoryRow);
   }
+
+  async setStock(
+    productId: string,
+    outletId: string,
+    quantity: number,
+    actorId: string,
+    reason?: string,
+  ): Promise<InventoryRecord> {
+    const { data, error } = await this.client.rpc('admin_set_inventory_stock', {
+      p_product_id: productId,
+      p_outlet_id: outletId,
+      p_new_quantity: quantity,
+      p_actor_id: actorId,
+      p_reason: reason ?? null,
+    });
+    if (error) throw new Error(error.message);
+    return mapRow(data as unknown as InventoryRow);
+  }
 }
