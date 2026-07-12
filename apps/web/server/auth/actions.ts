@@ -125,6 +125,38 @@ export async function signInWithPassword(input: {
   return { success: true };
 }
 
+/**
+ * Owner's explicit call: signing up shouldn't mean inventing and
+ * remembering a password — email in, tap the link, done. Supabase's OTP
+ * flow auto-creates the user on first use (`shouldCreateUser: true`), so
+ * this single action covers both "log in" and "sign up" — there's no
+ * separate account-creation step to skip. Same response whether the
+ * email is new or returning, same reasoning as `requestPasswordReset`
+ * (never leak account existence from response shape/timing).
+ */
+export async function sendMagicLink(input: {
+  email: string;
+  fullName?: string;
+}): Promise<ActionResult> {
+  const parsed = emailSchema.safeParse(input.email);
+  if (!parsed.success) {
+    return { success: false, error: 'Enter a valid email address.' };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase.auth.signInWithOtp({
+    email: parsed.data,
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: `${getPublicEnv().NEXT_PUBLIC_APP_URL}/auth/callback?next=${encodeURIComponent('/account')}`,
+      ...(input.fullName ? { data: { full_name: input.fullName } } : {}),
+    },
+  });
+
+  if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
 export async function signOut(): Promise<ActionResult> {
   const supabase = await createSupabaseServerClient();
   const {

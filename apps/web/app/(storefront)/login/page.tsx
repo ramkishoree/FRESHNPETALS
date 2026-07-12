@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { LoginForm } from '@/components/storefront/login-form';
+import { AuthForm } from '@/components/storefront/auth-form';
 
 export default function LoginPage() {
   return (
@@ -9,7 +9,7 @@ export default function LoginPage() {
           <h1 className="text-h2 text-foreground font-bold">Sign in</h1>
           <p className="text-body text-muted-foreground">Welcome back to Fresh &amp; Petals.</p>
         </div>
-        <LoginForm />
+        <AuthForm mode="login" />
         <p className="text-body text-muted-foreground text-center">
           New here?{' '}
           <Link href="/signup" className="text-primary underline underline-offset-2">
