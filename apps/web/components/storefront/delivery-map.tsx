@@ -24,12 +24,14 @@ interface DeliveryMapProps {
  */
 export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProps) {
   const mapRef = React.useRef<HTMLDivElement>(null);
-  const searchRef = React.useRef<HTMLInputElement>(null);
+  const searchContainerRef = React.useRef<HTMLDivElement>(null);
   const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>('loading');
   const [errorMsg, setErrorMsg] = React.useState<string | null>(null);
   const markerRef = React.useRef<google.maps.Marker | null>(null);
   const mapInstanceRef = React.useRef<google.maps.Map | null>(null);
-  const autocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
+  const autocompleteElementRef = React.useRef<google.maps.places.PlaceAutocompleteElement | null>(
+    null,
+  );
   const geocoderRef = React.useRef<google.maps.Geocoder | null>(null);
 
   React.useEffect(() => {
@@ -96,21 +98,35 @@ export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProp
           }
         });
 
-        // Places Autocomplete for the search input
-        if (searchRef.current) {
-          autocompleteRef.current = new maps.places.Autocomplete(searchRef.current, {
-            componentRestrictions: { country: 'IN' },
-            fields: ['formatted_address', 'geometry'],
+        // Places Autocomplete for the search box — the modern
+        // PlaceAutocompleteElement, not the legacy Autocomplete class
+        // (Google silently returns zero results from `Autocomplete` for
+        // any API key created after March 1 2025; PlaceAutocompleteElement
+        // is the only version that actually works for a new project).
+        if (searchContainerRef.current) {
+          const autocompleteElement = new maps.places.PlaceAutocompleteElement({
+            includedRegionCodes: ['IN'],
           });
+          autocompleteElement.placeholder = 'Search your delivery address…';
+          searchContainerRef.current.appendChild(autocompleteElement);
+          autocompleteElementRef.current = autocompleteElement;
 
-          autocompleteRef.current.addListener('place_changed', () => {
-            const place = autocompleteRef.current!.getPlace();
-            if (!place.geometry?.location) return;
-            const loc = place.geometry.location;
+          autocompleteElement.addEventListener('gmp-select', async (event) => {
+            const place = event.placePrediction.toPlace();
+            await place.fetchFields({ fields: ['location', 'formattedAddress'] });
+            if (!place.location) return;
+            const loc = place.location;
             map.setCenter(loc);
             map.setZoom(15);
             marker.setPosition(loc);
-            void updateLocation(loc.lat(), loc.lng());
+            if (!cancelled) {
+              onLocationChange({
+                lat: loc.lat(),
+                lng: loc.lng(),
+                formattedAddress:
+                  place.formattedAddress ?? `${loc.lat().toFixed(4)}, ${loc.lng().toFixed(4)}`,
+              });
+            }
           });
         }
 
@@ -125,19 +141,19 @@ export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProp
 
     return () => {
       cancelled = true;
+      autocompleteElementRef.current?.remove();
+      autocompleteElementRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
     <div className="space-y-3">
-      {/* Search box */}
-      <input
-        ref={searchRef}
-        type="text"
-        placeholder="Search your delivery address…"
-        className="w-full rounded-[var(--r-md)] border border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]"
-      />
+      {/* Search box — PlaceAutocompleteElement renders its own input
+          internally and takes ownership of this container's DOM subtree,
+          same reasoning as the map container below: this div must never
+          have React-rendered children. */}
+      <div ref={searchContainerRef} />
 
       {/* Map container — `mapRef`'s own div must never have React-rendered
           children. Once Google Maps calls `new maps.Map(mapRef.current)` it

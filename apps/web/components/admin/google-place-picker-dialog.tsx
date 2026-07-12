@@ -12,14 +12,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 
 /**
- * Search-and-link the outlet's real Google Business Profile (Places
- * Autocomplete restricted to `establishment`, not addresses — the owner
- * is picking a business listing, not a delivery point). On selection,
- * posts the place_id to the server, which fetches and stores the real
- * name/cover photo/reviews immediately.
+ * Search-and-link the outlet's real Google Business Profile.
+ *
+ * Uses the modern `PlaceAutocompleteElement`, not the legacy
+ * `google.maps.places.Autocomplete` class — as of March 1st 2025, Google
+ * silently returns zero predictions for `Autocomplete` on any API key
+ * created after that date (no error, the dropdown just never appears),
+ * which is exactly what happened here. `PlaceAutocompleteElement`
+ * renders its own input internally rather than attaching to an existing
+ * one, and — like the Google Map instance itself — takes direct
+ * ownership of the DOM node it's mounted into. `containerRef`'s div must
+ * therefore stay a permanently empty leaf that React never renders
+ * children into (same removeChild lesson as delivery-map.tsx).
  */
 export function GooglePlacePickerDialog({
   outletId,
@@ -38,37 +44,41 @@ export function GooglePlacePickerDialog({
     lat: number | null;
     lng: number | null;
   } | null>(null);
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  const autocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const elementRef = React.useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
 
   React.useEffect(() => {
-    if (!open || !inputRef.current || autocompleteRef.current) return;
+    if (!open || !containerRef.current) return;
     let cancelled = false;
 
     void (async () => {
       const maps = await loadGoogleMaps();
-      if (cancelled || !inputRef.current) return;
-      autocompleteRef.current = new maps.places.Autocomplete(inputRef.current, {
-        types: ['establishment'],
-        componentRestrictions: { country: 'IN' },
-        fields: ['place_id', 'name', 'geometry'],
+      if (cancelled || !containerRef.current) return;
+
+      const element = new maps.places.PlaceAutocompleteElement({
+        includedRegionCodes: ['IN'],
+        includedPrimaryTypes: ['establishment'],
       });
-      autocompleteRef.current.addListener('place_changed', () => {
-        const place = autocompleteRef.current!.getPlace();
-        if (place.place_id && place.name) {
-          const location = place.geometry?.location;
-          setSelectedPlace({
-            placeId: place.place_id,
-            name: place.name,
-            lat: location ? location.lat() : null,
-            lng: location ? location.lng() : null,
-          });
-        }
+      element.placeholder = 'Search your business on Google Maps…';
+      containerRef.current.appendChild(element);
+      elementRef.current = element;
+
+      element.addEventListener('gmp-select', async (event) => {
+        const place = event.placePrediction.toPlace();
+        await place.fetchFields({ fields: ['id', 'displayName', 'location'] });
+        setSelectedPlace({
+          placeId: place.id,
+          name: place.displayName ?? place.id,
+          lat: place.location?.lat() ?? null,
+          lng: place.location?.lng() ?? null,
+        });
       });
     })();
 
     return () => {
       cancelled = true;
+      elementRef.current?.remove();
+      elementRef.current = null;
     };
   }, [open]);
 
@@ -113,7 +123,7 @@ export function GooglePlacePickerDialog({
               and up to 5 reviews (Google&apos;s own API limit).
             </DialogDescription>
           </DialogHeader>
-          <Input ref={inputRef} placeholder="Search your business on Google Maps…" />
+          <div ref={containerRef} />
           {selectedPlace && (
             <p className="text-caption text-muted-foreground">Selected: {selectedPlace.name}</p>
           )}
