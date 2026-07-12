@@ -31,6 +31,18 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.join(import.meta.dirname, '../..'),
   },
+  // Vercel's deployed function boundary defaults to this app's own
+  // directory. pnpm's hoisted linker (see pnpm-workspace.yaml) places a
+  // package in the closest common ancestor node_modules — for
+  // dependencies used by only this app (e.g. sharp's own @img/* native
+  // binaries) that's apps/web/node_modules, but for a dependency shared
+  // by multiple workspace packages (e.g. sharp's detect-libc, semver)
+  // that's the monorepo root's node_modules, outside this app's own
+  // directory. Without this, Next's tracer still records the correct
+  // (real, non-symlinked) path to those files, but Vercel silently drops
+  // anything the trace references outside the function's root — this
+  // widens that root to the whole monorepo so nothing gets dropped.
+  outputFileTracingRoot: path.join(import.meta.dirname, '../..'),
   // sharp is already in Next's own default list of packages left external
   // (not bundled) on the server for exactly this "native binary" class of
   // package — declared explicitly rather than relying on the implicit
