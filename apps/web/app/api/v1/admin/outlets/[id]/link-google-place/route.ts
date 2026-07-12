@@ -12,7 +12,15 @@ interface RouteParams {
   id: string;
 }
 
-const bodySchema = z.object({ placeId: z.string().min(1) });
+const bodySchema = z.object({
+  placeId: z.string().min(1),
+  // Real coordinates from the Autocomplete result the admin just picked —
+  // this is now the only way an outlet's lat/lng get set to something
+  // other than the create-time default (Ch: "outlet should not ask
+  // latitude and longitude").
+  lat: z.number().min(-90).max(90).optional(),
+  lng: z.number().min(-180).max(180).optional(),
+});
 
 /**
  * Ch.6 Outlet Google Business Profile linkage — fetches once immediately
@@ -48,6 +56,9 @@ const linkGooglePlace = createApiRoute<undefined, unknown, z.infer<typeof bodySc
           google_rating_count: details.ratingCount,
           google_reviews: details.reviews,
           google_reviews_fetched_at: new Date().toISOString(),
+          ...(body.lat != null && body.lng != null
+            ? { latitude: body.lat, longitude: body.lng }
+            : {}),
         })
         .eq('id', params.id);
 

@@ -107,7 +107,7 @@ export default function OutletsPage() {
       <AdminResourcePage
         title="Outlets"
         singularLabel="Outlet"
-        description="Physical stores, delivery radius, and working hours."
+        description="Physical stores, delivery radius, and working hours. Exact coordinates come from linking Google Business Profile above, not manual entry."
         endpoint="/api/v1/admin/outlets"
         columns={columns}
         searchPlaceholder="Search outlets..."
@@ -117,8 +117,6 @@ export default function OutletsPage() {
           { name: 'address', label: 'Address', type: 'textarea', required: true },
           { name: 'city', label: 'City', type: 'text', required: true },
           { name: 'state', label: 'State', type: 'text' },
-          { name: 'latitude', label: 'Latitude', type: 'number', required: true },
-          { name: 'longitude', label: 'Longitude', type: 'number', required: true },
           { name: 'delivery_radius_km', label: 'Delivery radius (km)', type: 'number' },
           { name: 'phone', label: 'Phone', type: 'text' },
           { name: 'email', label: 'Email', type: 'text' },

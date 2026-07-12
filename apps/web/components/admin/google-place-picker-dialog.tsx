@@ -35,6 +35,8 @@ export function GooglePlacePickerDialog({
   const [selectedPlace, setSelectedPlace] = React.useState<{
     placeId: string;
     name: string;
+    lat: number | null;
+    lng: number | null;
   } | null>(null);
   const inputRef = React.useRef<HTMLInputElement>(null);
   const autocompleteRef = React.useRef<google.maps.places.Autocomplete | null>(null);
@@ -49,12 +51,18 @@ export function GooglePlacePickerDialog({
       autocompleteRef.current = new maps.places.Autocomplete(inputRef.current, {
         types: ['establishment'],
         componentRestrictions: { country: 'IN' },
-        fields: ['place_id', 'name'],
+        fields: ['place_id', 'name', 'geometry'],
       });
       autocompleteRef.current.addListener('place_changed', () => {
         const place = autocompleteRef.current!.getPlace();
         if (place.place_id && place.name) {
-          setSelectedPlace({ placeId: place.place_id, name: place.name });
+          const location = place.geometry?.location;
+          setSelectedPlace({
+            placeId: place.place_id,
+            name: place.name,
+            lat: location ? location.lat() : null,
+            lng: location ? location.lng() : null,
+          });
         }
       });
     })();
@@ -71,7 +79,12 @@ export function GooglePlacePickerDialog({
       const response = await fetch(`/api/v1/admin/outlets/${outletId}/link-google-place`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ placeId: selectedPlace.placeId }),
+        body: JSON.stringify({
+          placeId: selectedPlace.placeId,
+          ...(selectedPlace.lat != null && selectedPlace.lng != null
+            ? { lat: selectedPlace.lat, lng: selectedPlace.lng }
+            : {}),
+        }),
       });
       const body = await response.json();
       if (!response.ok || !body.success) throw new Error(body.error?.message ?? 'Failed to link.');
