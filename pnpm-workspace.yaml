@@ -1,6 +1,7 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+nodeLinker: hoisted
 blockExoticSubdeps: true
 overrides:
   vite: '>=6.4.3'
