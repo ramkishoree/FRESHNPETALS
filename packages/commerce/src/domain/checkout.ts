@@ -5,16 +5,24 @@ export interface CartLineInput {
   quantity: number;
 }
 
+/**
+ * Owner's explicit call: the map pin is mandatory (latitude/longitude are
+ * no longer optional) and is the source of truth for the delivery
+ * location — `formattedAddress` is Google's own reverse-geocoded text for
+ * that pin. The only thing still manually typed on top is `flatNo`
+ * (apartment/floor/landmark — the one detail a pin alone can't capture)
+ * plus who's receiving it. city/state/postalCode/addressLine1/
+ * addressLine2 are gone entirely, not just optional — this business
+ * delivers by driving to the pin, not by postal routing.
+ */
 export interface CheckoutAddressInput {
   recipientName: string;
   phone: string;
-  addressLine1: string;
-  addressLine2?: string;
-  city: string;
-  state?: string;
-  postalCode: string;
-  latitude?: number;
-  longitude?: number;
+  email: string;
+  flatNo?: string;
+  formattedAddress: string;
+  latitude: number;
+  longitude: number;
 }
 
 export interface ValidatedCartLine {

@@ -5,6 +5,7 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import { ImageUploadField } from '@/components/admin/image-upload-field';
 import { ProductMediaGallery } from '@/components/admin/product-media-gallery';
+import { ProductOutletOverrides } from '@/components/admin/product-outlet-overrides';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -26,9 +27,6 @@ export interface ProductFormValues {
   categoryId: string;
   basePrice: string;
   salePrice: string;
-  seoTitle: string;
-  metaDescription: string;
-  focusKeyword: string;
   featuredImage: string;
 }
 
@@ -41,9 +39,6 @@ const EMPTY_VALUES: ProductFormValues = {
   categoryId: '',
   basePrice: '',
   salePrice: '',
-  seoTitle: '',
-  metaDescription: '',
-  focusKeyword: '',
   featuredImage: '',
 };
 
@@ -94,9 +89,6 @@ export function ProductForm({
       categoryId: values.categoryId,
       basePrice: Number(values.basePrice),
       salePrice: values.salePrice ? Number(values.salePrice) : undefined,
-      seoTitle: values.seoTitle || undefined,
-      metaDescription: values.metaDescription || undefined,
-      focusKeyword: values.focusKeyword,
       featuredImage: values.featuredImage,
     };
 
@@ -234,35 +226,13 @@ export function ProductForm({
         <ProductMediaGallery productId={productId} />
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-1.5">
-          <Label htmlFor="seoTitle">SEO title (max. 60 characters)</Label>
-          <Input
-            id="seoTitle"
-            maxLength={60}
-            value={values.seoTitle}
-            onChange={(e) => set('seoTitle', e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="focusKeyword">Focus keyword *</Label>
-          <Input
-            id="focusKeyword"
-            required
-            value={values.focusKeyword}
-            onChange={(e) => set('focusKeyword', e.target.value)}
-          />
-        </div>
-      </div>
-
       <div className="grid gap-1.5">
-        <Label htmlFor="metaDescription">Meta description (max. 160 characters)</Label>
-        <Textarea
-          id="metaDescription"
-          maxLength={160}
-          value={values.metaDescription}
-          onChange={(e) => set('metaDescription', e.target.value)}
-        />
+        <Label>Stock &amp; pricing per outlet</Label>
+        <p className="text-caption text-muted-foreground -mt-1">
+          Every outlet uses the price and photo above by default — only set something here if this
+          outlet is different.
+        </p>
+        <ProductOutletOverrides productId={productId} />
       </div>
 
       <div className="flex gap-3">

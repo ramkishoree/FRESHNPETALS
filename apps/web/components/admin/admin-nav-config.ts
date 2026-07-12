@@ -9,11 +9,15 @@ export interface AdminNavItem {
 }
 
 /**
- * Ch.12 §43 Sidebar, consolidated to 4 top-level groups (plus Dashboard)
- * per the owner's explicit request — the previous 10-row flat list read
- * as clutter even though every one of those pages is genuinely wired.
- * Nothing here was removed; every page below still exists and works,
- * just grouped by what it's actually for rather than listed flat.
+ * Ch.12 §43 Sidebar. Owner's explicit "very simple and easy to use" call:
+ * Inventory and Outlets folded into the Products tab itself (stock/price/
+ * photo per outlet lives on each product's page, store-location records
+ * live in a collapsed panel there — see product-outlet-overrides.tsx and
+ * outlet-management-panel.tsx). Media Library removed (uploads happen
+ * inline everywhere they're needed, a separate browsing page added
+ * nothing). Support Inbox removed (support moved fully to WhatsApp).
+ * Users & roles removed (those are sensitive enough to manage directly
+ * in the Supabase dashboard, not duplicate here).
  */
 export const ADMIN_NAV: readonly AdminNavItem[] = [
   { label: 'Dashboard', href: '/admin', icon: LayoutDashboard },
@@ -25,8 +29,6 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
       { label: 'Products', href: '/admin/products' },
       { label: 'Categories', href: '/admin/categories' },
       { label: 'Collections', href: '/admin/collections' },
-      { label: 'Inventory', href: '/admin/inventory' },
-      { label: 'Outlets', href: '/admin/outlets' },
     ],
   },
   {
@@ -49,9 +51,7 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
       { label: 'AI Workspace', href: '/admin/ai' },
       { label: 'Blogs', href: '/admin/blogs' },
       { label: 'Pages', href: '/admin/pages' },
-      { label: 'Media library', href: '/admin/media' },
       { label: 'Announcements', href: '/admin/announcements' },
-      { label: 'Support Inbox', href: '/admin/support' },
     ],
   },
   {
@@ -60,7 +60,6 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     icon: Settings,
     children: [
       { label: 'Settings', href: '/admin/settings' },
-      { label: 'Users & roles', href: '/admin/users' },
       { label: 'Audit log', href: '/admin/audit' },
     ],
   },

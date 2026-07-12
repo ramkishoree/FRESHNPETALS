@@ -16,11 +16,10 @@ const INVOICE_BUCKET = 'invoices';
 
 interface OrderAddressSnapshot {
   recipientName?: string;
-  addressLine1?: string;
-  addressLine2?: string;
-  city?: string;
-  postalCode?: string;
+  formattedAddress?: string;
+  flatNo?: string;
   phone?: string;
+  email?: string;
 }
 
 interface OrderRow {
@@ -96,11 +95,10 @@ export async function handleInvoiceGenerate(
     orderNumber: orderRow.order_number,
     issuedAt: new Date(),
     recipientName: address.recipientName ?? 'Customer',
-    addressLine1: address.addressLine1 ?? '',
-    ...(address.addressLine2 ? { addressLine2: address.addressLine2 } : {}),
-    city: address.city ?? '',
-    postalCode: address.postalCode ?? '',
+    formattedAddress: address.formattedAddress ?? '',
+    ...(address.flatNo ? { flatNo: address.flatNo } : {}),
     phone: address.phone ?? '',
+    email: address.email ?? '',
     items: orderRow.order_items.map((item) => ({
       name: item.product_name,
       sku: item.sku,

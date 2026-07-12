@@ -14,11 +14,13 @@ export interface InvoicePdfInput {
   orderNumber: string;
   issuedAt: Date;
   recipientName: string;
-  addressLine1: string;
-  addressLine2?: string;
-  city: string;
-  postalCode: string;
+  /** Reverse-geocoded text for the mandatory delivery pin — the address
+   * is a map location now, not separately typed street/city/postal
+   * fields (Ch.8 §88's checkout simplification). */
+  formattedAddress: string;
+  flatNo?: string;
   phone: string;
+  email: string;
   items: InvoiceLineItem[];
   subtotal: number;
   discountTotal: number;
@@ -83,10 +85,10 @@ export async function generateInvoicePdf(input: InvoicePdfInput): Promise<Uint8A
   y -= 16;
   const addressLines = [
     input.recipientName,
-    input.addressLine1,
-    ...(input.addressLine2 ? [input.addressLine2] : []),
-    `${input.city} ${input.postalCode}`,
+    ...(input.flatNo ? [input.flatNo] : []),
+    input.formattedAddress,
     input.phone,
+    input.email,
   ];
   for (const line of addressLines) {
     page.drawText(line, { x: MARGIN, y, size: 10, font: regular, color: ink });

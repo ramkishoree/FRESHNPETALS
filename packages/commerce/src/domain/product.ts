@@ -149,6 +149,35 @@ export function validateAdminProductInput(input: Partial<AdminProductInput>): st
   return violations;
 }
 
+/**
+ * Owner's explicit call: no manual SEO title/meta description/focus
+ * keyword entry — generate them automatically from the name/description
+ * every admin already has to write anyway. Called by the admin product
+ * routes whenever a field isn't explicitly supplied (the admin UI no
+ * longer sends them at all), so SEO metadata always exists and stays in
+ * sync with the current name, without needing a stable domain-layer
+ * "focusKeyword is required" rule to change.
+ */
+export function deriveSeoDefaults(
+  name: string,
+  description: string,
+  shortDescription?: string,
+): { seoTitle: string; metaDescription: string; focusKeyword: string } {
+  const seoTitleSuffix = ' | Fresh & Petals';
+  const seoTitle =
+    name.length + seoTitleSuffix.length <= PRODUCT_LIMITS.seoTitleMax
+      ? `${name}${seoTitleSuffix}`
+      : name.slice(0, PRODUCT_LIMITS.seoTitleMax);
+
+  const rawDescription = (shortDescription?.trim() || description).replace(/\s+/g, ' ').trim();
+  const metaDescription =
+    rawDescription.length <= PRODUCT_LIMITS.metaDescriptionMax
+      ? rawDescription
+      : `${rawDescription.slice(0, PRODUCT_LIMITS.metaDescriptionMax - 1).trimEnd()}…`;
+
+  return { seoTitle, metaDescription, focusKeyword: name.toLowerCase() };
+}
+
 export interface AdminProductFilter {
   status?: ProductStatus;
   search?: string;

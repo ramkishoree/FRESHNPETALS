@@ -76,6 +76,23 @@ export async function previewCheckoutPricing(
     );
   }
 
+  // Owner's explicit call: price/sale price can be overridden per outlet.
+  // Only resolvable once an outlet is actually selected — before that,
+  // this preview shows the product's global default, same as browsing.
+  // startCheckout is the one that always re-resolves for real at payment
+  // time (this route never creates a session or charges anything).
+  const overrideByProduct = input.selectedOutletId
+    ? new Map(
+        (
+          await admin
+            .from('product_outlet_overrides')
+            .select('product_id, base_price_override, sale_price_override')
+            .eq('outlet_id', input.selectedOutletId)
+            .in('product_id', productIds)
+        ).data?.map((o) => [o.product_id, o]) ?? [],
+      )
+    : new Map<string, { base_price_override: number | null; sale_price_override: number | null }>();
+
   const validatedLines: ValidatedCartLine[] = [];
   for (const line of input.lines) {
     const product = products?.find((p) => p.id === line.productId);
@@ -92,16 +109,23 @@ export async function previewCheckoutPricing(
     const priceRow = Array.isArray(product.product_prices)
       ? product.product_prices[0]
       : product.product_prices;
-    const unitPrice =
-      priceRow?.sale_price != null
-        ? Number(priceRow.sale_price)
+    const override = overrideByProduct.get(product.id);
+    const basePrice =
+      override?.base_price_override != null
+        ? Number(override.base_price_override)
         : Number(priceRow?.base_price ?? 0);
+    const salePrice =
+      override?.sale_price_override != null
+        ? Number(override.sale_price_override)
+        : priceRow?.sale_price != null
+          ? Number(priceRow.sale_price)
+          : null;
     validatedLines.push({
       productId: product.id,
       sku: product.sku,
       name: product.name,
       quantity: line.quantity,
-      unitPrice,
+      unitPrice: salePrice ?? basePrice,
     });
   }
   const cartCategoryIds = [

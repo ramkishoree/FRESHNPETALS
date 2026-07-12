@@ -1,4 +1,5 @@
 import {
+  deriveSeoDefaults,
   UpdateProductService,
   UpdateProductStatusService,
   type Product,
@@ -70,11 +71,30 @@ const updateProduct = createApiRoute<
     const repository = new SupabaseAdminProductRepository(admin);
     const { status, ...fields } = body;
 
+    // Owner's explicit call: no manual SEO entry — whenever the admin
+    // resubmits name+description (every save from the current form),
+    // re-derive seoTitle/metaDescription/focusKeyword unless the caller
+    // explicitly set one, so SEO metadata stays in sync automatically
+    // instead of going stale after a rename.
+    const seoFields =
+      fields.name !== undefined && fields.description !== undefined
+        ? deriveSeoDefaults(fields.name, fields.description, fields.shortDescription)
+        : undefined;
+
     let result: Result<Product, AppError>;
     if (Object.keys(fields).length > 0) {
       result = await new UpdateProductService(repository).execute(
         params.id,
-        stripUndefined(fields),
+        stripUndefined({
+          ...fields,
+          ...(seoFields
+            ? {
+                seoTitle: fields.seoTitle ?? seoFields.seoTitle,
+                metaDescription: fields.metaDescription ?? seoFields.metaDescription,
+                focusKeyword: fields.focusKeyword ?? seoFields.focusKeyword,
+              }
+            : {}),
+        }),
         actor.id,
       );
     } else {

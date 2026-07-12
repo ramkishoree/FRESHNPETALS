@@ -55,9 +55,6 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           categoryId: product.category_id,
           basePrice: price ? String(price.base_price) : '',
           salePrice: price?.sale_price != null ? String(price.sale_price) : '',
-          seoTitle: product.seo_title ?? '',
-          metaDescription: product.meta_description ?? '',
-          focusKeyword: product.metadata?.focusKeyword ?? '',
           featuredImage: product.featured_image ?? '',
         }}
       />

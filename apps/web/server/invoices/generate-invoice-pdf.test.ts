@@ -8,10 +8,9 @@ function makeInput(overrides: Partial<InvoicePdfInput> = {}): InvoicePdfInput {
     orderNumber: 'FNP-2026-000001',
     issuedAt: new Date('2026-07-11T10:00:00Z'),
     recipientName: 'Priya Sharma',
-    addressLine1: '12 MG Road',
-    city: 'Lucknow',
-    postalCode: '226001',
+    formattedAddress: '12 MG Road, Lucknow, Uttar Pradesh 226001',
     phone: '9876543210',
+    email: 'priya@example.com',
     items: [
       { name: 'Rose Bouquet', sku: 'ROSE-01', quantity: 2, unitPrice: 999, lineTotal: 1998 },
       { name: 'Chocolate Box', sku: 'CHOC-02', quantity: 1, unitPrice: 499, lineTotal: 499 },

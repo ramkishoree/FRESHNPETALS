@@ -1,4 +1,4 @@
-import { AlertTriangle, Package, ShoppingCart, Truck, Users } from 'lucide-react';
+import { AlertTriangle, Package, ShoppingCart, Users } from 'lucide-react';
 import Link from 'next/link';
 import { StatTile } from '@/components/dashboard/stat-tile';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -104,7 +104,6 @@ export default async function AdminDashboardPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <QuickAction href="/admin/products" icon={Package} label="Add product" />
         <QuickAction href="/admin/orders" icon={ShoppingCart} label="View orders" />
-        <QuickAction href="/admin/inventory" icon={Truck} label="Adjust inventory" />
         <QuickAction href="/admin/customers" icon={Users} label="View customers" />
       </div>
     </div>

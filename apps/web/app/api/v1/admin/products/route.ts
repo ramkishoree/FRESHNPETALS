@@ -1,5 +1,6 @@
 import {
   CreateProductService,
+  deriveSeoDefaults,
   ListAdminProductsService,
   type ProductStatus,
 } from '@prana/commerce';
@@ -45,7 +46,7 @@ const createBodySchema = z.object({
   salePrice: z.number().positive().optional(),
   seoTitle: z.string().max(60).optional(),
   metaDescription: z.string().max(160).optional(),
-  focusKeyword: z.string().min(1),
+  focusKeyword: z.string().min(1).optional(),
   featuredImage: z.string().min(1),
   additionalImages: z.array(z.string()).max(19).optional(),
 });
@@ -78,7 +79,16 @@ const createProduct = createApiRoute({
     const admin = createSupabaseAdminClient();
     const repository = new SupabaseAdminProductRepository(admin);
     const service = new CreateProductService(repository);
-    const result = await service.execute(stripUndefined(body), actor.id);
+    const seoDefaults = deriveSeoDefaults(body.name, body.description, body.shortDescription);
+    const result = await service.execute(
+      stripUndefined({
+        ...body,
+        seoTitle: body.seoTitle ?? seoDefaults.seoTitle,
+        metaDescription: body.metaDescription ?? seoDefaults.metaDescription,
+        focusKeyword: body.focusKeyword ?? seoDefaults.focusKeyword,
+      }),
+      actor.id,
+    );
 
     if (isOk(result)) {
       await recordAuditEvent({

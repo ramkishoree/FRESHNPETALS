@@ -10,13 +10,6 @@ import { OutletSelector, type OutletWithStock } from '@/components/storefront/ou
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { useCart } from '@/lib/cart-context';
 
 declare global {
@@ -25,26 +18,11 @@ declare global {
   }
 }
 
-interface SavedAddress {
-  id: string;
-  label: string | null;
-  recipient_name: string;
-  phone: string;
-  address_line_1: string;
-  address_line_2: string | null;
-  city: string;
-  state: string | null;
-  postal_code: string;
-  latitude: number | null;
-  longitude: number | null;
-}
-
 const EMPTY_ADDRESS = {
   recipientName: '',
   phone: '',
-  addressLine1: '',
-  city: '',
-  postalCode: '',
+  email: '',
+  flatNo: '',
 };
 
 interface PricingBreakdown {
@@ -75,8 +53,6 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const { items, subtotal, clear } = useCart();
   const router = useRouter();
 
-  const [addresses, setAddresses] = React.useState<SavedAddress[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = React.useState<string>('new');
   const [manualAddress, setManualAddress] = React.useState(EMPTY_ADDRESS);
   const [couponInput, setCouponInput] = React.useState('');
   const [appliedCoupon, setAppliedCoupon] = React.useState<string | null>(null);
@@ -147,19 +123,6 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   // ---- Effects ----------------------------------------------------------------
 
-  // Load saved addresses on mount.
-  React.useEffect(() => {
-    async function loadAddresses() {
-      const response = await fetch('/api/v1/account/addresses');
-      const body = await response.json();
-      if (response.ok && body.success && body.data.length > 0) {
-        setAddresses(body.data);
-        setSelectedAddressId(body.data[0].id);
-      }
-    }
-    void loadAddresses();
-  }, []);
-
   // Fetch outlets with stock for the cart items on mount.
   React.useEffect(() => {
     if (items.length === 0) return;
@@ -224,39 +187,24 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     );
   }
 
-  // ---- Address resolution ----------------------------------------------------
-
-  function resolveAddress() {
-    if (selectedAddressId === 'new') return manualAddress;
-    const saved = addresses.find((a) => a.id === selectedAddressId);
-    return saved
-      ? {
-          recipientName: saved.recipient_name,
-          phone: saved.phone,
-          addressLine1: saved.address_line_1,
-          addressLine2: saved.address_line_2 ?? undefined,
-          city: saved.city,
-          state: saved.state ?? undefined,
-          postalCode: saved.postal_code,
-        }
-      : manualAddress;
-  }
+  // ---- Address validation ------------------------------------------------------
+  // Owner's explicit call: the map pin is mandatory and is the delivery
+  // location itself — flatNo is the only optional extra detail on top of
+  // name/phone/email, no separately-typed street/city/postal fields.
 
   function findMissingAddressFields(address: typeof EMPTY_ADDRESS): string[] {
-    const rules: Record<keyof typeof EMPTY_ADDRESS, { label: string; min?: number }> = {
-      recipientName: { label: 'recipient name' },
+    const rules: Partial<Record<keyof typeof EMPTY_ADDRESS, { label: string; min?: number }>> = {
+      recipientName: { label: 'name' },
       phone: { label: 'phone number', min: 6 },
-      addressLine1: { label: 'address' },
-      city: { label: 'city' },
-      postalCode: { label: 'postal code', min: 4 },
+      email: { label: 'email' },
     };
     return (Object.keys(rules) as (keyof typeof EMPTY_ADDRESS)[])
       .filter((key) => {
         const val = address[key].trim();
-        const rule = rules[key];
+        const rule = rules[key]!;
         return val.length === 0 || (rule.min !== undefined && val.length < rule.min);
       })
-      .map((key) => rules[key].label);
+      .map((key) => rules[key]!.label);
   }
 
   // ---- Coupon ----------------------------------------------------------------
@@ -298,10 +246,14 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   // ---- Payment ---------------------------------------------------------------
 
   async function payNow() {
-    const address = resolveAddress();
-    const missing = findMissingAddressFields(address);
+    const missing = findMissingAddressFields(manualAddress);
     if (missing.length > 0) {
       toast.error(`Please fill in: ${missing.join(', ')}.`);
+      return;
+    }
+
+    if (!deliveryPin) {
+      toast.error('Please pin your delivery location on the map.');
       return;
     }
 
@@ -309,8 +261,6 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       toast.error('Please select a delivery outlet on the map.');
       return;
     }
-
-    const coords = resolveDeliveryCoords();
 
     setIsPaying(true);
     try {
@@ -321,8 +271,13 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           lines: items.map((item) => ({ productId: item.productId, quantity: item.quantity })),
           selectedOutletId,
           address: {
-            ...address,
-            ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
+            recipientName: manualAddress.recipientName,
+            phone: manualAddress.phone,
+            email: manualAddress.email,
+            ...(manualAddress.flatNo ? { flatNo: manualAddress.flatNo } : {}),
+            formattedAddress: deliveryPin.formattedAddress,
+            latitude: deliveryPin.lat,
+            longitude: deliveryPin.lng,
           },
           ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
         }),
@@ -404,88 +359,57 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           {/* ---- Delivery address ---- */}
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Delivery details</h2>
-            {deliveryPin && (
+            {deliveryPin ? (
               <p className="text-caption mb-4 text-[var(--sf-ink-muted)]">
                 📍 {deliveryPin.formattedAddress}
               </p>
+            ) : (
+              <p className="text-caption mb-4 text-[var(--sale)]">
+                Pin your delivery location above first — it&apos;s the address we deliver to.
+              </p>
             )}
 
-            {addresses.length > 0 && (
-              <div className="mb-6">
-                <Label className="text-caption mb-1.5 block">Saved address</Label>
-                <Select value={selectedAddressId} onValueChange={setSelectedAddressId}>
-                  <SelectTrigger className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-[var(--r-md)] border-[var(--sf-border)] bg-[var(--sf-surface)]">
-                    {addresses.map((address) => (
-                      <SelectItem key={address.id} value={address.id}>
-                        {address.label || address.recipient_name} — {address.address_line_1},{' '}
-                        {address.city}
-                      </SelectItem>
-                    ))}
-                    <SelectItem value="new">Enter a new address</SelectItem>
-                  </SelectContent>
-                </Select>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <Label className="text-caption mb-1.5 block">Name</Label>
+                <Input
+                  required
+                  value={manualAddress.recipientName}
+                  onChange={(e) =>
+                    setManualAddress((a) => ({ ...a, recipientName: e.target.value }))
+                  }
+                  className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
+                />
               </div>
-            )}
-
-            {selectedAddressId === 'new' && (
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="sm:col-span-2">
-                  <Label className="text-caption mb-1.5 block">Recipient name</Label>
-                  <Input
-                    required
-                    value={manualAddress.recipientName}
-                    onChange={(e) =>
-                      setManualAddress((a) => ({ ...a, recipientName: e.target.value }))
-                    }
-                    className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label className="text-caption mb-1.5 block">Phone</Label>
-                  <Input
-                    required
-                    type="tel"
-                    value={manualAddress.phone}
-                    onChange={(e) => setManualAddress((a) => ({ ...a, phone: e.target.value }))}
-                    className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
-                  />
-                </div>
-                <div className="sm:col-span-2">
-                  <Label className="text-caption mb-1.5 block">Address</Label>
-                  <Input
-                    required
-                    value={manualAddress.addressLine1}
-                    onChange={(e) =>
-                      setManualAddress((a) => ({ ...a, addressLine1: e.target.value }))
-                    }
-                    className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
-                  />
-                </div>
-                <div>
-                  <Label className="text-caption mb-1.5 block">City</Label>
-                  <Input
-                    required
-                    value={manualAddress.city}
-                    onChange={(e) => setManualAddress((a) => ({ ...a, city: e.target.value }))}
-                    className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
-                  />
-                </div>
-                <div>
-                  <Label className="text-caption mb-1.5 block">Postal code</Label>
-                  <Input
-                    required
-                    value={manualAddress.postalCode}
-                    onChange={(e) =>
-                      setManualAddress((a) => ({ ...a, postalCode: e.target.value }))
-                    }
-                    className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
-                  />
-                </div>
+              <div>
+                <Label className="text-caption mb-1.5 block">Phone</Label>
+                <Input
+                  required
+                  type="tel"
+                  value={manualAddress.phone}
+                  onChange={(e) => setManualAddress((a) => ({ ...a, phone: e.target.value }))}
+                  className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
+                />
               </div>
-            )}
+              <div>
+                <Label className="text-caption mb-1.5 block">Email</Label>
+                <Input
+                  required
+                  type="email"
+                  value={manualAddress.email}
+                  onChange={(e) => setManualAddress((a) => ({ ...a, email: e.target.value }))}
+                  className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
+                />
+              </div>
+              <div>
+                <Label className="text-caption mb-1.5 block">Flat / house no. (optional)</Label>
+                <Input
+                  value={manualAddress.flatNo}
+                  onChange={(e) => setManualAddress((a) => ({ ...a, flatNo: e.target.value }))}
+                  className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
+                />
+              </div>
+            </div>
           </section>
 
           {/* ---- Coupon ---- */}
