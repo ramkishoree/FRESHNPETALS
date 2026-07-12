@@ -139,18 +139,26 @@ export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProp
         className="w-full rounded-[var(--r-md)] border border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[var(--gold)]"
       />
 
-      {/* Map container */}
-      <div
-        ref={mapRef}
-        className="h-64 w-full overflow-hidden rounded-[var(--r-lg)] border border-[var(--sf-border)] sm:h-80"
-      >
+      {/* Map container — `mapRef`'s own div must never have React-rendered
+          children. Once Google Maps calls `new maps.Map(mapRef.current)` it
+          takes direct ownership of that node's DOM subtree (wipes it and
+          injects its own canvas/panes); if React later re-renders a child
+          into the very same node (e.g. a loading/error message toggled by
+          `status`), React's reconciler tries to remove a node Google's SDK
+          already deleted — "Failed to execute 'removeChild': the node to be
+          removed is not a child of this node," an uncaught exception that
+          crashed the entire /checkout page in production. The loading/error
+          UI is now a sibling overlay instead, positioned on top — `mapRef`
+          stays a single empty leaf div for Maps to own exclusively. */}
+      <div className="relative h-64 w-full overflow-hidden rounded-[var(--r-lg)] border border-[var(--sf-border)] sm:h-80">
+        <div ref={mapRef} className="absolute inset-0" />
         {status === 'loading' && (
-          <div className="flex h-full items-center justify-center text-sm text-[var(--sf-ink-muted)]">
+          <div className="absolute inset-0 flex items-center justify-center bg-[var(--sf-surface)] text-sm text-[var(--sf-ink-muted)]">
             Loading map…
           </div>
         )}
         {status === 'error' && (
-          <div className="flex h-full flex-col items-center justify-center gap-2 p-4 text-center text-sm text-[var(--sale)]">
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-[var(--sf-surface)] p-4 text-center text-sm text-[var(--sale)]">
             <span>Map unavailable</span>
             {errorMsg && <span className="text-xs text-[var(--sf-ink-muted)]">{errorMsg}</span>}
           </div>
