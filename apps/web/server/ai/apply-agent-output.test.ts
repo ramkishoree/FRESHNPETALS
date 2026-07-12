@@ -211,6 +211,60 @@ describe('applyApprovedAgentOutput', () => {
     });
   });
 
+  it('converts a Markdown "# Heading" into a real heading block — confirmed live in production: the model used Markdown, not HTML, on the very next run after the HTML-only fix shipped', async () => {
+    const admin = makeAdmin({});
+    const task = baseTask({
+      metadata: {
+        draft: {
+          title: '15 Best Gifts',
+          article:
+            '# 15 Best Gifts for Your Gen Z Sister\n\n## Introduction\n\nShopping for your sister can feel overwhelming.',
+        },
+      },
+    });
+
+    await applyApprovedAgentOutput(admin, task);
+
+    expect(admin.insertedBlocks).toEqual([
+      {
+        blog_id: 'new-blog-id',
+        block_type: 'heading',
+        position: 0,
+        content: { level: 1, text: '15 Best Gifts for Your Gen Z Sister' },
+      },
+      {
+        blog_id: 'new-blog-id',
+        block_type: 'heading',
+        position: 1,
+        content: { level: 2, text: 'Introduction' },
+      },
+      {
+        blog_id: 'new-blog-id',
+        block_type: 'paragraph',
+        position: 2,
+        content: { text: 'Shopping for your sister can feel overwhelming.' },
+      },
+    ]);
+  });
+
+  it('strips Markdown emphasis markers and bullet prefixes from an ordinary paragraph', async () => {
+    const admin = makeAdmin({});
+    const task = baseTask({
+      metadata: {
+        draft: {
+          title: 'A Title',
+          article: 'This has **bold** and *italic* and _also italic_ text in it.',
+        },
+      },
+    });
+
+    await applyApprovedAgentOutput(admin, task);
+
+    expect(admin.insertedBlocks[0]).toMatchObject({
+      content: { text: 'This has bold and italic and also italic text in it.' },
+    });
+  });
+
   it('does not apply when the draft is missing a title or article', async () => {
     const admin = makeAdmin({});
     const task = baseTask({ metadata: { draft: { title: 'Only a title' } } });

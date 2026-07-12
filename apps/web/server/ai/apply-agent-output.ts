@@ -33,28 +33,44 @@ interface BlogDraft {
  */
 const STAGGER_DAYS = 2;
 
-const HEADING_WRAPPER_PATTERN = /^<h([1-6])>([\s\S]*)<\/h\1>$/i;
+const HTML_HEADING_PATTERN = /^<h([1-6])>([\s\S]*)<\/h\1>$/i;
+// The model is inconsistent about which markup style it reaches for
+// between runs — some drafts wrap headings in literal <h1> tags, others
+// use Markdown "# Heading" syntax instead, despite neither being asked
+// for. Handle both rather than betting on one.
+const MARKDOWN_HEADING_PATTERN = /^(#{1,6})\s+(.*)$/;
 // Any other HTML-ish tag the model tends to sprinkle in despite the
 // system prompt never asking for markup — <p>/<strong>/<em>/etc. The
 // block renderer (blog/[slug]/page.tsx) renders paragraph text as plain
 // text, so a literal tag would otherwise show up on the page verbatim
 // instead of being interpreted as formatting.
 const RESIDUAL_TAG_PATTERN = /<\/?[a-z][a-z0-9]*(?:\s[^>]*)?>/gi;
+// Markdown emphasis/bullet markers left over once a "paragraph" chunk
+// wasn't a heading — same problem, different syntax: the renderer shows
+// "**bold**" and "- item" as literal text since it has no Markdown
+// parser, only plain-text paragraphs.
+const MARKDOWN_EMPHASIS_PATTERN = /\*\*([^*]+)\*\*|__([^_]+)__|\*([^*]+)\*|_([^_]+)_/g;
+const MARKDOWN_BULLET_PATTERN = /^[-*]\s+/gm;
 
-function stripResidualHtmlTags(text: string): string {
-  return text.replace(RESIDUAL_TAG_PATTERN, '').trim();
+function cleanBlockText(text: string): string {
+  return text
+    .replace(RESIDUAL_TAG_PATTERN, '')
+    .replace(MARKDOWN_EMPHASIS_PATTERN, (_m, a, b, c, d) => a ?? b ?? c ?? d ?? '')
+    .replace(MARKDOWN_BULLET_PATTERN, '')
+    .trim();
 }
 
 /**
  * blog-writer-ai's article field is instructed to be an "article body",
- * not asked for any particular markup — but the model routinely wraps
- * its own section headings in literal `<h1>`/`<h2>` tags anyway. Splitting
- * blindly on blank lines (as before) turned those into `paragraph` blocks,
+ * not asked for any particular markup — but the model routinely formats
+ * its own section headings anyway, inconsistently choosing HTML
+ * (`<h1>...</h1>`) or Markdown (`# ...`) between runs. Splitting blindly
+ * on blank lines (as before) turned those into plain `paragraph` blocks,
  * which render as plain text — a real bug: readers saw "<h1>Some
- * Heading</h1>" as literal text instead of a heading. Detect the wrapper
- * and emit a real `heading` block (block_type the renderer already
- * supports) instead; strip any other stray tag from genuine paragraphs
- * as a defensive fallback.
+ * Heading</h1>" or "# Some Heading" as literal text instead of a real
+ * heading. Detect either wrapper and emit a real `heading` block (block_type
+ * the renderer already supports) instead; clean any other stray markup
+ * from genuine paragraphs as a defensive fallback.
  */
 function toBlogBlocks(
   blogId: string,
@@ -66,20 +82,29 @@ function toBlogBlocks(
     .filter(Boolean);
 
   return paragraphs.map((raw, position) => {
-    const headingMatch = HEADING_WRAPPER_PATTERN.exec(raw);
-    if (headingMatch) {
+    const htmlMatch = HTML_HEADING_PATTERN.exec(raw);
+    if (htmlMatch) {
       return {
         blog_id: blogId,
         block_type: 'heading',
         position,
-        content: { level: Number(headingMatch[1]), text: stripResidualHtmlTags(headingMatch[2]!) },
+        content: { level: Number(htmlMatch[1]), text: cleanBlockText(htmlMatch[2]!) },
+      };
+    }
+    const markdownMatch = MARKDOWN_HEADING_PATTERN.exec(raw);
+    if (markdownMatch) {
+      return {
+        blog_id: blogId,
+        block_type: 'heading',
+        position,
+        content: { level: markdownMatch[1]!.length, text: cleanBlockText(markdownMatch[2]!) },
       };
     }
     return {
       blog_id: blogId,
       block_type: 'paragraph',
       position,
-      content: { text: stripResidualHtmlTags(raw) },
+      content: { text: cleanBlockText(raw) },
     };
   });
 }
@@ -143,7 +168,7 @@ export async function applyApprovedAgentOutput(
   const previewBlocks = toBlogBlocks('preview', draft.article);
   const firstParagraph = previewBlocks.find((b) => b.block_type === 'paragraph');
   const excerpt = (
-    (firstParagraph?.content['text'] as string | undefined) ?? stripResidualHtmlTags(draft.article)
+    (firstParagraph?.content['text'] as string | undefined) ?? cleanBlockText(draft.article)
   )
     .slice(0, 200)
     .trim();
