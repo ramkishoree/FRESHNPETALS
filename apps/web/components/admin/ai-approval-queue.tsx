@@ -60,7 +60,8 @@ export function AiApprovalQueue({
       const result = await response.json();
       if (!response.ok || !result.success)
         throw new Error(result.error?.message ?? `Failed to ${action}.`);
-      toast.success(`Task ${action}d.`);
+      const detail = result.data?.detail as string | undefined;
+      toast.success(detail ?? `Task ${action}d.`);
       onChanged();
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : `Failed to ${action}.`);
