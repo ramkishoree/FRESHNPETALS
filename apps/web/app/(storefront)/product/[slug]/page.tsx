@@ -12,8 +12,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { getPublicEnv } from '@/config/env';
 import { JsonLd } from '@/components/seo/json-ld';
-import { ReviewCard } from '@/components/commerce/review-card';
-import { BrandDivider } from '@/components/storefront/brand-divider';
+import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
 import { ProductActions } from '@/components/storefront/product-actions';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -196,30 +195,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
         </section>
       )}
 
-      <section className="mt-20 text-center">
-        <p className="eyebrow mb-2">Loved by locals</p>
-        <h2 className="text-h3">Customer reviews</h2>
-        <BrandDivider className="my-6" />
-        {(reviews ?? []).length === 0 ? (
-          <p className="text-body-lg">No reviews yet.</p>
-        ) : (
-          <div className="grid gap-5 text-left md:grid-cols-3">
-            {(reviews ?? []).map((review) => (
-              <ReviewCard
-                key={review.id}
-                authorName={
-                  (review.customers as unknown as { first_name?: string } | null)?.first_name ??
-                  'Customer'
-                }
-                rating={review.rating}
-                comment={review.comment ?? ''}
-                createdAt={review.created_at}
-                verifiedPurchase={review.verified_purchase}
-              />
-            ))}
-          </div>
-        )}
-      </section>
+      <GoogleReviewsCarousel />
     </div>
   );
 }

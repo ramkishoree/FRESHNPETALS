@@ -30,7 +30,8 @@
         "META_WHATSAPP_OWNER_WA_ID",
         "RESEND_API_KEY",
         "RESEND_FROM_EMAIL",
-        "OWNER_NOTIFICATION_EMAIL"
+        "OWNER_NOTIFICATION_EMAIL",
+        "GOOGLE_MAPS_API_KEY"
       ]
     },
     "dev": {

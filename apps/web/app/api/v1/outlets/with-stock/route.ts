@@ -34,7 +34,9 @@ const route = createApiRoute({
 
     const { data: outlets, error: outletErr } = await admin
       .from('outlets')
-      .select('id, name, slug, address, city, latitude, longitude, delivery_radius_km')
+      .select(
+        'id, name, slug, address, city, latitude, longitude, delivery_radius_km, google_business_name, google_rating, google_rating_count',
+      )
       .eq('is_active', true)
       .is('deleted_at', null);
 
@@ -83,6 +85,9 @@ const route = createApiRoute({
         latitude: Number(outlet.latitude),
         longitude: Number(outlet.longitude),
         deliveryRadiusKm: Number(outlet.delivery_radius_km),
+        googleBusinessName: outlet.google_business_name as string | null,
+        googleRating: outlet.google_rating != null ? Number(outlet.google_rating) : null,
+        googleRatingCount: outlet.google_rating_count as number | null,
         stock,
       };
     });

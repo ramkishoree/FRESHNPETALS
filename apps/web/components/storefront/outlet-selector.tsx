@@ -13,6 +13,9 @@ export interface OutletWithStock {
   latitude: number;
   longitude: number;
   deliveryRadiusKm: number;
+  googleBusinessName: string | null;
+  googleRating: number | null;
+  googleRatingCount: number | null;
   stock: Record<string, number>;
 }
 
@@ -103,7 +106,9 @@ export function OutletSelector({
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{outlet.name}</span>
+                  <span className="text-sm font-medium">
+                    {outlet.googleBusinessName ?? outlet.name}
+                  </span>
                   {!canFulfill && (
                     <span className="bg-[var(--sale)]/10 rounded-full px-2 py-0.5 text-[10px] font-medium text-[var(--sale)]">
                       Low stock
@@ -111,6 +116,12 @@ export function OutletSelector({
                   )}
                 </div>
                 <p className="mt-0.5 text-xs text-[var(--sf-ink-muted)]">{outlet.address}</p>
+                {outlet.googleRating != null && (
+                  <p className="mt-0.5 text-xs font-medium text-[var(--gold-deep)]">
+                    {outlet.googleRating}★ on Google
+                    {outlet.googleRatingCount != null && ` (${outlet.googleRatingCount})`}
+                  </p>
+                )}
 
                 {/* Stock breakdown per cart item */}
                 {cartItems.length > 0 && (

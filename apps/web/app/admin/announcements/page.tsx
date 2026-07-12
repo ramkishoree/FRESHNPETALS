@@ -42,7 +42,6 @@ export default function AnnouncementsPage() {
   const [offerOptions, setOfferOptions] = React.useState<{ label: string; value: string }[]>([]);
 
   React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     void (async () => {
       const response = await fetch('/api/v1/admin/offers?limit=100');
       const body = await response.json();

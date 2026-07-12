@@ -71,6 +71,13 @@ const serverEnvSchema = publicEnvSchema.extend({
   RESEND_API_KEY: optionalString(),
   RESEND_FROM_EMAIL: optionalEmail(),
   OWNER_NOTIFICATION_EMAIL: optionalEmail(),
+  // Server-side Places Details calls (outlet Google review sync) —
+  // separate from NEXT_PUBLIC_GOOGLE_MAPS_API_KEY because that key is
+  // typically HTTP-referrer-restricted for client-side safety, which
+  // would reject a server-to-server request with no browser Referer.
+  // Falls back to the public key below if this isn't set (works only if
+  // that key happens to be unrestricted).
+  GOOGLE_MAPS_API_KEY: optionalString(),
 });
 
 export type PublicEnv = z.infer<typeof publicEnvSchema>;
@@ -116,6 +123,7 @@ export function getServerEnv(): ServerEnv {
     RESEND_API_KEY: process.env['RESEND_API_KEY'],
     RESEND_FROM_EMAIL: process.env['RESEND_FROM_EMAIL'],
     OWNER_NOTIFICATION_EMAIL: process.env['OWNER_NOTIFICATION_EMAIL'],
+    GOOGLE_MAPS_API_KEY: process.env['GOOGLE_MAPS_API_KEY'],
   });
   return cachedServerEnv;
 }

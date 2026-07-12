@@ -3,9 +3,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { CategoryCard } from '@/components/commerce/category-card';
 import { OfferBanner } from '@/components/commerce/offer-banner';
-import { ReviewCard } from '@/components/commerce/review-card';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
-import { BrandDivider } from '@/components/storefront/brand-divider';
+import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SupabaseProductRepository } from '@/server/repositories/supabase-product-repository';
 
@@ -42,40 +41,34 @@ export default async function HomePage() {
   const repository = new SupabaseProductRepository(supabase);
   const service = new ListPublishedProductsService(repository);
 
-  const [productsResult, categoriesResult, offersResult, reviewsResult, outletsResult] =
-    await Promise.all([
-      service.execute({ limit: 8 }),
-      supabase
-        .from('categories')
-        .select('id, name, slug')
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true })
-        .limit(6),
-      supabase
-        .from('offers')
-        .select('id, name, description')
-        .eq('active', true)
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from('reviews')
-        .select('id, rating, title, comment, created_at, verified_purchase, customers(first_name)')
-        .eq('status', 'approved')
-        .order('created_at', { ascending: false })
-        .limit(3),
-      supabase
-        .from('outlets')
-        .select('id, name, slug, address, city, latitude, longitude')
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .order('name'),
-    ]);
+  const [productsResult, categoriesResult, offersResult, outletsResult] = await Promise.all([
+    service.execute({ limit: 8 }),
+    supabase
+      .from('categories')
+      .select('id, name, slug')
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .order('sort_order', { ascending: true })
+      .limit(6),
+    supabase
+      .from('offers')
+      .select('id, name, description')
+      .eq('active', true)
+      .limit(1)
+      .maybeSingle(),
+    supabase
+      .from('outlets')
+      .select(
+        'id, name, slug, address, city, latitude, longitude, google_business_name, google_rating, google_rating_count, google_cover_photo_url',
+      )
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .order('name'),
+  ]);
 
   const products = productsResult.ok ? productsResult.value.items : [];
   const categories = categoriesResult.data ?? [];
   const offer = offersResult.data;
-  const reviews = reviewsResult.data ?? [];
   const outlets = outletsResult.data ?? [];
 
   return (
@@ -188,13 +181,31 @@ export default async function HomePage() {
                 key={outlet.id}
                 className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-4"
               >
+                {outlet.google_cover_photo_url && (
+                  <div className="relative -mx-1 -mt-1 mb-3 h-24 overflow-hidden rounded-[var(--r-md)]">
+                    {/* eslint-disable-next-line @next/next/no-img-element -- Google-hosted photo */}
+                    <img
+                      src={outlet.google_cover_photo_url}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
                 <div className="flex items-start gap-3">
                   <PinIcon />
                   <div className="min-w-0">
-                    <p className="text-sm font-medium">{outlet.name}</p>
+                    <p className="text-sm font-medium">
+                      {outlet.google_business_name ?? outlet.name}
+                    </p>
                     <p className="mt-0.5 text-xs text-[var(--sf-ink-muted)]">
                       {outlet.address}, {outlet.city}
                     </p>
+                    {outlet.google_rating != null && (
+                      <p className="mt-1 text-xs font-medium text-[var(--gold-deep)]">
+                        {outlet.google_rating}★ on Google
+                        {outlet.google_rating_count != null && ` (${outlet.google_rating_count})`}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -203,29 +214,7 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ==================== REVIEWS ==================== */}
-      {reviews.length > 0 && (
-        <section className="container-brand pt-24 text-center">
-          <p className="eyebrow mb-3">Flowers that speak from the heart</p>
-          <h2 className="text-h2">What customers say</h2>
-          <BrandDivider className="my-7" />
-          <div className="grid gap-5 text-left md:grid-cols-3">
-            {reviews.map((review) => (
-              <ReviewCard
-                key={review.id}
-                authorName={
-                  (review.customers as unknown as { first_name?: string } | null)?.first_name ??
-                  'Customer'
-                }
-                rating={review.rating}
-                comment={review.comment ?? ''}
-                createdAt={review.created_at}
-                verifiedPurchase={review.verified_purchase}
-              />
-            ))}
-          </div>
-        </section>
-      )}
+      <GoogleReviewsCarousel />
     </div>
   );
 }
