@@ -303,7 +303,20 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           router.push(`/checkout/${checkoutSessionId}/processing`);
         },
         modal: {
-          ondismiss: () => setIsPaying(false),
+          // Razorpay's own widget can show a failure/retry screen and close
+          // itself (calling this instead of `handler`) even when the charge
+          // actually succeeded on the bank's side — our webhook is the only
+          // source of truth for whether the order went through, never this
+          // client-side callback. Sending the customer to the same polling
+          // page `handler` uses (rather than just resetting the form) means
+          // a real success still resolves to their order confirmation; a
+          // real cancellation still resolves to the cart via the session's
+          // 'cancelled'/'expired' status — either way they see what
+          // actually happened instead of losing all visibility into it.
+          ondismiss: () => {
+            setIsPaying(false);
+            router.push(`/checkout/${checkoutSessionId}/processing`);
+          },
         },
       });
       razorpay.open();
