@@ -50,6 +50,7 @@ export default function CategoriesPage() {
           placeholder: 'birthday-flowers',
         },
         { name: 'description', label: 'Description', type: 'textarea' },
+        { name: 'image_url', label: 'Cover image', type: 'image' },
         { name: 'sort_order', label: 'Sort order', type: 'number' },
         { name: 'is_active', label: 'Active', type: 'boolean' },
       ]}

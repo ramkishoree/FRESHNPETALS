@@ -14,6 +14,7 @@ const schema = z.object({
   slug: z.string().regex(/^[a-z0-9]+(-[a-z0-9]+)*$/),
   parent_id: zUuid().optional(),
   description: z.string().optional(),
+  image_url: z.string().optional(),
   sort_order: z.number().int().optional(),
   is_active: z.boolean().optional(),
 });

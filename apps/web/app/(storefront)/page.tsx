@@ -45,7 +45,7 @@ export default async function HomePage() {
     service.execute({ limit: 8 }),
     supabase
       .from('categories')
-      .select('id, name, slug')
+      .select('id, name, slug, image_url')
       .eq('is_active', true)
       .is('deleted_at', null)
       .order('sort_order', { ascending: true })
@@ -129,7 +129,12 @@ export default async function HomePage() {
           </div>
           <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
             {categories.map((category) => (
-              <CategoryCard key={category.id} name={category.name} slug={category.slug} />
+              <CategoryCard
+                key={category.id}
+                name={category.name}
+                slug={category.slug}
+                image={category.image_url}
+              />
             ))}
           </div>
         </section>

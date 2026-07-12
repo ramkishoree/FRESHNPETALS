@@ -10,6 +10,7 @@ const schema = z.object({
     .optional(),
   parent_id: zUuid().optional(),
   description: z.string().optional(),
+  image_url: z.string().optional(),
   sort_order: z.number().int().optional(),
   is_active: z.boolean().optional(),
 });
