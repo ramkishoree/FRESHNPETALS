@@ -33,6 +33,57 @@ interface BlogDraft {
  */
 const STAGGER_DAYS = 2;
 
+const HEADING_WRAPPER_PATTERN = /^<h([1-6])>([\s\S]*)<\/h\1>$/i;
+// Any other HTML-ish tag the model tends to sprinkle in despite the
+// system prompt never asking for markup — <p>/<strong>/<em>/etc. The
+// block renderer (blog/[slug]/page.tsx) renders paragraph text as plain
+// text, so a literal tag would otherwise show up on the page verbatim
+// instead of being interpreted as formatting.
+const RESIDUAL_TAG_PATTERN = /<\/?[a-z][a-z0-9]*(?:\s[^>]*)?>/gi;
+
+function stripResidualHtmlTags(text: string): string {
+  return text.replace(RESIDUAL_TAG_PATTERN, '').trim();
+}
+
+/**
+ * blog-writer-ai's article field is instructed to be an "article body",
+ * not asked for any particular markup — but the model routinely wraps
+ * its own section headings in literal `<h1>`/`<h2>` tags anyway. Splitting
+ * blindly on blank lines (as before) turned those into `paragraph` blocks,
+ * which render as plain text — a real bug: readers saw "<h1>Some
+ * Heading</h1>" as literal text instead of a heading. Detect the wrapper
+ * and emit a real `heading` block (block_type the renderer already
+ * supports) instead; strip any other stray tag from genuine paragraphs
+ * as a defensive fallback.
+ */
+function toBlogBlocks(
+  blogId: string,
+  article: string,
+): { blog_id: string; block_type: string; position: number; content: Record<string, unknown> }[] {
+  const paragraphs = article
+    .split(/\n\s*\n/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+
+  return paragraphs.map((raw, position) => {
+    const headingMatch = HEADING_WRAPPER_PATTERN.exec(raw);
+    if (headingMatch) {
+      return {
+        blog_id: blogId,
+        block_type: 'heading',
+        position,
+        content: { level: Number(headingMatch[1]), text: stripResidualHtmlTags(headingMatch[2]!) },
+      };
+    }
+    return {
+      blog_id: blogId,
+      block_type: 'paragraph',
+      position,
+      content: { text: stripResidualHtmlTags(raw) },
+    };
+  });
+}
+
 /**
  * Owner's explicit call: approved posts go out on a steady drip, not all
  * at once the moment a Saturday batch gets approved. Finds the latest
@@ -86,12 +137,23 @@ export async function applyApprovedAgentOutput(
   const readingTimeMinutes = Math.max(1, Math.round(draft.article.split(/\s+/).length / 200));
   const publishedAt = await nextScheduledSlot(admin);
 
+  // Excerpt from the first real paragraph, not a raw slice of the article —
+  // a raw slice could land mid-heading-tag or mid-word and, before this
+  // fix, literally started with "<h1>" for every AI-generated post.
+  const previewBlocks = toBlogBlocks('preview', draft.article);
+  const firstParagraph = previewBlocks.find((b) => b.block_type === 'paragraph');
+  const excerpt = (
+    (firstParagraph?.content['text'] as string | undefined) ?? stripResidualHtmlTags(draft.article)
+  )
+    .slice(0, 200)
+    .trim();
+
   const { data: blog, error: blogError } = await admin
     .from('blogs')
     .insert({
       title: draft.title,
       slug,
-      excerpt: draft.article.slice(0, 200).trim(),
+      excerpt,
       status: 'scheduled',
       reading_time_minutes: readingTimeMinutes,
       published_at: publishedAt,
@@ -105,17 +167,7 @@ export async function applyApprovedAgentOutput(
     return { applied: false, detail: blogError?.message ?? 'Failed to create the blog post.' };
   }
 
-  const paragraphs = draft.article
-    .split(/\n\s*\n/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  const blocks = paragraphs.map((text, position) => ({
-    blog_id: blog.id,
-    block_type: 'paragraph',
-    position,
-    content: { text },
-  }));
+  const blocks = toBlogBlocks(blog.id, draft.article);
 
   if (blocks.length > 0) {
     const { error: blocksError } = await admin.from('blog_blocks').insert(blocks);

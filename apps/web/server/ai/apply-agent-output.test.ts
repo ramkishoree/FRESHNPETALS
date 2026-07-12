@@ -154,6 +154,63 @@ describe('applyApprovedAgentOutput', () => {
     expect(publishedAt).toBe(expected);
   });
 
+  it('converts a literal <h1>/<h2>-wrapped paragraph into a real heading block, not text shown verbatim on the page', async () => {
+    const admin = makeAdmin({});
+    const task = baseTask({
+      metadata: {
+        draft: {
+          title: 'Best Gifts for Gen Z',
+          article:
+            '<h1>Best Gifts for Gen Z</h1>\n\n<h2>Why Flowers Work</h2>\n\nFlowers are a great pick for any occasion.',
+        },
+      },
+    });
+
+    await applyApprovedAgentOutput(admin, task);
+
+    expect(admin.insertedBlocks).toEqual([
+      {
+        blog_id: 'new-blog-id',
+        block_type: 'heading',
+        position: 0,
+        content: { level: 1, text: 'Best Gifts for Gen Z' },
+      },
+      {
+        blog_id: 'new-blog-id',
+        block_type: 'heading',
+        position: 1,
+        content: { level: 2, text: 'Why Flowers Work' },
+      },
+      {
+        blog_id: 'new-blog-id',
+        block_type: 'paragraph',
+        position: 2,
+        content: { text: 'Flowers are a great pick for any occasion.' },
+      },
+    ]);
+    // The excerpt is drawn from the first real paragraph, not a raw slice
+    // that used to start with the literal "<h1>" tag text.
+    expect(admin.insertedBlogs[0].excerpt).toBe('Flowers are a great pick for any occasion.');
+  });
+
+  it('strips stray inline HTML tags from an ordinary paragraph', async () => {
+    const admin = makeAdmin({});
+    const task = baseTask({
+      metadata: {
+        draft: {
+          title: 'A Title',
+          article: 'This has <strong>bold</strong> and <em>italic</em> text in it.',
+        },
+      },
+    });
+
+    await applyApprovedAgentOutput(admin, task);
+
+    expect(admin.insertedBlocks[0]).toMatchObject({
+      content: { text: 'This has bold and italic text in it.' },
+    });
+  });
+
   it('does not apply when the draft is missing a title or article', async () => {
     const admin = makeAdmin({});
     const task = baseTask({ metadata: { draft: { title: 'Only a title' } } });
