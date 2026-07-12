@@ -19,6 +19,7 @@ import {
   type ValidatedCartLine,
 } from '@prana/commerce';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getRateConfig } from '@/server/checkout/get-rate-config';
 import { resolveActiveOffer } from '@/server/checkout/resolve-offer';
 import { resolveCouponEligibilityContext } from '@/server/checkout/coupon-eligibility';
 
@@ -222,6 +223,7 @@ export async function previewCheckoutPricing(
     offerDiscount,
     freeDeliveryFromOffer,
     deliveryDistanceKm: deliveryDistanceKm ?? null,
+    rates: await getRateConfig(admin),
   });
   return ok({ pricing, appliedCouponCode, bonusItem: bonusItemDisplay });
 }

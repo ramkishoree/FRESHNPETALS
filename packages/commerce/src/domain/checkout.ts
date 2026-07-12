@@ -47,6 +47,26 @@ export const STANDARD_DELIVERY_KM = 5;
 export const STANDARD_DELIVERY_FEE = 50;
 export const PER_KM_FEE = 5;
 
+/** Admin-editable rate config (system_settings' tax/delivery rows —
+ * apps/web/server/checkout/get-rate-config.ts reads them). Defaults to
+ * the constants above so every caller that doesn't have a live settings
+ * fetch handy (tests, anything not yet wired) keeps working exactly as
+ * before — these were pure hardcoded constants until the admin Settings
+ * page's tax/delivery fields turned out to be silently display-only. */
+export interface RateConfig {
+  taxRate: number;
+  standardDeliveryKm: number;
+  standardDeliveryFee: number;
+  perKmFee: number;
+}
+
+export const DEFAULT_RATE_CONFIG: RateConfig = {
+  taxRate: TAX_RATE,
+  standardDeliveryKm: STANDARD_DELIVERY_KM,
+  standardDeliveryFee: STANDARD_DELIVERY_FEE,
+  perKmFee: PER_KM_FEE,
+};
+
 /** Ch.8 §93 Cart Validation, the parts checkable without a database round trip (existence/published/inventory checks happen against real repository data in the caller). */
 export function validateCartIsNotEmpty(lines: CartLineInput[]): string[] {
   if (lines.length === 0) return ['Cart is empty.'];
@@ -56,13 +76,18 @@ export function validateCartIsNotEmpty(lines: CartLineInput[]): string[] {
 }
 
 /** Compute the delivery fee from the straight-line distance to the nearest
- *  outlet. First STANDARD_DELIVERY_KM km cost STANDARD_DELIVERY_FEE, then
- *  PER_KM_FEE per km beyond that. Falls back to STANDARD_DELIVERY_FEE when
- *  distance is unknown. */
-export function computeDeliveryFee(distanceKm: number | null | undefined): number {
-  if (distanceKm == null || distanceKm <= 0) return STANDARD_DELIVERY_FEE;
-  if (distanceKm <= STANDARD_DELIVERY_KM) return STANDARD_DELIVERY_FEE;
-  return STANDARD_DELIVERY_FEE + Math.ceil(distanceKm - STANDARD_DELIVERY_KM) * PER_KM_FEE;
+ *  outlet. First `rates.standardDeliveryKm` km cost `rates.standardDeliveryFee`,
+ *  then `rates.perKmFee` per km beyond that. Falls back to
+ *  `rates.standardDeliveryFee` when distance is unknown. */
+export function computeDeliveryFee(
+  distanceKm: number | null | undefined,
+  rates: RateConfig = DEFAULT_RATE_CONFIG,
+): number {
+  if (distanceKm == null || distanceKm <= 0) return rates.standardDeliveryFee;
+  if (distanceKm <= rates.standardDeliveryKm) return rates.standardDeliveryFee;
+  return (
+    rates.standardDeliveryFee + Math.ceil(distanceKm - rates.standardDeliveryKm) * rates.perKmFee
+  );
 }
 
 /** Ch.8 §89 Principle 1: "Always recalculate... never trust [price] coming
@@ -75,7 +100,9 @@ export function computePricing(params: {
   /** True when the best-priority applicable offer is a free_delivery type. */
   freeDeliveryFromOffer?: boolean;
   deliveryDistanceKm?: number | null;
+  rates?: RateConfig;
 }): PricingBreakdown {
+  const rates = params.rates ?? DEFAULT_RATE_CONFIG;
   const subtotal = params.lines.reduce((sum, line) => sum + line.unitPrice * line.quantity, 0);
   const couponDiscount = Math.min(params.couponDiscount ?? 0, subtotal);
   const offerDiscount = Math.min(params.offerDiscount ?? 0, subtotal);
@@ -85,8 +112,10 @@ export function computePricing(params: {
   const discountTotal = Math.min(couponDiscount + offerDiscount, subtotal);
   const afterDiscount = subtotal - discountTotal;
   const deliveryDistanceKm = params.deliveryDistanceKm ?? null;
-  const deliveryFee = params.freeDeliveryFromOffer ? 0 : computeDeliveryFee(deliveryDistanceKm);
-  const taxTotal = Math.round(afterDiscount * TAX_RATE * 100) / 100;
+  const deliveryFee = params.freeDeliveryFromOffer
+    ? 0
+    : computeDeliveryFee(deliveryDistanceKm, rates);
+  const taxTotal = Math.round(afterDiscount * rates.taxRate * 100) / 100;
   const grandTotal = afterDiscount + deliveryFee + taxTotal;
 
   return {

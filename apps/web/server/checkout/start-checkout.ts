@@ -20,6 +20,7 @@ import {
   type ValidatedCartLine,
 } from '@prana/commerce';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
+import { getRateConfig } from '@/server/checkout/get-rate-config';
 import { resolveActiveOffer } from '@/server/checkout/resolve-offer';
 import { resolveCouponEligibilityContext } from '@/server/checkout/coupon-eligibility';
 import { createRazorpayOrder, isRazorpayConfigured } from '@/server/payments/razorpay-adapter';
@@ -323,6 +324,7 @@ export async function startCheckout(
     offerDiscount,
     freeDeliveryFromOffer,
     deliveryDistanceKm: deliveryDistanceKm ?? null,
+    rates: await getRateConfig(admin),
   });
 
   const { data: sessionRow, error: sessionError } = await admin.rpc('checkout_start', {
