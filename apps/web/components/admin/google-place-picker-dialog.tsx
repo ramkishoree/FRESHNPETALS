@@ -19,13 +19,18 @@ import {
  * Uses the modern `PlaceAutocompleteElement`, not the legacy
  * `google.maps.places.Autocomplete` class — as of March 1st 2025, Google
  * silently returns zero predictions for `Autocomplete` on any API key
- * created after that date (no error, the dropdown just never appears),
- * which is exactly what happened here. `PlaceAutocompleteElement`
- * renders its own input internally rather than attaching to an existing
- * one, and — like the Google Map instance itself — takes direct
- * ownership of the DOM node it's mounted into. `containerRef`'s div must
- * therefore stay a permanently empty leaf that React never renders
- * children into (same removeChild lesson as delivery-map.tsx).
+ * created after that date, which is what broke this the first time.
+ * `PlaceAutocompleteElement` renders its own input internally rather
+ * than attaching to an existing one, and takes direct ownership of the
+ * DOM node it's mounted into.
+ *
+ * Mounts via a callback ref rather than a `useEffect` keyed on `open` —
+ * a callback ref fires synchronously the instant React actually attaches
+ * the DOM node, with no dependency on exactly when that happens relative
+ * to Radix Dialog's own open/animation lifecycle. An effect keyed on
+ * `[open]` can silently no-op forever if the container isn't mounted yet
+ * on the one render where the effect happens to run, since it never gets
+ * a second chance to retry.
  */
 export function GooglePlacePickerDialog({
   outletId,
@@ -38,49 +43,50 @@ export function GooglePlacePickerDialog({
 }) {
   const [open, setOpen] = React.useState(false);
   const [isLinking, setIsLinking] = React.useState(false);
+  const [loadError, setLoadError] = React.useState<string | null>(null);
   const [selectedPlace, setSelectedPlace] = React.useState<{
     placeId: string;
     name: string;
     lat: number | null;
     lng: number | null;
   } | null>(null);
-  const containerRef = React.useRef<HTMLDivElement>(null);
   const elementRef = React.useRef<google.maps.places.PlaceAutocompleteElement | null>(null);
 
-  React.useEffect(() => {
-    if (!open || !containerRef.current) return;
-    let cancelled = false;
-
-    void (async () => {
-      const maps = await loadGoogleMaps();
-      if (cancelled || !containerRef.current) return;
-
-      const element = new maps.places.PlaceAutocompleteElement({
-        includedRegionCodes: ['IN'],
-        includedPrimaryTypes: ['establishment'],
-      });
-      element.placeholder = 'Search your business on Google Maps…';
-      containerRef.current.appendChild(element);
-      elementRef.current = element;
-
-      element.addEventListener('gmp-select', async (event) => {
-        const place = event.placePrediction.toPlace();
-        await place.fetchFields({ fields: ['id', 'displayName', 'location'] });
-        setSelectedPlace({
-          placeId: place.id,
-          name: place.displayName ?? place.id,
-          lat: place.location?.lat() ?? null,
-          lng: place.location?.lng() ?? null,
-        });
-      });
-    })();
-
-    return () => {
-      cancelled = true;
+  const mountAutocomplete = React.useCallback((node: HTMLDivElement | null) => {
+    if (!node) {
       elementRef.current?.remove();
       elementRef.current = null;
-    };
-  }, [open]);
+      return;
+    }
+
+    void (async () => {
+      try {
+        const maps = await loadGoogleMaps();
+        const element = new maps.places.PlaceAutocompleteElement({
+          includedRegionCodes: ['IN'],
+          includedPrimaryTypes: ['establishment'],
+        });
+        element.placeholder = 'Search your business on Google Maps…';
+        node.appendChild(element);
+        elementRef.current = element;
+
+        element.addEventListener('gmp-select', async (event) => {
+          const place = event.placePrediction.toPlace();
+          await place.fetchFields({ fields: ['id', 'displayName', 'location'] });
+          setSelectedPlace({
+            placeId: place.id,
+            name: place.displayName ?? place.id,
+            lat: place.location?.lat() ?? null,
+            lng: place.location?.lng() ?? null,
+          });
+        });
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : String(cause);
+        console.error('google_place_picker.load_failed', message);
+        setLoadError(message);
+      }
+    })();
+  }, []);
 
   async function link() {
     if (!selectedPlace) return;
@@ -123,7 +129,12 @@ export function GooglePlacePickerDialog({
               and up to 5 reviews (Google&apos;s own API limit).
             </DialogDescription>
           </DialogHeader>
-          <div ref={containerRef} />
+          <div ref={mountAutocomplete} />
+          {loadError && (
+            <p className="text-caption text-destructive">
+              Could not load Google Maps search: {loadError}
+            </p>
+          )}
           {selectedPlace && (
             <p className="text-caption text-muted-foreground">Selected: {selectedPlace.name}</p>
           )}
