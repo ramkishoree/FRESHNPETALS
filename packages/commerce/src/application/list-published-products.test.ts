@@ -14,6 +14,7 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     status: 'published',
     basePrice: 999,
     salePrice: null,
+    availableQuantity: 10,
     ...overrides,
   };
 }

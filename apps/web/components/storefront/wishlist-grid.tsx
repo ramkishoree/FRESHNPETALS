@@ -16,6 +16,7 @@ interface WishlistProductRow {
     | { base_price: string | number; sale_price: string | number | null }
     | { base_price: string | number; sale_price: string | number | null }[]
     | null;
+  inventory: { available_quantity: number }[] | null;
 }
 
 interface WishlistEntry {
@@ -39,6 +40,10 @@ function mapEntry(entry: WishlistEntry): Product | null {
     status: product.status,
     basePrice: priceRow ? Number(priceRow.base_price) : 0,
     salePrice: priceRow?.sale_price != null ? Number(priceRow.sale_price) : null,
+    availableQuantity: (product.inventory ?? []).reduce(
+      (sum, inv) => sum + Number(inv.available_quantity),
+      0,
+    ),
   };
 }
 
@@ -61,7 +66,7 @@ export function WishlistGrid({ entries }: { entries: WishlistEntry[] }) {
 
   function handleAddToCart(productId: string) {
     const product = products.find((item) => item.id === productId);
-    if (!product) return;
+    if (!product || product.availableQuantity <= 0) return;
     addItem({
       productId: product.id,
       slug: product.slug,

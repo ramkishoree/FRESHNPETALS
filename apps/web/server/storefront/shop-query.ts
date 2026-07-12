@@ -1,11 +1,15 @@
 import type { Product, ProductStatus } from '@prana/commerce';
 
 export const PRODUCT_SELECT_COLUMNS =
-  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price)';
+  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity)';
 
 interface ProductPriceRow {
   base_price: string | number;
   sale_price: string | number | null;
+}
+
+interface ProductInventoryRow {
+  available_quantity: number;
 }
 
 interface ProductRow {
@@ -18,6 +22,7 @@ interface ProductRow {
   status: ProductStatus;
   created_at: string;
   product_prices: ProductPriceRow | ProductPriceRow[] | null;
+  inventory: ProductInventoryRow[] | null;
 }
 
 /** Same mapping as SupabaseProductRepository — duplicated rather than imported because storefront listing queries (category-filtered, sorted) don't fit the repository's fixed `list`/`findPublished` shapes cleanly. */
@@ -35,6 +40,10 @@ export function mapProductRow(row: ProductRow): Product {
     status: row.status,
     basePrice: priceRow ? Number(priceRow.base_price) : 0,
     salePrice: priceRow?.sale_price != null ? Number(priceRow.sale_price) : null,
+    availableQuantity: (row.inventory ?? []).reduce(
+      (sum, inv) => sum + Number(inv.available_quantity),
+      0,
+    ),
   };
 }
 

@@ -23,6 +23,8 @@ export function ProductCard({
   onToggleWishlist,
   isWishlisted,
 }: ProductCardProps) {
+  const outOfStock = product.availableQuantity <= 0;
+
   return (
     <article className="card-brand group flex flex-col overflow-hidden">
       <div className="relative">
@@ -34,11 +36,18 @@ export function ProductCard({
                 alt={product.name}
                 fill
                 sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
-                className="object-cover transition-transform duration-700 ease-[var(--ease)] group-hover:scale-[1.04]"
+                className={`object-cover transition-transform duration-700 ease-[var(--ease)] group-hover:scale-[1.04] ${outOfStock ? 'grayscale' : ''}`}
               />
             ) : (
               <div className="text-caption flex h-full w-full items-center justify-center">
                 No image
+              </div>
+            )}
+            {outOfStock && (
+              <div className="absolute inset-0 flex items-center justify-center bg-black/35">
+                <span className="rounded-full bg-[var(--sf-ink)] px-4 py-1.5 text-sm font-medium text-white">
+                  Out of stock
+                </span>
               </div>
             )}
           </div>
@@ -80,10 +89,11 @@ export function ProductCard({
           {onAddToCart && (
             <button
               type="button"
+              disabled={outOfStock}
               onClick={() => onAddToCart(product.id)}
-              className="btn btn-gold shrink-0 px-5 py-2.5 text-sm"
+              className="btn btn-gold shrink-0 px-5 py-2.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Add
+              {outOfStock ? 'Sold out' : 'Add'}
             </button>
           )}
         </div>

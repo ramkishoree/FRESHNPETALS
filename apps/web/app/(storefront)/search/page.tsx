@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { EmptyState } from '@/components/states/empty-state';
-import { mapProductRow } from '@/server/storefront/shop-query';
+import { mapProductRow, PRODUCT_SELECT_COLUMNS } from '@/server/storefront/shop-query';
 import { sanitizeForPostgrestFilter } from '@/lib/postgrest-filter';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -29,9 +29,7 @@ export default async function SearchPage({
     safeQuery
       ? supabase
           .from('products')
-          .select(
-            'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price)',
-          )
+          .select(PRODUCT_SELECT_COLUMNS)
           .eq('status', 'published')
           .textSearch('name', safeQuery, { type: 'websearch', config: 'english' })
           .limit(24)

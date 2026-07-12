@@ -17,6 +17,7 @@ export function makeProduct(overrides: Partial<Product> = {}): Product {
     status: 'draft',
     basePrice: 999,
     salePrice: null,
+    availableQuantity: 10,
     ...overrides,
   };
 }

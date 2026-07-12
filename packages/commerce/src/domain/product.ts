@@ -25,6 +25,11 @@ export interface Product {
   status: ProductStatus;
   basePrice: number;
   salePrice: number | null;
+  /** Summed across every active outlet — browsing happens before any one
+   *  outlet is selected, so "out of stock" here means everywhere, not at
+   *  a specific location (checkout's own per-outlet check is separate and
+   *  authoritative for what an order actually reserves). */
+  availableQuantity: number;
 }
 
 export interface ProductRepository extends ReadRepository<Product> {

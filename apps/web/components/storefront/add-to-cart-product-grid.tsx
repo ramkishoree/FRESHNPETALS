@@ -16,7 +16,7 @@ export function AddToCartProductGrid({ products }: { products: Product[] }) {
 
   function handleAddToCart(productId: string) {
     const product = products.find((item) => item.id === productId);
-    if (!product) return;
+    if (!product || product.availableQuantity <= 0) return;
     addItem({
       productId: product.id,
       slug: product.slug,

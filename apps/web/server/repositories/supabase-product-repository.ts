@@ -3,11 +3,15 @@ import type { Product, ProductRepository, ProductStatus } from '@prana/commerce'
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const SELECT_COLUMNS =
-  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price)';
+  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity)';
 
 export interface ProductPriceRow {
   base_price: string | number;
   sale_price: string | number | null;
+}
+
+export interface ProductInventoryRow {
+  available_quantity: number;
 }
 
 export interface ProductRow {
@@ -20,6 +24,7 @@ export interface ProductRow {
   status: ProductStatus;
   created_at: string;
   product_prices: ProductPriceRow | ProductPriceRow[] | null;
+  inventory: ProductInventoryRow[] | null;
 }
 
 export function mapRow(row: ProductRow): Product {
@@ -37,6 +42,13 @@ export function mapRow(row: ProductRow): Product {
     status: row.status,
     basePrice: priceRow ? Number(priceRow.base_price) : 0,
     salePrice: priceRow?.sale_price != null ? Number(priceRow.sale_price) : null,
+    // Summed across every active outlet's inventory row (see Product's own
+    // doc comment) — a product with no inventory rows at all reads as 0,
+    // same as one that's been fully sold out everywhere.
+    availableQuantity: (row.inventory ?? []).reduce(
+      (sum, inv) => sum + Number(inv.available_quantity),
+      0,
+    ),
   };
 }
 
