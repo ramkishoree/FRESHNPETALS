@@ -195,15 +195,13 @@ export default async function HomePage() {
       )}
 
       {/* ==================== FULL CATALOGUE ==================== */}
-      <section className="pt-12">
-        <div className="container-brand mb-5">
+      <section className="container-brand pt-12">
+        <div className="mb-5">
           <p className="eyebrow mb-2">Everything we grow</p>
           <h2 className="text-h2">The full catalogue</h2>
         </div>
-        <div className="container-brand">
-          <FloatingCategoryBar categories={categories} />
-        </div>
-        <div className="container-brand mt-6">
+        <FloatingCategoryBar categories={categories} />
+        <div className="mt-6">
           <AddToCartProductGrid products={products} />
         </div>
       </section>
