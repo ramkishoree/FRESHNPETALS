@@ -114,8 +114,13 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
     category: 'Content',
     // 2500+ word article + outline + FAQs + captions genuinely needs more
     // than the default ceiling — every other agent's output is short
-    // enough that the default is plenty.
-    maxTokens: 8000,
+    // enough that the default is plenty. "At least 2500 words" routinely
+    // produces 3500-4000+, which at 8000 tokens got cut off mid-JSON in
+    // production (confirmed via Vercel runtime logs: the response never
+    // reached its closing fence). Claude Sonnet 4.5 supports up to 64k
+    // output tokens, so 16000 has real headroom without hitting a model
+    // limit.
+    maxTokens: 16000,
     capabilities: ['Blog Writing', 'Content SEO'],
     tools: [
       'Read Blog Database',

@@ -12,6 +12,19 @@ import type {
 } from '@prana/ai';
 import OpenAI from 'openai';
 
+// A response cut off by the max_tokens ceiling mid-JSON produces a
+// cryptic "Unexpected token"/"Unexpected end of JSON input" from
+// JSON.parse with no indication of the real cause — see the identical
+// guard in anthropic-adapter.ts, which is what surfaced this failure
+// mode in production for blog-writer-ai.
+function assertNotTruncated(finishReason: string | null | undefined, maxTokens: number): void {
+  if (finishReason === 'length') {
+    throw new Error(
+      `Response was truncated: it hit the ${maxTokens}-token maxTokens ceiling before finishing. Increase maxTokens for this agent.`,
+    );
+  }
+}
+
 /**
  * Ch.14 §7/§8: the only file in this codebase allowed to import the
  * `openai` SDK. Everything else talks to `ProviderAdapter`.
@@ -56,6 +69,7 @@ export class OpenAiAdapter implements ProviderAdapter {
       ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
     });
 
+    assertNotTruncated(response.choices[0]?.finish_reason, input.maxTokens ?? 512);
     const raw = response.choices[0]?.message.content ?? '{}';
     return {
       data: JSON.parse(raw) as T,

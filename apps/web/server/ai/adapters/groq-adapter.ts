@@ -14,6 +14,17 @@ import OpenAI from 'openai';
 
 const GROQ_BASE_URL = 'https://api.groq.com/openai/v1';
 
+// See the identical guard in anthropic-adapter.ts — a response cut off by
+// the max_tokens ceiling mid-JSON otherwise fails JSON.parse with a
+// cryptic error that gives no indication of the real cause.
+function assertNotTruncated(finishReason: string | null | undefined, maxTokens: number): void {
+  if (finishReason === 'length') {
+    throw new Error(
+      `Response was truncated: it hit the ${maxTokens}-token maxTokens ceiling before finishing. Increase maxTokens for this agent.`,
+    );
+  }
+}
+
 /**
  * Groq's API is OpenAI-compatible, so the `openai` SDK works against it
  * with just a different base URL and key — still its own adapter file
@@ -61,6 +72,7 @@ export class GroqAdapter implements ProviderAdapter {
       ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
     });
 
+    assertNotTruncated(response.choices[0]?.finish_reason, input.maxTokens ?? 512);
     const raw = response.choices[0]?.message.content ?? '{}';
     return {
       data: JSON.parse(raw) as T,

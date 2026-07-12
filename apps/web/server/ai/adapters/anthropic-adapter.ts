@@ -30,6 +30,20 @@ export function stripMarkdownFence(raw: string): string {
   return match?.[1] ? match[1].trim() : raw;
 }
 
+// A response cut off by the max_tokens ceiling mid-JSON produces a
+// cryptic "Unexpected token" from JSON.parse with no indication of the
+// real cause (this exact failure took blog-writer-ai down in production —
+// its 2500+ word article plus outline/FAQs/captions routinely exceeded
+// the maxTokens budget it was given). Checking stop_reason first turns
+// that into a message that says what actually happened and how to fix it.
+export function assertNotTruncated(stopReason: string | null, maxTokens: number): void {
+  if (stopReason === 'max_tokens') {
+    throw new Error(
+      `Response was truncated: it hit the ${maxTokens}-token maxTokens ceiling before finishing. Increase maxTokens for this agent.`,
+    );
+  }
+}
+
 /**
  * Ch.14 §7/§8: the only file allowed to import the `@anthropic-ai/sdk`
  * package. Claude has no native JSON-schema response mode (unlike OpenAI's
@@ -78,6 +92,7 @@ export class AnthropicAdapter implements ProviderAdapter {
       messages: input.messages,
     });
 
+    assertNotTruncated(response.stop_reason, input.maxTokens ?? DEFAULT_MAX_TOKENS);
     const raw = stripMarkdownFence(extractText(response.content).trim());
     return {
       data: JSON.parse(raw) as T,
