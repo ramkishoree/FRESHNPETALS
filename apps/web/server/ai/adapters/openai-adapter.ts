@@ -58,13 +58,21 @@ export class OpenAiAdapter implements ProviderAdapter {
   async generateStructuredOutput<T>(
     input: StructuredOutputInput,
   ): Promise<StructuredOutputOutput<T>> {
+    // response_format: json_object has a hard OpenAI-API requirement that
+    // the word "json" appear somewhere in the messages, or the request
+    // 400s outright — and without ever telling the model the schema, JSON
+    // mode only guarantees syntactically valid JSON, not the right shape.
+    // Build the same explicit schema instruction anthropic-adapter.ts
+    // uses, which satisfies both at once.
+    const schemaInstruction = `Respond with ONLY valid JSON matching this schema, no prose, no markdown fences:\n${JSON.stringify(input.jsonSchema)}`;
+    const system = input.systemPrompt
+      ? `${input.systemPrompt}\n\n${schemaInstruction}`
+      : schemaInstruction;
+
     const response = await this.client.chat.completions.create({
       model: input.model,
       response_format: { type: 'json_object' },
-      messages: [
-        ...(input.systemPrompt ? [{ role: 'system' as const, content: input.systemPrompt }] : []),
-        ...input.messages,
-      ],
+      messages: [{ role: 'system' as const, content: system }, ...input.messages],
       ...(input.maxTokens !== undefined ? { max_tokens: input.maxTokens } : {}),
       ...(input.temperature !== undefined ? { temperature: input.temperature } : {}),
     });
