@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { ImageUploadField } from '@/components/admin/image-upload-field';
+import { ProductMediaGallery } from '@/components/admin/product-media-gallery';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -226,6 +227,11 @@ export function ProductForm({
           value={values.featuredImage}
           onChange={(url) => set('featuredImage', url)}
         />
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label>Additional photos &amp; videos</Label>
+        <ProductMediaGallery productId={productId} />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">

@@ -9,6 +9,7 @@ overrides:
 allowBuilds:
   cpu-features: true
   esbuild: true
+  ffmpeg-static: true
   protobufjs: true
   sharp: true
   ssh2: true

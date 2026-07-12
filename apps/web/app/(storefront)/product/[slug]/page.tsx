@@ -1,5 +1,4 @@
 import type { Metadata } from 'next';
-import Image from 'next/image';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -14,6 +13,7 @@ import { getPublicEnv } from '@/config/env';
 import { JsonLd } from '@/components/seo/json-ld';
 import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
 import { ProductActions } from '@/components/storefront/product-actions';
+import { ProductGallery, type GalleryItem } from '@/components/storefront/product-gallery';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 interface PageProps {
@@ -57,13 +57,29 @@ export default async function ProductDetailPage({ params }: PageProps) {
     : product.product_prices;
   const category = Array.isArray(product.categories) ? product.categories[0] : product.categories;
 
-  const { data: reviews } = await supabase
-    .from('reviews')
-    .select('id, rating, title, comment, created_at, verified_purchase, customers(first_name)')
-    .eq('product_id', product.id)
-    .eq('status', 'approved')
-    .order('created_at', { ascending: false })
-    .limit(10);
+  const [{ data: reviews }, { data: extraMedia }] = await Promise.all([
+    supabase
+      .from('reviews')
+      .select('id, rating, title, comment, created_at, verified_purchase, customers(first_name)')
+      .eq('product_id', product.id)
+      .eq('status', 'approved')
+      .order('created_at', { ascending: false })
+      .limit(10),
+    supabase
+      .from('product_media')
+      .select('media_type, url, thumbnail_url')
+      .eq('product_id', product.id)
+      .order('position', { ascending: true }),
+  ]);
+
+  const galleryItems: GalleryItem[] = [
+    ...(product.featured_image ? [{ type: 'image' as const, url: product.featured_image }] : []),
+    ...(extraMedia ?? []).map((item) => ({
+      type: item.media_type as 'image' | 'video',
+      url: item.url,
+      ...(item.thumbnail_url ? { thumbnailUrl: item.thumbnail_url } : {}),
+    })),
+  ];
 
   const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;
   const productUrl = `${appUrl}/product/${product.slug}`;
@@ -160,20 +176,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
       </Breadcrumb>
 
       <div className="grid gap-10 lg:grid-cols-2">
-        <div className="relative overflow-hidden rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] shadow-[var(--shadow-md)]">
-          <div className="relative aspect-square w-full">
-            {product.featured_image && (
-              <Image
-                src={product.featured_image}
-                alt={product.name}
-                fill
-                priority
-                sizes="(max-width: 1024px) 100vw, 50vw"
-                className="object-cover"
-              />
-            )}
+        {galleryItems.length > 0 ? (
+          <ProductGallery items={galleryItems} name={product.name} />
+        ) : (
+          <div className="relative overflow-hidden rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] shadow-[var(--shadow-md)]">
+            <div className="relative aspect-square w-full" />
           </div>
-        </div>
+        )}
 
         <div className="lg:pt-4">
           <ProductActions

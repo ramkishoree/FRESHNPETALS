@@ -52,6 +52,15 @@ const nextConfig: NextConfig = {
     '@prana/operations',
     '@prana/ai',
   ],
+  // ffmpeg-static's binary is resolved at runtime via a dynamic path
+  // (fluent-ffmpeg calls setFfmpegPath with it), so Next's automatic
+  // dependency tracer can't reliably detect it belongs in the deployed
+  // function bundle — without this it works locally and 500s on Vercel
+  // with "ffmpeg binary not available", the exact class of bug that's
+  // hit this project before (turbo.json env stripping).
+  outputFileTracingIncludes: {
+    '/api/v1/admin/products/[id]/media': ['./node_modules/ffmpeg-static/**'],
+  },
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
