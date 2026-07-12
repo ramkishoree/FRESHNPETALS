@@ -1,3 +1,4 @@
+import 'server-only';
 import { createClient } from '@supabase/supabase-js';
 import { getServerEnv } from '@/config/env';
 import { fetchWithTimeout } from '@/lib/supabase/fetch-with-timeout';
@@ -9,6 +10,12 @@ import { fetchWithTimeout } from '@/lib/supabase/fetch-with-timeout';
  * response. Used for: pre-auth lockout checks (the user isn't authenticated
  * yet, so their own login_history RLS policy can't apply), and later by
  * Phase 5 backend services that need to act with full trust.
+ *
+ * `getServerEnv()` already throws at runtime if called client-side — the
+ * `server-only` import adds a build-time guard on top, so a client
+ * component that accidentally imports this module fails the build
+ * immediately instead of only throwing if that code path actually runs
+ * in a browser.
  */
 export function createSupabaseAdminClient() {
   const env = getServerEnv();
