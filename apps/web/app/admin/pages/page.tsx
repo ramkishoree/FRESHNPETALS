@@ -40,6 +40,7 @@ export default function StaticPagesPage() {
       endpoint="/api/v1/admin/pages"
       columns={columns}
       searchPlaceholder="Search pages..."
+      getPreviewHref={(row) => (row.slug === 'home' ? '/' : `/${row.slug}`)}
       fields={[
         { name: 'title', label: 'Title', type: 'text', required: true },
         { name: 'slug', label: 'Slug', type: 'text', required: true },

@@ -269,6 +269,17 @@ export function ProductForm({
         <Button type="submit" disabled={isSaving}>
           {isSaving ? 'Saving...' : productId ? 'Save changes' : 'Create product'}
         </Button>
+        {productId && values.slug && (
+          <Button type="button" variant="outline" asChild>
+            <a
+              href={`/api/draft/enable?path=${encodeURIComponent(`/product/${values.slug}`)}`}
+              target="_blank"
+              rel="noreferrer"
+            >
+              Preview
+            </a>
+          </Button>
+        )}
         <Button type="button" variant="outline" onClick={() => router.push('/admin/products')}>
           Cancel
         </Button>

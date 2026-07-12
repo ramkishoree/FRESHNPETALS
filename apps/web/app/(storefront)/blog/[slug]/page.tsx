@@ -1,8 +1,10 @@
 import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { getPublicEnv } from '@/config/env';
 import { JsonLd } from '@/components/seo/json-ld';
+import { DraftModeBanner } from '@/components/storefront/draft-mode-banner';
 import { formatDate } from '@/lib/format-date';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -55,14 +57,15 @@ function BlockRenderer({ block, index }: { block: BlogBlock; index: number }) {
 
 export default async function BlogDetailPage({ params }: PageProps) {
   const { slug } = await params;
+  const isDraft = (await draftMode()).isEnabled;
   const supabase = await createSupabaseServerClient();
 
-  const { data: blog } = await supabase
+  let blogQuery = supabase
     .from('blogs')
-    .select('id, title, excerpt, featured_image, published_at, reading_time_minutes')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .maybeSingle();
+    .select('id, title, excerpt, featured_image, published_at, reading_time_minutes, status')
+    .eq('slug', slug);
+  if (!isDraft) blogQuery = blogQuery.eq('status', 'published');
+  const { data: blog } = await blogQuery.maybeSingle();
   if (!blog) notFound();
 
   const { data: blocks } = await supabase
@@ -76,6 +79,7 @@ export default async function BlogDetailPage({ params }: PageProps) {
 
   return (
     <article className="container-brand max-w-3xl space-y-6 py-10">
+      {isDraft && <DraftModeBanner status={blog.status} />}
       <JsonLd
         data={{
           '@context': 'https://schema.org',

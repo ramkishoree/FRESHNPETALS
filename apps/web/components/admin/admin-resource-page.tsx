@@ -39,6 +39,8 @@ export interface AdminResourcePageProps<TRow extends ResourceRow> {
   columns: ColumnDef<TRow>[];
   fields: AdminResourceField[];
   searchPlaceholder?: string;
+  /** When provided, adds a "Preview" action per row (opens the real storefront page in Draft Mode). Return null to hide it for that row. */
+  getPreviewHref?: (row: TRow) => string | null;
 }
 
 /**
@@ -57,6 +59,7 @@ export function AdminResourcePage<TRow extends ResourceRow>({
   columns,
   fields,
   searchPlaceholder,
+  getPreviewHref,
 }: AdminResourcePageProps<TRow>) {
   const [rows, setRows] = React.useState<TRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -140,21 +143,35 @@ export function AdminResourcePage<TRow extends ResourceRow>({
     {
       id: 'actions',
       header: '',
-      cell: ({ row }) => (
-        <div className="flex justify-end gap-2">
-          <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>
-            Edit
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="text-destructive"
-            onClick={() => handleDelete(row.original)}
-          >
-            Delete
-          </Button>
-        </div>
-      ),
+      cell: ({ row }) => {
+        const previewHref = getPreviewHref?.(row.original);
+        return (
+          <div className="flex justify-end gap-2">
+            {previewHref && (
+              <Button variant="ghost" size="sm" asChild>
+                <a
+                  href={`/api/draft/enable?path=${encodeURIComponent(previewHref)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  Preview
+                </a>
+              </Button>
+            )}
+            <Button variant="ghost" size="sm" onClick={() => openEdit(row.original)}>
+              Edit
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-destructive"
+              onClick={() => handleDelete(row.original)}
+            >
+              Delete
+            </Button>
+          </div>
+        );
+      },
     },
   ];
 

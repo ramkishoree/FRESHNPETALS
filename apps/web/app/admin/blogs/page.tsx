@@ -43,6 +43,7 @@ export default function BlogsPage() {
       endpoint="/api/v1/admin/blogs"
       columns={columns}
       searchPlaceholder="Search blog posts..."
+      getPreviewHref={(row) => `/blog/${row.slug}`}
       fields={[
         { name: 'title', label: 'Title', type: 'text', required: true },
         { name: 'slug', label: 'Slug', type: 'text', required: true },

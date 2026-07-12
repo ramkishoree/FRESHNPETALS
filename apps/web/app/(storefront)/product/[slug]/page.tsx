@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { draftMode } from 'next/headers';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import {
@@ -11,6 +12,7 @@ import {
 } from '@/components/ui/breadcrumb';
 import { getPublicEnv } from '@/config/env';
 import { JsonLd } from '@/components/seo/json-ld';
+import { DraftModeBanner } from '@/components/storefront/draft-mode-banner';
 import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
 import { ProductActions } from '@/components/storefront/product-actions';
 import { ProductGallery, type GalleryItem } from '@/components/storefront/product-gallery';
@@ -22,13 +24,14 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
+  const isDraft = (await draftMode()).isEnabled;
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
+  let query = supabase
     .from('products')
     .select('name, seo_title, meta_description')
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .maybeSingle();
+    .eq('slug', slug);
+  if (!isDraft) query = query.eq('status', 'published');
+  const { data } = await query.maybeSingle();
   if (!data) return { title: 'Product not found | Fresh & Petals' };
   return {
     title: data.seo_title ?? `${data.name} | Fresh & Petals`,
@@ -36,19 +39,22 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   };
 }
 
-/** Ch.12 §22 Product Detail Page — server-rendered for SEO. */
+/** Ch.12 §22 Product Detail Page — server-rendered for SEO. Draft Mode
+ * (admin Preview link) drops the `status = 'published'` filter so an
+ * unpublished product can be reviewed before going live. */
 export default async function ProductDetailPage({ params }: PageProps) {
   const { slug } = await params;
+  const isDraft = (await draftMode()).isEnabled;
   const supabase = await createSupabaseServerClient();
 
-  const { data: product } = await supabase
+  let productQuery = supabase
     .from('products')
     .select(
       'id, sku, slug, name, short_description, description, featured_image, status, categories(name, slug), product_prices(base_price, sale_price)',
     )
-    .eq('slug', slug)
-    .eq('status', 'published')
-    .maybeSingle();
+    .eq('slug', slug);
+  if (!isDraft) productQuery = productQuery.eq('status', 'published');
+  const { data: product } = await productQuery.maybeSingle();
 
   if (!product) notFound();
 
@@ -88,6 +94,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
 
   return (
     <div className="container-brand py-10">
+      {isDraft && <DraftModeBanner status={product.status} />}
       <JsonLd
         data={{
           '@context': 'https://schema.org',
