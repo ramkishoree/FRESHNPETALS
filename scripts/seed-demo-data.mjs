@@ -244,6 +244,22 @@ const STATIC_PAGES = [
   },
 ];
 
+// Homepage hero — a different content shape than STATIC_PAGES' blocks
+// array (StaticPageContent never renders this row; the homepage reads it
+// directly). Editable via Admin → Pages → "home" → Body content.
+const HOME_PAGE_HERO = {
+  slug: 'home',
+  title: 'Homepage Hero',
+  content: {
+    eyebrow: "Lucknow's neighbourhood florist",
+    title: 'Fresh flowers, delivered',
+    titleHighlight: 'same-day.',
+    subtitle:
+      "Hand-picked bouquets for every occasion — Lucknow's freshest flower delivery, arranged fresh the morning it ships.",
+    ctaLabel: 'Shop now',
+  },
+};
+
 const FAQS = [
   { question: 'How fresh are the flowers?', answer: 'Every bouquet is arranged the morning of delivery using stock sourced from local growers — nothing sits in cold storage for days.' },
   { question: 'Can I schedule delivery for a specific date and time?', answer: 'Yes — pick a delivery slot at checkout. Same-day slots are available for orders placed before 6 PM, subject to availability.' },
@@ -362,6 +378,16 @@ async function main() {
         [page.title, page.slug, content],
       );
     }
+
+    // Only seeds if missing (unlike STATIC_PAGES above) — once an admin
+    // has customized the homepage hero via the Pages tab, rerunning this
+    // script must not silently overwrite their edits.
+    await client.query(
+      `insert into public.static_pages (title, slug, status, content)
+       values ($1, $2, 'published', $3::jsonb)
+       on conflict (slug) do nothing`,
+      [HOME_PAGE_HERO.title, HOME_PAGE_HERO.slug, JSON.stringify(HOME_PAGE_HERO.content)],
+    );
 
     for (let i = 0; i < FAQS.length; i++) {
       const faq = FAQS[i];

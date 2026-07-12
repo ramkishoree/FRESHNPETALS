@@ -43,6 +43,12 @@ export default function StaticPagesPage() {
       fields={[
         { name: 'title', label: 'Title', type: 'text', required: true },
         { name: 'slug', label: 'Slug', type: 'text', required: true },
+        {
+          name: 'content',
+          label: 'Body content',
+          type: 'json',
+          placeholder: '{"blocks":[{"type":"paragraph","text":"..."}]}',
+        },
         { name: 'layout', label: 'Layout', type: 'text' },
         {
           name: 'status',

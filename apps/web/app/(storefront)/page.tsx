@@ -41,35 +41,51 @@ export default async function HomePage() {
   const repository = new SupabaseProductRepository(supabase);
   const service = new ListPublishedProductsService(repository);
 
-  const [productsResult, categoriesResult, offersResult, outletsResult] = await Promise.all([
-    service.execute({ limit: 8 }),
-    supabase
-      .from('categories')
-      .select('id, name, slug, image_url')
-      .eq('is_active', true)
-      .is('deleted_at', null)
-      .order('sort_order', { ascending: true })
-      .limit(6),
-    supabase
-      .from('offers')
-      .select('id, name, description')
-      .eq('active', true)
-      .limit(1)
-      .maybeSingle(),
-    supabase
-      .from('outlets')
-      .select(
-        'id, name, slug, address, city, latitude, longitude, google_business_name, google_rating, google_rating_count, google_cover_photo_url',
-      )
-      .eq('is_active', true)
-      .is('deleted_at', null)
-      .order('name'),
-  ]);
+  const [productsResult, categoriesResult, offersResult, outletsResult, homePageResult] =
+    await Promise.all([
+      service.execute({ limit: 8 }),
+      supabase
+        .from('categories')
+        .select('id, name, slug, image_url')
+        .eq('is_active', true)
+        .is('deleted_at', null)
+        .order('sort_order', { ascending: true })
+        .limit(6),
+      supabase
+        .from('offers')
+        .select('id, name, description')
+        .eq('active', true)
+        .limit(1)
+        .maybeSingle(),
+      supabase
+        .from('outlets')
+        .select(
+          'id, name, slug, address, city, latitude, longitude, google_business_name, google_rating, google_rating_count, google_cover_photo_url',
+        )
+        .eq('is_active', true)
+        .is('deleted_at', null)
+        .order('name'),
+      supabase.from('static_pages').select('content').eq('slug', 'home').maybeSingle(),
+    ]);
 
   const products = productsResult.ok ? productsResult.value.items : [];
   const categories = categoriesResult.data ?? [];
   const offer = offersResult.data;
   const outlets = outletsResult.data ?? [];
+
+  // Editable via Admin → Pages → the "home" entry's Body content field
+  // ({eyebrow, title, titleHighlight, subtitle, ctaLabel, heroImageUrl}).
+  // Falls back to the original copy when that row doesn't exist yet or a
+  // field is left blank, so this never renders empty hero text.
+  interface HomeHeroContent {
+    eyebrow?: string;
+    title?: string;
+    titleHighlight?: string;
+    subtitle?: string;
+    ctaLabel?: string;
+    heroImageUrl?: string;
+  }
+  const hero = (homePageResult.data?.content as HomeHeroContent | null) ?? {};
 
   return (
     <div className="pb-24">
@@ -77,15 +93,16 @@ export default async function HomePage() {
       <section className="relative overflow-hidden">
         <div className="container-brand grid items-center gap-10 pb-16 pt-14 lg:grid-cols-[1.05fr_1fr] lg:pb-24 lg:pt-20">
           <div className="max-w-xl">
-            <p className="eyebrow mb-5">Lucknow&rsquo;s neighbourhood florist</p>
+            <p className="eyebrow mb-5">{hero.eyebrow ?? "Lucknow's neighbourhood florist"}</p>
             <h1 className="text-h1">
-              Fresh flowers,
-              <br />
-              delivered <em className="not-italic text-[var(--gold-deep)]">same-day.</em>
+              {hero.title ?? 'Fresh flowers, delivered'}{' '}
+              <em className="not-italic text-[var(--gold-deep)]">
+                {hero.titleHighlight ?? 'same-day.'}
+              </em>
             </h1>
             <p className="text-body-lg mt-6 max-w-md">
-              Hand-picked bouquets for every occasion — Lucknow&apos;s freshest flower delivery,
-              arranged fresh the morning it ships.
+              {hero.subtitle ??
+                "Hand-picked bouquets for every occasion — Lucknow's freshest flower delivery, arranged fresh the morning it ships."}
             </p>
 
             <div className="mt-9 flex flex-wrap items-center gap-3">
@@ -93,7 +110,7 @@ export default async function HomePage() {
                 href="/shop"
                 className="btn btn-primary inline-flex items-center px-7 py-3.5 text-sm"
               >
-                Shop now
+                {hero.ctaLabel ?? 'Shop now'}
               </Link>
             </div>
           </div>
@@ -105,7 +122,12 @@ export default async function HomePage() {
             />
             <div className="relative overflow-hidden rounded-[26px] border border-[var(--sf-border)] bg-[var(--sf-surface)] shadow-[var(--shadow-lift)]">
               <div className="relative aspect-[4/5] w-full">
-                <Image src="/logo-mark.svg" alt="" fill className="object-contain p-16" />
+                <Image
+                  src={hero.heroImageUrl ?? '/logo-mark.svg'}
+                  alt=""
+                  fill
+                  className={hero.heroImageUrl ? 'object-cover' : 'object-contain p-16'}
+                />
               </div>
             </div>
           </div>
