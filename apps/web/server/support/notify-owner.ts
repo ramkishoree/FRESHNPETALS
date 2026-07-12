@@ -22,6 +22,10 @@ async function notifyBothChannels(params: {
   emailSubject: string;
   emailHtml: string;
   logContext: Record<string, unknown>;
+  /** send-order-confirmation-emails.ts sends the real owner email for
+   *  order-placed (item photos/names/invoice PDF attached) — this skips
+   *  the bare-bones one here so the owner doesn't get two emails. */
+  skipEmail?: boolean;
 }): Promise<void> {
   const env = getServerEnv();
 
@@ -41,6 +45,8 @@ async function notifyBothChannels(params: {
   } else {
     logger.warn('support.notify_owner.whatsapp_not_configured', params.logContext);
   }
+
+  if (params.skipEmail) return;
 
   if (isEmailConfigured() && env.OWNER_NOTIFICATION_EMAIL) {
     try {
@@ -71,6 +77,7 @@ export async function notifyOwnerOrderPlaced(params: {
     emailSubject: `New order ${params.orderNumber} — ${params.currency} ${params.grandTotal.toFixed(2)}`,
     emailHtml: `<p>New order placed.</p><p><strong>Order:</strong> ${params.orderNumber}</p><p><strong>Total:</strong> ${params.currency} ${params.grandTotal.toFixed(2)}</p>`,
     logContext: { event: 'order_placed', orderNumber: params.orderNumber },
+    skipEmail: true,
   });
 }
 

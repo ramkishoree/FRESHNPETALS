@@ -4,6 +4,7 @@ import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { handleInvoiceGenerate } from '@/server/invoices/generate-invoice-job';
 import { logger } from '@/server/logger';
+import { sendOrderConfirmationEmails } from '@/server/orders/send-order-confirmation-emails';
 import { verifyWebhookSignature } from '@/server/payments/razorpay-adapter';
 import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
 import { notifyOwnerOrderPlaced } from '@/server/support/notify-owner';
@@ -130,6 +131,20 @@ export async function POST(request: NextRequest) {
           );
         } catch (cause) {
           logger.error('webhook.razorpay.invoice_generate_failed', {
+            correlationId,
+            message: cause instanceof Error ? cause.message : String(cause),
+          });
+        }
+
+        // Customer's first-ever order email, plus the richer owner alert
+        // (item photos/names/invoice PDF attached) that supersedes
+        // notifyOwnerOrderPlaced's bare-bones one above. Its own failures
+        // are caught internally per-recipient — never allowed to fail the
+        // webhook itself, same discipline as the invoice job above.
+        try {
+          await sendOrderConfirmationEmails(admin, order.id);
+        } catch (cause) {
+          logger.error('webhook.razorpay.confirmation_email_failed', {
             correlationId,
             message: cause instanceof Error ? cause.message : String(cause),
           });

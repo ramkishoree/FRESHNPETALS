@@ -12,6 +12,7 @@ export async function sendEmail(params: {
   to: string;
   subject: string;
   html: string;
+  attachments?: { filename: string; content: Buffer }[];
 }): Promise<void> {
   const env = getServerEnv();
   if (!env.RESEND_API_KEY || !env.RESEND_FROM_EMAIL) {
@@ -24,6 +25,7 @@ export async function sendEmail(params: {
     to: params.to,
     subject: params.subject,
     html: params.html,
+    ...(params.attachments ? { attachments: params.attachments } : {}),
   });
 
   if (error) throw new Error(error.message);
