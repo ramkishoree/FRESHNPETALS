@@ -4,7 +4,9 @@ import Link from 'next/link';
 import { CategoryCard } from '@/components/commerce/category-card';
 import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
+import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
 import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
+import { OfferPopup } from '@/components/storefront/offer-popup';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SupabaseProductRepository } from '@/server/repositories/supabase-product-repository';
 
@@ -29,12 +31,12 @@ function PinIcon() {
 }
 
 /**
- * Ch.12 §15 Homepage Structure: Announcement Banner (global, not
- * per-page) → Hero → Categories → Featured Products → Best Sellers →
- * Today's Offers → Why Choose Us → Customer Reviews → Instagram Gallery
- * → Latest Blogs → FAQ → Footer. Instagram Gallery/FAQ are deferred (no
- * Instagram API integration decision made yet, no FAQ content model
- * wired) — every other section is real data, not placeholder markup.
+ * Owner's explicit call: "dead simple, authority in a glance" — hero,
+ * featured products, and Google reviews all land within the first couple
+ * of swipes, before category browsing or the full catalogue. Ch.12 §15's
+ * original section order (categories before featured products) is
+ * inverted here for exactly that reason; nothing below the fold is
+ * removed, just reordered and, for the catalogue, no longer capped at 8.
  */
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
@@ -43,7 +45,7 @@ export default async function HomePage() {
 
   const [productsResult, categoriesResult, offersResult, outletsResult, homePageResult] =
     await Promise.all([
-      service.execute({ limit: 8 }),
+      service.execute({ limit: 48 }),
       supabase
         .from('categories')
         .select('id, name, slug, image_url')
@@ -70,6 +72,7 @@ export default async function HomePage() {
     ]);
 
   const products = productsResult.ok ? productsResult.value.items : [];
+  const featuredProducts = products.slice(0, 6);
   const categories = categoriesResult.data ?? [];
   const offer = offersResult.data;
   const outlets = outletsResult.data ?? [];
@@ -90,9 +93,13 @@ export default async function HomePage() {
 
   return (
     <div className="pb-24">
+      {offer && (
+        <OfferPopup offerId={offer.id} title={offer.name} description={offer.description ?? ''} />
+      )}
+
       {/* ============================ HERO ============================ */}
       <section className="relative overflow-hidden">
-        <div className="container-brand grid items-center gap-10 pb-16 pt-14 lg:grid-cols-[1.05fr_1fr] lg:pb-24 lg:pt-20">
+        <div className="container-brand grid items-center gap-10 pb-10 pt-14 lg:grid-cols-[1.05fr_1fr] lg:pb-14 lg:pt-20">
           <div className="max-w-xl">
             <p className="eyebrow mb-5">{hero.eyebrow ?? "Lucknow's neighbourhood florist"}</p>
             <h1 className="text-h1">
@@ -135,9 +142,33 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ============= FEATURED PRODUCTS — quick glance carousel ============= */}
+      {featuredProducts.length > 0 && (
+        <section className="container-brand pt-2">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className="eyebrow mb-2">Most loved</p>
+              <h2 className="text-h3">Featured products</h2>
+            </div>
+            <Link
+              href="/shop"
+              className="text-caption shrink-0 text-[var(--gold-deep)] underline-offset-4 hover:underline"
+            >
+              View all →
+            </Link>
+          </div>
+          <AddToCartProductGrid products={featuredProducts} layout="carousel" />
+        </section>
+      )}
+
+      {/* ==================== GOOGLE REVIEWS — authority, early ==================== */}
+      <div className="pt-10">
+        <GoogleReviewsCarousel />
+      </div>
+
       {/* ==================== SHOP BY CATEGORY ==================== */}
       {categories.length > 0 && (
-        <section className="container-brand pt-4">
+        <section className="container-brand pt-16">
           <div className="mb-7 flex items-end justify-between gap-4">
             <div>
               <p className="eyebrow mb-2">Browse</p>
@@ -163,21 +194,18 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ==================== FEATURED PRODUCTS ==================== */}
-      <section className="container-brand pt-20">
-        <div className="mb-8 flex items-end justify-between gap-4">
-          <div>
-            <p className="eyebrow mb-2">Most loved</p>
-            <h2 className="text-h2">Featured products</h2>
-          </div>
-          <Link
-            href="/shop"
-            className="text-caption text-[var(--gold-deep)] underline-offset-4 hover:underline"
-          >
-            View all →
-          </Link>
+      {/* ==================== FULL CATALOGUE ==================== */}
+      <section className="pt-12">
+        <div className="container-brand mb-5">
+          <p className="eyebrow mb-2">Everything we grow</p>
+          <h2 className="text-h2">The full catalogue</h2>
         </div>
-        <AddToCartProductGrid products={products} />
+        <div className="container-brand">
+          <FloatingCategoryBar categories={categories} />
+        </div>
+        <div className="container-brand mt-6">
+          <AddToCartProductGrid products={products} />
+        </div>
       </section>
 
       {/* ==================== OFFER BANNER ==================== */}
@@ -241,8 +269,6 @@ export default async function HomePage() {
           </div>
         </section>
       )}
-
-      <GoogleReviewsCarousel />
     </div>
   );
 }
