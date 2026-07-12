@@ -31,6 +31,32 @@ interface BlogDraft {
  * budget/code; a stock report has no single unambiguous "apply" action)
  * — approving those still just marks them reviewed, same as before.
  */
+const STAGGER_DAYS = 2;
+
+/**
+ * Owner's explicit call: approved posts go out on a steady drip, not all
+ * at once the moment a Saturday batch gets approved. Finds the latest
+ * still-upcoming scheduled/published post and slots this one in
+ * STAGGER_DAYS after it; if nothing is upcoming, the first slot is
+ * tomorrow (never today — approving something at 11pm shouldn't backdate
+ * it).
+ */
+async function nextScheduledSlot(admin: SupabaseClient): Promise<string> {
+  const nowIso = new Date().toISOString();
+  const { data } = await admin
+    .from('blogs')
+    .select('published_at')
+    .in('status', ['scheduled', 'published'])
+    .gte('published_at', nowIso)
+    .order('published_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const base = data?.published_at ? new Date(data.published_at) : new Date();
+  const offsetDays = data?.published_at ? STAGGER_DAYS : 1;
+  return new Date(base.getTime() + offsetDays * 24 * 60 * 60 * 1000).toISOString();
+}
+
 export async function applyApprovedAgentOutput(
   admin: SupabaseClient,
   task: AiTaskRow,
@@ -58,6 +84,7 @@ export async function applyApprovedAgentOutput(
   }
 
   const readingTimeMinutes = Math.max(1, Math.round(draft.article.split(/\s+/).length / 200));
+  const publishedAt = await nextScheduledSlot(admin);
 
   const { data: blog, error: blogError } = await admin
     .from('blogs')
@@ -65,9 +92,9 @@ export async function applyApprovedAgentOutput(
       title: draft.title,
       slug,
       excerpt: draft.article.slice(0, 200).trim(),
-      status: 'published',
+      status: 'scheduled',
       reading_time_minutes: readingTimeMinutes,
-      published_at: new Date().toISOString(),
+      published_at: publishedAt,
       ai_generated: true,
     })
     .select('id')
@@ -101,6 +128,10 @@ export async function applyApprovedAgentOutput(
     }
   }
 
-  logger.info('ai.apply.blog_published', { taskId: task.id, blogId: blog.id, slug });
-  return { applied: true, detail: `Published as /blog/${slug}` };
+  logger.info('ai.apply.blog_scheduled', { taskId: task.id, blogId: blog.id, slug, publishedAt });
+  const publishDate = new Date(publishedAt).toLocaleDateString('en-IN', {
+    day: 'numeric',
+    month: 'short',
+  });
+  return { applied: true, detail: `Scheduled to publish ${publishDate} at /blog/${slug}` };
 }

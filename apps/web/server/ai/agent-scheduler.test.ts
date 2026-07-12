@@ -1,18 +1,14 @@
 // @vitest-environment node
 import { err, ExternalServiceError, ok } from '@prana/core';
 import { describe, expect, it, vi } from 'vitest';
-import { runScheduledAgentsIfDue } from './agent-scheduler';
+import { pickWeeklyBlogTopics, runScheduledAgentsIfDue } from './agent-scheduler';
 
 interface JobRow {
   id: string;
   last_run: string | null;
 }
 
-function makeAdmin(options: {
-  autonomousEnabled: boolean;
-  jobs: Record<string, JobRow | null>;
-  recentMarketingTask?: boolean;
-}) {
+function makeAdmin(options: { autonomousEnabled: boolean; jobs: Record<string, JobRow | null> }) {
   const updateEqSpy = vi.fn().mockResolvedValue({ error: null });
 
   const from = vi.fn((table: string) => {
@@ -46,13 +42,16 @@ function makeAdmin(options: {
       };
     }
     if (table === 'ai_tasks') {
+      // No occasion has ever been proposed before, in every test here —
+      // pickWeeklyBlogTopics's occasionAlreadyCovered() check always sees
+      // a clean slate, so any occasions within the lookahead window (real
+      // system time, not mocked) are still eligible topics alongside the
+      // evergreen pool.
       return {
         select: vi.fn().mockReturnThis(),
         ilike: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
-        limit: vi
-          .fn()
-          .mockResolvedValue({ data: options.recentMarketingTask ? [{ id: 'existing' }] : [] }),
+        limit: vi.fn().mockResolvedValue({ data: [] }),
       };
     }
     throw new Error(`Unexpected table in test: ${table}`);
@@ -69,12 +68,7 @@ describe('runScheduledAgentsIfDue', () => {
   it('does nothing when the autonomous-scheduling feature flag is off', async () => {
     const admin = makeAdmin({
       autonomousEnabled: false,
-      jobs: {
-        seo_biweekly_refresh: NEVER_RUN,
-        blog_weekly_batch: NEVER_RUN,
-        inventory_weekly_scan: NEVER_RUN,
-        marketing_holiday_scan: NEVER_RUN,
-      },
+      jobs: { blog_weekly_batch: NEVER_RUN },
     });
     const runTask = vi.fn();
 
@@ -84,72 +78,39 @@ describe('runScheduledAgentsIfDue', () => {
     expect(runTask).not.toHaveBeenCalled();
   });
 
-  it('runs the SEO job when due and marks it run', async () => {
+  it('generates a 3-topic blog batch when due and marks it run', async () => {
     const admin = makeAdmin({
       autonomousEnabled: true,
-      jobs: {
-        seo_biweekly_refresh: NEVER_RUN,
-        blog_weekly_batch: JUST_RAN,
-        inventory_weekly_scan: JUST_RAN,
-        marketing_holiday_scan: JUST_RAN,
-      },
-    });
-    const runTask = vi.fn().mockResolvedValue(ok({ taskId: 't-1', status: 'waiting_approval' }));
-
-    const outcomes = await runScheduledAgentsIfDue(admin, runTask);
-
-    const seoOutcome = outcomes.find((o) => o.jobName === 'seo_biweekly_refresh');
-    expect(seoOutcome?.ran).toBe(true);
-    expect(runTask).toHaveBeenCalledWith('seo-specialist-ai', expect.any(String));
-    expect(admin.updateEqSpy).toHaveBeenCalledWith('id', 'job-1');
-  });
-
-  it('does not run the SEO job when it ran recently', async () => {
-    const admin = makeAdmin({
-      autonomousEnabled: true,
-      jobs: {
-        seo_biweekly_refresh: JUST_RAN,
-        blog_weekly_batch: JUST_RAN,
-        inventory_weekly_scan: JUST_RAN,
-        marketing_holiday_scan: JUST_RAN,
-      },
-    });
-    const runTask = vi.fn();
-
-    const outcomes = await runScheduledAgentsIfDue(admin, runTask);
-
-    expect(outcomes.find((o) => o.jobName === 'seo_biweekly_refresh')).toBeUndefined();
-    expect(runTask).not.toHaveBeenCalled();
-  });
-
-  it('generates a 3-topic blog batch when due', async () => {
-    const admin = makeAdmin({
-      autonomousEnabled: true,
-      jobs: {
-        seo_biweekly_refresh: JUST_RAN,
-        blog_weekly_batch: NEVER_RUN,
-        inventory_weekly_scan: JUST_RAN,
-        marketing_holiday_scan: JUST_RAN,
-      },
+      jobs: { blog_weekly_batch: NEVER_RUN },
     });
     const runTask = vi.fn().mockResolvedValue(ok({ taskId: 't-1', status: 'waiting_approval' }));
 
     const outcomes = await runScheduledAgentsIfDue(admin, runTask);
 
     const blogOutcome = outcomes.find((o) => o.jobName === 'blog_weekly_batch');
+    expect(blogOutcome?.ran).toBe(true);
     expect(blogOutcome?.results).toHaveLength(3);
     expect(runTask.mock.calls.filter((c: unknown[]) => c[0] === 'blog-writer-ai')).toHaveLength(3);
+    expect(admin.updateEqSpy).toHaveBeenCalledWith('id', 'job-1');
   });
 
-  it("one agent's failure does not stop the others in the same job", async () => {
+  it('does not run the blog job when it ran recently', async () => {
     const admin = makeAdmin({
       autonomousEnabled: true,
-      jobs: {
-        seo_biweekly_refresh: JUST_RAN,
-        blog_weekly_batch: NEVER_RUN,
-        inventory_weekly_scan: JUST_RAN,
-        marketing_holiday_scan: JUST_RAN,
-      },
+      jobs: { blog_weekly_batch: JUST_RAN },
+    });
+    const runTask = vi.fn();
+
+    const outcomes = await runScheduledAgentsIfDue(admin, runTask);
+
+    expect(outcomes.find((o) => o.jobName === 'blog_weekly_batch')).toBeUndefined();
+    expect(runTask).not.toHaveBeenCalled();
+  });
+
+  it("one topic's failure does not stop the others in the same batch", async () => {
+    const admin = makeAdmin({
+      autonomousEnabled: true,
+      jobs: { blog_weekly_batch: NEVER_RUN },
     });
     const runTask = vi
       .fn()
@@ -163,52 +124,34 @@ describe('runScheduledAgentsIfDue', () => {
     expect(blogOutcome?.results?.filter((r) => r.success)).toHaveLength(1);
     expect(blogOutcome?.results?.filter((r) => !r.success)).toHaveLength(2);
   });
+});
 
-  it('proposes a marketing campaign for the nearest upcoming gifting occasion', async () => {
-    // Rose Day (Feb 7) is nearer than Valentine's Day (Feb 14) from this date.
-    vi.setSystemTime(new Date('2026-02-01T00:00:00Z'));
-    const admin = makeAdmin({
-      autonomousEnabled: true,
-      jobs: {
-        seo_biweekly_refresh: JUST_RAN,
-        blog_weekly_batch: JUST_RAN,
-        inventory_weekly_scan: JUST_RAN,
-        marketing_holiday_scan: NEVER_RUN,
-      },
-      recentMarketingTask: false,
-    });
-    const runTask = vi.fn().mockResolvedValue(ok({ taskId: 't-1', status: 'waiting_approval' }));
-
-    const outcomes = await runScheduledAgentsIfDue(admin, runTask);
-
-    const marketingOutcome = outcomes.find((o) => o.jobName === 'marketing_holiday_scan');
-    expect(marketingOutcome?.ran).toBe(true);
-    expect(runTask).toHaveBeenCalledWith(
-      'marketing-manager-ai',
-      expect.stringContaining('Rose Day'),
-    );
-    vi.useRealTimers();
+describe('pickWeeklyBlogTopics', () => {
+  const noCoverageAdmin = makeAdmin({
+    autonomousEnabled: true,
+    jobs: { blog_weekly_batch: null },
   });
 
-  it('does not re-propose a campaign already proposed in the last 30 days', async () => {
+  it('returns exactly `count` distinct, non-empty topics', async () => {
+    const topics = await pickWeeklyBlogTopics(noCoverageAdmin, 3);
+    expect(topics).toHaveLength(3);
+    expect(new Set(topics).size).toBe(3);
+    for (const topic of topics) expect(topic.length).toBeGreaterThan(0);
+  });
+
+  it('never returns a topic passed in excludeTopics', async () => {
+    const [firstPick] = await pickWeeklyBlogTopics(noCoverageAdmin, 1);
+    expect(firstPick).toBeDefined();
+
+    const topics = await pickWeeklyBlogTopics(noCoverageAdmin, 3, [firstPick!]);
+    expect(topics).not.toContain(firstPick);
+    expect(topics).toHaveLength(3);
+  });
+
+  it('prioritizes an upcoming Indian gifting occasion over the evergreen pool', async () => {
     vi.setSystemTime(new Date('2026-02-01T00:00:00Z'));
-    const admin = makeAdmin({
-      autonomousEnabled: true,
-      jobs: {
-        seo_biweekly_refresh: JUST_RAN,
-        blog_weekly_batch: JUST_RAN,
-        inventory_weekly_scan: JUST_RAN,
-        marketing_holiday_scan: NEVER_RUN,
-      },
-      recentMarketingTask: true,
-    });
-    const runTask = vi.fn();
-
-    const outcomes = await runScheduledAgentsIfDue(admin, runTask);
-
-    const marketingOutcome = outcomes.find((o) => o.jobName === 'marketing_holiday_scan');
-    expect(marketingOutcome?.ran).toBe(false);
-    expect(runTask).not.toHaveBeenCalled();
+    const topics = await pickWeeklyBlogTopics(noCoverageAdmin, 1);
+    expect(topics[0]).toContain('Rose Day');
     vi.useRealTimers();
   });
 });

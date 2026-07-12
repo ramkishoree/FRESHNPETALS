@@ -21,29 +21,68 @@ function baseTask(overrides: Partial<AiTaskRow> = {}): AiTaskRow {
   };
 }
 
-function makeAdmin(options: { existingSlugs?: Set<string>; insertShouldFail?: boolean }) {
+function makeAdmin(options: {
+  existingSlugs?: Set<string>;
+  insertShouldFail?: boolean;
+  latestUpcomingPublishedAt?: string | null;
+}) {
   const existingSlugs = options.existingSlugs ?? new Set<string>();
   const insertedBlocks: unknown[] = [];
+  const insertedBlogs: Record<string, unknown>[] = [];
 
   const from = vi.fn((table: string) => {
     if (table === 'blogs') {
+      // nextScheduledSlot's query (select('published_at').in(...).gte(...)
+      // .order(...).limit(1).maybeSingle()) — a single self-returning
+      // chain object, distinct from the slug-collision check below.
+      const staggerChain: {
+        in: ReturnType<typeof vi.fn>;
+        gte: ReturnType<typeof vi.fn>;
+        order: ReturnType<typeof vi.fn>;
+        limit: ReturnType<typeof vi.fn>;
+        maybeSingle: ReturnType<typeof vi.fn>;
+      } = {
+        in: vi.fn(),
+        gte: vi.fn(),
+        order: vi.fn(),
+        limit: vi.fn(),
+        maybeSingle: vi.fn().mockResolvedValue({
+          data:
+            options.latestUpcomingPublishedAt !== undefined &&
+            options.latestUpcomingPublishedAt !== null
+              ? { published_at: options.latestUpcomingPublishedAt }
+              : null,
+        }),
+      };
+      staggerChain.in.mockReturnValue(staggerChain);
+      staggerChain.gte.mockReturnValue(staggerChain);
+      staggerChain.order.mockReturnValue(staggerChain);
+      staggerChain.limit.mockReturnValue(staggerChain);
+
       return {
-        select: vi.fn().mockReturnThis(),
-        eq: vi.fn((_column: string, value: string) => ({
-          maybeSingle: vi
-            .fn()
-            .mockResolvedValue({ data: existingSlugs.has(value) ? { id: 'existing-id' } : null }),
-        })),
-        insert: vi.fn(() => ({
-          select: vi.fn().mockReturnThis(),
-          single: vi
-            .fn()
-            .mockResolvedValue(
-              options.insertShouldFail
-                ? { data: null, error: { message: 'insert failed' } }
-                : { data: { id: 'new-blog-id' }, error: null },
-            ),
-        })),
+        select: vi.fn((columns: string) => {
+          if (columns === 'published_at') return staggerChain;
+          return {
+            eq: vi.fn((_column: string, value: string) => ({
+              maybeSingle: vi.fn().mockResolvedValue({
+                data: existingSlugs.has(value) ? { id: 'existing-id' } : null,
+              }),
+            })),
+          };
+        }),
+        insert: vi.fn((row: Record<string, unknown>) => {
+          insertedBlogs.push(row);
+          return {
+            select: vi.fn().mockReturnThis(),
+            single: vi
+              .fn()
+              .mockResolvedValue(
+                options.insertShouldFail
+                  ? { data: null, error: { message: 'insert failed' } }
+                  : { data: { id: 'new-blog-id' }, error: null },
+              ),
+          };
+        }),
       };
     }
     if (table === 'blog_blocks') {
@@ -58,13 +97,13 @@ function makeAdmin(options: { existingSlugs?: Set<string>; insertShouldFail?: bo
   });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return { from, insertedBlocks } as any;
+  return { from, insertedBlocks, insertedBlogs } as any;
 }
 
 describe('applyApprovedAgentOutput', () => {
   it('does nothing for an agent without a defined apply action', async () => {
     const admin = makeAdmin({});
-    const task = baseTask({ agentSlug: 'seo-specialist-ai' });
+    const task = baseTask({ agentSlug: 'some-other-agent-ai' });
 
     const result = await applyApprovedAgentOutput(admin, task);
 
@@ -72,7 +111,7 @@ describe('applyApprovedAgentOutput', () => {
     expect(admin.from).not.toHaveBeenCalled();
   });
 
-  it('publishes a real blog post from a complete blog-writer-ai draft', async () => {
+  it('schedules a real blog post (not instant-publish) from a complete blog-writer-ai draft', async () => {
     const admin = makeAdmin({});
     const task = baseTask({
       metadata: {
@@ -87,6 +126,11 @@ describe('applyApprovedAgentOutput', () => {
 
     expect(result.applied).toBe(true);
     expect(result.detail).toContain('how-to-care-for-fresh-roses');
+    expect(admin.insertedBlogs[0]).toMatchObject({ status: 'scheduled' });
+    // Owner's explicit call: approved posts go on a steady drip, not
+    // instantly the moment they're approved — the first slot is tomorrow.
+    const publishedAt = new Date(admin.insertedBlogs[0].published_at as string);
+    expect(publishedAt.getTime()).toBeGreaterThan(Date.now());
     expect(admin.insertedBlocks).toHaveLength(2);
     expect(admin.insertedBlocks[0]).toMatchObject({
       blog_id: 'new-blog-id',
@@ -94,6 +138,20 @@ describe('applyApprovedAgentOutput', () => {
       position: 0,
       content: { text: 'First paragraph about roses.' },
     });
+  });
+
+  it('slots a new approval 2 days after the latest already-scheduled post, not on top of it', async () => {
+    const alreadyScheduled = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+    const admin = makeAdmin({ latestUpcomingPublishedAt: alreadyScheduled });
+    const task = baseTask({
+      metadata: { draft: { title: 'A Fresh Topic', article: 'Some content here.' } },
+    });
+
+    await applyApprovedAgentOutput(admin, task);
+
+    const publishedAt = new Date(admin.insertedBlogs[0].published_at as string).getTime();
+    const expected = new Date(alreadyScheduled).getTime() + 2 * 24 * 60 * 60 * 1000;
+    expect(publishedAt).toBe(expected);
   });
 
   it('does not apply when the draft is missing a title or article', async () => {

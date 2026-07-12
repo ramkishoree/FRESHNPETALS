@@ -18,16 +18,9 @@ const DANGEROUS_TOOLS = [
 ];
 
 describe('agent-registry', () => {
-  it('ships exactly the 4 autonomous employees the owner kept (SEO, Blog, Marketing, Inventory)', () => {
-    expect(AI_EMPLOYEES).toHaveLength(4);
-    expect(new Set(AI_EMPLOYEES.map((a) => a.slug))).toEqual(
-      new Set([
-        'seo-specialist-ai',
-        'blog-writer-ai',
-        'marketing-manager-ai',
-        'inventory-manager-ai',
-      ]),
-    );
+  it('ships exactly the 1 autonomous employee the owner kept (Blog Writer — SEO/Marketing/Inventory removed, owner uses their own ChatGPT/Claude for those instead)', () => {
+    expect(AI_EMPLOYEES).toHaveLength(1);
+    expect(new Set(AI_EMPLOYEES.map((a) => a.slug))).toEqual(new Set(['blog-writer-ai']));
   });
 
   it('has unique slugs', () => {
@@ -53,7 +46,7 @@ describe('agent-registry', () => {
   });
 
   it('finds an agent by slug', () => {
-    expect(getAgentDefinition('seo-specialist-ai')?.name).toBe('SEO Specialist AI');
+    expect(getAgentDefinition('blog-writer-ai')?.name).toBe('Blog Writer AI');
     expect(getAgentDefinition('does-not-exist')).toBeUndefined();
   });
 
@@ -64,8 +57,8 @@ describe('agent-registry', () => {
   });
 
   it('checks whether a tool is granted to an agent', () => {
-    const seoSpecialist = getAgentDefinition('seo-specialist-ai')!;
-    expect(isToolGrantedToAgent(seoSpecialist, 'Save Draft')).toBe(true);
-    expect(isToolGrantedToAgent(seoSpecialist, 'Publish Changes')).toBe(false);
+    const blogWriter = getAgentDefinition('blog-writer-ai')!;
+    expect(isToolGrantedToAgent(blogWriter, 'Save Draft')).toBe(true);
+    expect(isToolGrantedToAgent(blogWriter, 'Publish Blog')).toBe(false);
   });
 });

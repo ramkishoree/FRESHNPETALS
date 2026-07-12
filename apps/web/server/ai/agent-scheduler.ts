@@ -25,14 +25,17 @@ export interface ScheduledRunOutcome {
 }
 
 /**
- * Ch.9 autonomous scheduling — the owner's explicit request: SEO refines
- * itself every 14 days, Blog Writer proposes a weekly batch, Marketing
- * Manager proposes a campaign when a real gifting occasion is coming up,
- * Inventory Manager scans weekly. Every run still lands in the Approval
- * Queue exactly like a manual run (Ch.9 §11) — this only removes the need
- * to remember to click the button, it does not auto-publish anything.
- * Auto-apply-on-WhatsApp-approve is a deliberately separate, not-yet-built
- * piece (needs the WhatsApp Business API live to test end-to-end).
+ * Ch.9 autonomous scheduling — Blog Writer proposes a weekly batch. Every
+ * run still lands in the Approval Queue exactly like a manual run (Ch.9
+ * §11) — this only removes the need to remember to click the button, it
+ * does not auto-publish anything.
+ *
+ * SEO Specialist / Marketing Manager / Inventory Manager were removed
+ * from the roster entirely (owner's explicit call — Blog Writer is the
+ * only agent worth the API cost for this business; SEO/marketing ideas
+ * come from the owner's own ChatGPT/Claude instead). Their scheduler_jobs
+ * rows are disabled via migration, not deleted, so re-adding an agent
+ * later doesn't need a new job row.
  *
  * Gated behind system_settings.feature_flags.ai_autonomous_scheduling_enabled
  * — a real kill switch, defaults to false, so this migration merely
@@ -92,11 +95,8 @@ async function runOne(
   }
 }
 
-const SEO_INTERVAL_DAYS = 14;
 const BLOG_INTERVAL_DAYS = 7;
-const INVENTORY_INTERVAL_DAYS = 7;
-const MARKETING_CHECK_INTERVAL_DAYS = 1;
-const MARKETING_LOOKAHEAD_DAYS = 14;
+const WEEKLY_BATCH_SIZE = 3;
 
 // Rotating topic pool for the weekly blog batch — blog-writer-ai has never
 // had a topic-selection tool ("needs a real topic, an admin's judgment
@@ -126,6 +126,68 @@ function currentIsoWeek(): number {
   return Math.floor(days / 7);
 }
 
+// How far ahead an Indian festival/gifting occasion has to be before it's
+// worth writing about now — long enough that the post is live and
+// discoverable before the day arrives, given the weekly batch cadence.
+const OCCASION_LOOKAHEAD_DAYS = 21;
+// Once an occasion has a topic queued, don't propose it again for this
+// long — otherwise "Diwali" would get re-proposed every single week as
+// the date gets closer.
+const OCCASION_DEDUPE_DAYS = 60;
+
+async function occasionAlreadyCovered(
+  admin: SupabaseClient,
+  occasionName: string,
+): Promise<boolean> {
+  const sinceIso = new Date(Date.now() - OCCASION_DEDUPE_DAYS * 24 * 60 * 60 * 1000).toISOString();
+  const { data } = await admin
+    .from('ai_tasks')
+    .select('id')
+    .ilike('title', `%${occasionName}%`)
+    .gte('created_at', sinceIso)
+    .limit(1);
+  return (data ?? []).length > 0;
+}
+
+/**
+ * Owner's explicit ask: "Indian holidays, traditions, and specific event
+ * blogs" — upcoming festivals/gifting occasions (server/ai/gifting-
+ * occasions.ts, the same calendar the removed marketing-manager-ai used)
+ * get first claim on the week's topic slots, falling back to the
+ * evergreen rotating pool once occasions are exhausted or already
+ * covered. `excludeTopics` keeps a single run (the weekly batch, or one
+ * reject-triggered regeneration) from picking the same topic twice.
+ */
+export async function pickWeeklyBlogTopics(
+  admin: SupabaseClient,
+  count: number,
+  excludeTopics: string[] = [],
+): Promise<string[]> {
+  const excluded = new Set(excludeTopics);
+  const topics: string[] = [];
+
+  const upcoming = getUpcomingGiftingOccasions(new Date(), OCCASION_LOOKAHEAD_DAYS);
+  for (const occasion of upcoming) {
+    if (topics.length >= count) break;
+    const topic = `${occasion.name} flower gifting guide — ${occasion.angle}`;
+    if (excluded.has(topic)) continue;
+    if (await occasionAlreadyCovered(admin, occasion.name)) continue;
+    topics.push(topic);
+    excluded.add(topic);
+  }
+
+  let poolIndex = currentIsoWeek();
+  for (let i = 0; i < BLOG_TOPIC_POOL.length * 2 && topics.length < count; i++) {
+    const candidate = BLOG_TOPIC_POOL[poolIndex % BLOG_TOPIC_POOL.length]!;
+    poolIndex++;
+    if (excluded.has(candidate)) continue;
+    topics.push(candidate);
+    excluded.add(candidate);
+  }
+
+  return topics;
+}
+
 /**
  * `runTask` defaults to the real orchestrator/task-repo wiring but is
  * injectable for tests, matching the pattern the old weekly-automation.ts
@@ -143,25 +205,9 @@ export async function runScheduledAgentsIfDue(
 
   const outcomes: ScheduledRunOutcome[] = [];
 
-  const seoJob = await getDueJob(admin, 'seo_biweekly_refresh', SEO_INTERVAL_DAYS);
-  if (seoJob) {
-    const result = await runOne(
-      runTask,
-      'seo-specialist-ai',
-      'Run the biweekly SEO refresh: audit all published products and blog posts for missing or weak ' +
-        'metadata, alt text, and schema. Prioritize local-search relevance for "flowers near me" and ' +
-        '"buy flowers online Lucknow" style queries.',
-    );
-    await markRun(admin, seoJob.id);
-    outcomes.push({ jobName: 'seo_biweekly_refresh', ran: true, results: [result] });
-  }
-
   const blogJob = await getDueJob(admin, 'blog_weekly_batch', BLOG_INTERVAL_DAYS);
   if (blogJob) {
-    const weekIndex = currentIsoWeek() % BLOG_TOPIC_POOL.length;
-    const topics = [0, 1, 2].map(
-      (offset) => BLOG_TOPIC_POOL[(weekIndex + offset) % BLOG_TOPIC_POOL.length]!,
-    );
+    const topics = await pickWeeklyBlogTopics(admin, WEEKLY_BATCH_SIZE);
     const results = [];
     for (const topic of topics) {
       results.push(await runOne(runTask, 'blog-writer-ai', `Write an article on: ${topic}`));
@@ -170,61 +216,5 @@ export async function runScheduledAgentsIfDue(
     outcomes.push({ jobName: 'blog_weekly_batch', ran: true, results });
   }
 
-  const inventoryJob = await getDueJob(admin, 'inventory_weekly_scan', INVENTORY_INTERVAL_DAYS);
-  if (inventoryJob) {
-    const result = await runOne(
-      runTask,
-      'inventory-manager-ai',
-      "Perform this week's inventory scan. Identify low/critical stock, dead inventory, and fast/slow sellers across all outlets.",
-    );
-    await markRun(admin, inventoryJob.id);
-    outcomes.push({ jobName: 'inventory_weekly_scan', ran: true, results: [result] });
-  }
-
-  const marketingJob = await getDueJob(
-    admin,
-    'marketing_holiday_scan',
-    MARKETING_CHECK_INTERVAL_DAYS,
-  );
-  if (marketingJob) {
-    const upcoming = getUpcomingGiftingOccasions(new Date(), MARKETING_LOOKAHEAD_DAYS);
-    await markRun(admin, marketingJob.id);
-    if (upcoming.length > 0) {
-      const nearest = upcoming[0]!;
-      const alreadyProposed = await hasRecentTaskForOccasion(admin, nearest.name);
-      if (!alreadyProposed) {
-        const result = await runOne(
-          runTask,
-          'marketing-manager-ai',
-          `Propose a campaign for the upcoming occasion "${nearest.name}" on ${nearest.date}. ` +
-            `Suggested angle: ${nearest.angle}. You may recommend the whole shop, a specific category, or specific products.`,
-        );
-        outcomes.push({ jobName: 'marketing_holiday_scan', ran: true, results: [result] });
-      } else {
-        outcomes.push({ jobName: 'marketing_holiday_scan', ran: false });
-      }
-    } else {
-      outcomes.push({ jobName: 'marketing_holiday_scan', ran: false });
-    }
-  }
-
   return outcomes;
-}
-
-/** Dedupe guard: don't propose the same occasion's campaign twice — checks
- * ai_tasks created in the last 30 days whose title mentions the occasion
- * name (title is taskInstructions.slice(0,120), which always includes the
- * occasion name per the instruction built above). */
-async function hasRecentTaskForOccasion(
-  admin: SupabaseClient,
-  occasionName: string,
-): Promise<boolean> {
-  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-  const { data } = await admin
-    .from('ai_tasks')
-    .select('id')
-    .ilike('title', `%${occasionName}%`)
-    .gte('created_at', thirtyDaysAgo)
-    .limit(1);
-  return (data ?? []).length > 0;
 }

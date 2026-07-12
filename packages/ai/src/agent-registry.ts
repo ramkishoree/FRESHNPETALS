@@ -62,51 +62,6 @@ const SUMMARY_CONFIDENCE_FIELDS = {
 
 export const AI_EMPLOYEES: AgentDefinition[] = [
   {
-    slug: 'seo-specialist-ai',
-    name: 'SEO Specialist AI',
-    purpose: 'Maintains technical and on-page SEO health across products and blog content.',
-    exampleTask: 'Audit all published products for missing meta descriptions and alt text.',
-    category: 'SEO',
-    capabilities: ['SEO Audit', 'Schema Generation', 'Metadata Optimization', 'Internal Linking'],
-    tools: [
-      'Read Products',
-      'Read Blog Database',
-      'SEO Generator',
-      'Schema Generator',
-      'Internal Link Engine',
-      'Image Analyzer',
-      'Save Draft',
-      'Request Approval',
-    ],
-    forbiddenActions: ['Delete Pages', 'Publish Changes', 'Modify URLs', 'Remove Content'],
-    memoryScopes: ['SEO', 'Product', 'Blog'],
-    kpis: [
-      { label: 'Weekly Reports Generated', target: '1/week' },
-      { label: 'Priority Fixes Identified', target: 'measurable' },
-    ],
-    routingPolicy: 'fastest',
-    systemPrompt:
-      'You are the SEO Specialist AI for Fresh & Petals. Scan the provided product/blog context for missing or ' +
-      'weak metadata, alt text, schema, and internal linking opportunities. Produce a prioritized fix list and ' +
-      'updated metadata suggestions. You never delete pages, publish changes, or modify URLs — only propose fixes.',
-    outputSchema: {
-      type: 'object',
-      properties: {
-        ...SUMMARY_CONFIDENCE_FIELDS,
-        output: {
-          type: 'object',
-          properties: {
-            priorityFixes: { type: 'array', items: { type: 'string' } },
-            updatedMetadata: { type: 'object' },
-            optimizationSuggestions: { type: 'array', items: { type: 'string' } },
-          },
-          required: ['priorityFixes', 'optimizationSuggestions'],
-        },
-      },
-      required: ['summary', 'confidence', 'reasoning', 'output'],
-    },
-  },
-  {
     slug: 'blog-writer-ai',
     name: 'Blog Writer AI',
     purpose: 'Generates high-quality evergreen and trending flower-related content.',
@@ -135,6 +90,18 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
       { label: 'Minimum Length', target: '2500 words' },
       { label: 'Approval Rate', target: 'measurable' },
     ],
+    // Owner's explicit budget target: $5 should last at least 2 months
+    // under standard use (~$2.50/mo). This is now the ONLY agent in the
+    // roster (SEO/Marketing/Inventory removed per owner's call — they'd
+    // rather use their own ChatGPT/Claude for those), so the full budget
+    // is available to it. 'highest_quality' resolves to Claude Sonnet 4.5
+    // ($0.003/$0.015 per 1k): a realistic run (~3000 prompt + ~8000
+    // completion tokens, well under the 16000 ceiling) costs ~$0.13, and
+    // a weekly 3-topic batch (~13 runs/mo) is ~$1.68/mo — comfortably
+    // under budget with real quality for long-form SEO content. Only a
+    // pathological worst case (every run maxing out 16000 tokens) risks
+    // ~$3.24/mo; the enforced $2.50/mo budget cap (ai_budgets, migration
+    // 0055) is the real backstop against that, not a lower model tier.
     routingPolicy: 'highest_quality',
     systemPrompt:
       'You are the Blog Writer AI for Fresh & Petals. Write an original, helpful, non-spammy, human-like article ' +
@@ -157,92 +124,6 @@ export const AI_EMPLOYEES: AgentDefinition[] = [
             featuredImagePrompt: { type: 'string' },
           },
           required: ['title', 'outline', 'article'],
-        },
-      },
-      required: ['summary', 'confidence', 'reasoning', 'output'],
-    },
-  },
-  {
-    slug: 'marketing-manager-ai',
-    name: 'Marketing Manager AI',
-    purpose: 'Generates campaigns that increase revenue.',
-    exampleTask:
-      'Propose a Raksha Bandhan campaign built around our anniversary and birthday bouquets.',
-    category: 'Marketing',
-    capabilities: ['Campaign Creation', 'Offer Suggestion'],
-    tools: [
-      'Read Inventory',
-      'Read Analytics',
-      'Campaign Generator',
-      'Save Draft',
-      'Request Approval',
-    ],
-    forbiddenActions: ['Publish Campaign', 'Create Offer', 'Send Broadcast'],
-    memoryScopes: ['Marketing', 'Brand', 'Product'],
-    kpis: [
-      { label: 'Campaign Proposals', target: 'measurable' },
-      { label: 'Estimated ROI', target: 'measurable' },
-    ],
-    routingPolicy: 'highest_quality',
-    systemPrompt:
-      'You are the Marketing Manager AI for Fresh & Petals. Propose a campaign (name, objective, audience, ' +
-      'products, offer suggestion, copy, suggested start date, estimated ROI) from current inventory, offers, ' +
-      'season and the task instructions. You never publish a campaign, create an offer, or send a broadcast ' +
-      'yourself — only propose one for administrator approval.',
-    outputSchema: {
-      type: 'object',
-      properties: {
-        ...SUMMARY_CONFIDENCE_FIELDS,
-        output: {
-          type: 'object',
-          properties: {
-            campaignName: { type: 'string' },
-            objective: { type: 'string' },
-            audience: { type: 'string' },
-            products: { type: 'array', items: { type: 'string' } },
-            offerSuggestion: { type: 'string' },
-            creativeCopy: { type: 'string' },
-            suggestedStartDate: { type: 'string' },
-            estimatedRoi: { type: 'string' },
-          },
-          required: ['campaignName', 'objective', 'creativeCopy'],
-        },
-      },
-      required: ['summary', 'confidence', 'reasoning', 'output'],
-    },
-  },
-  {
-    slug: 'inventory-manager-ai',
-    name: 'Inventory Manager AI',
-    purpose: 'Optimizes inventory before stock problems occur.',
-    exampleTask: 'Review current stock and flag anything at risk of selling out this week.',
-    category: 'Inventory',
-    capabilities: ['Inventory Monitoring', 'Demand Prediction'],
-    tools: ['Read Inventory', 'Read Orders', 'Read Analytics', 'Report Generator'],
-    forbiddenActions: ['Modify Inventory', 'Create Purchase Order'],
-    memoryScopes: ['Product', 'Operational'],
-    kpis: [
-      { label: 'Stockout Incidents', target: 'minimize' },
-      { label: 'Dead Inventory Value', target: 'minimize' },
-    ],
-    routingPolicy: 'fastest',
-    systemPrompt:
-      'You are the Inventory Manager AI for Fresh & Petals. Review the provided inventory and order context to ' +
-      'identify low/critical stock, dead inventory, fast/slow sellers, and seasonal demand shifts. Produce a ' +
-      'restocking recommendation report. You never modify inventory or create a purchase order yourself.',
-    outputSchema: {
-      type: 'object',
-      properties: {
-        ...SUMMARY_CONFIDENCE_FIELDS,
-        output: {
-          type: 'object',
-          properties: {
-            lowStock: { type: 'array', items: { type: 'string' } },
-            criticalStock: { type: 'array', items: { type: 'string' } },
-            deadInventory: { type: 'array', items: { type: 'string' } },
-            restockRecommendations: { type: 'array', items: { type: 'string' } },
-          },
-          required: ['restockRecommendations'],
         },
       },
       required: ['summary', 'confidence', 'reasoning', 'output'],
