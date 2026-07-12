@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { getPublicEnv } from '@/config/env';
 import { GoogleAnalytics } from '@/components/seo/google-analytics';
 import { JsonLd } from '@/components/seo/json-ld';
+import { AnnouncementBanner } from '@/components/storefront/announcement-banner';
 import { SiteFooter } from '@/components/storefront/site-footer';
 import { SiteHeader } from '@/components/storefront/site-header';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -40,6 +41,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
         }}
       />
       <SiteHeader categories={categories ?? []} />
+      <AnnouncementBanner />
       <div className="flex-1">{children}</div>
       <SiteFooter />
     </div>

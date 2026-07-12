@@ -1,6 +1,7 @@
 'use client';
 
 import type { ColumnDef } from '@tanstack/react-table';
+import * as React from 'react';
 import { AdminResourcePage } from '@/components/admin/admin-resource-page';
 import { Badge } from '@/components/ui/badge';
 
@@ -9,13 +10,11 @@ interface AnnouncementRow extends Record<string, unknown> {
   title: string | null;
   message: string;
   enabled: boolean;
-  priority: number;
 }
 
 const columns: ColumnDef<AnnouncementRow>[] = [
   { accessorKey: 'title', header: 'Title' },
   { accessorKey: 'message', header: 'Message' },
-  { accessorKey: 'priority', header: 'Priority' },
   {
     accessorKey: 'enabled',
     header: 'Status',
@@ -30,31 +29,52 @@ const columns: ColumnDef<AnnouncementRow>[] = [
   },
 ];
 
-/** Ch.6 Announcement Management — banner text, scheduling, expiry. */
+/**
+ * Ch.6 Announcement Management, deliberately kept to four fields per
+ * owner feedback ("too complex... just Title, Image, Button 1, Button
+ * 2 — Button 1 is the offer CTA"). Button 2 is always a fixed "No
+ * thanks" dismiss (the existing `dismissible` column, no longer exposed
+ * as a separate toggle — every announcement is dismissible). The
+ * scheduling/color/custom-button-text fields still exist as columns for
+ * a future text-only banner use case, just not surfaced here.
+ */
 export default function AnnouncementsPage() {
+  const [offerOptions, setOfferOptions] = React.useState<{ label: string; value: string }[]>([]);
+
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void (async () => {
+      const response = await fetch('/api/v1/admin/offers?limit=100');
+      const body = await response.json();
+      if (response.ok && body.success) {
+        setOfferOptions(
+          (body.data.items as { id: string; name: string }[]).map((offer) => ({
+            label: offer.name,
+            value: offer.id,
+          })),
+        );
+      }
+    })();
+  }, []);
+
   return (
     <AdminResourcePage
       title="Announcements"
       singularLabel="Announcement"
-      description="Site-wide banners (e.g. 'Free delivery above ₹999')."
+      description="A site-wide promo banner. Button 1 links to the selected offer; Button 2 is always a dismiss."
       endpoint="/api/v1/admin/announcements"
       columns={columns}
       fields={[
-        { name: 'title', label: 'Title', type: 'text' },
+        { name: 'title', label: 'Title', type: 'text', required: true },
+        { name: 'image_url', label: 'Image', type: 'image' },
         { name: 'message', label: 'Message', type: 'textarea', required: true },
-        { name: 'button_text', label: 'Button text', type: 'text' },
-        { name: 'button_url', label: 'Button URL', type: 'text' },
         {
-          name: 'background_color',
-          label: 'Background color',
-          type: 'text',
-          placeholder: '#0f8a54',
+          name: 'offer_id',
+          label: 'Button 1 — offer',
+          type: 'select',
+          placeholder: 'Select an offer',
+          options: offerOptions,
         },
-        { name: 'text_color', label: 'Text color', type: 'text', placeholder: '#ffffff' },
-        { name: 'start_date', label: 'Start date', type: 'datetime' },
-        { name: 'end_date', label: 'End date', type: 'datetime' },
-        { name: 'priority', label: 'Priority', type: 'number' },
-        { name: 'dismissible', label: 'Dismissible', type: 'boolean' },
         { name: 'enabled', label: 'Enabled', type: 'boolean' },
       ]}
     />
