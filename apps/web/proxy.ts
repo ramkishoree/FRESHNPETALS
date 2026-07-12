@@ -54,9 +54,14 @@ function buildCsp(nonce: string, supabaseUrl: string): string {
   return [
     "default-src 'self'",
     scriptSrc,
-    "style-src 'self' 'unsafe-inline'",
+    // Google's Places Autocomplete widget injects its own font stylesheet
+    // (fonts.googleapis.com -> fonts.gstatic.com) at runtime — blocking it
+    // doesn't just lose a font, it corrupts the widget's internal DOM
+    // bookkeeping until it throws an uncaught removeChild error that took
+    // down the whole /checkout page in production.
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: https:",
-    "font-src 'self'",
+    "font-src 'self' https://fonts.gstatic.com",
     `connect-src 'self' ${supabaseUrl} https://lumberjack.razorpay.com https://maps.googleapis.com https://www.google-analytics.com`,
     'frame-src https://api.razorpay.com https://checkout.razorpay.com',
     "frame-ancestors 'none'",
