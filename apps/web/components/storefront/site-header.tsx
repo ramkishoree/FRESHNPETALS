@@ -9,14 +9,23 @@ import { Input } from '@/components/ui/input';
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
 import { useCart } from '@/lib/cart-context';
 
-export interface StorefrontCategory {
-  id: string;
-  name: string;
-  slug: string;
-}
+const PRIMARY_NAV = [
+  { href: '/', label: 'Home' },
+  { href: '/shop', label: 'Products' },
+  { href: '/blog', label: 'Blog' },
+  { href: '/delivery-policy', label: 'Delivery policy' },
+  { href: '/account/orders', label: 'Orders' },
+];
 
-/** Ch.12 §17 Navigation — sticky, desktop: logo/search/categories/offers/blog/contact/account/cart; mobile: hamburger -> drawer. */
-export function SiteHeader({ categories }: { categories: StorefrontCategory[] }) {
+/**
+ * Owner's explicit call: "dead simple" — Home/Products/Blog/Orders/
+ * Account, nothing else in the primary nav. Category links (Bouquets/
+ * Anniversary/etc.) used to live here too; they're dropped since the
+ * homepage's own category grid and the shop's floating category bar
+ * already cover that browsing path — the header's job is now just the
+ * five fixed destinations. About/FAQ/Terms/Privacy stay footer-only.
+ */
+export function SiteHeader() {
   const { itemCount } = useCart();
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [searchValue, setSearchValue] = React.useState('');
@@ -40,36 +49,22 @@ export function SiteHeader({ categories }: { categories: StorefrontCategory[] })
           <SheetContent side="left" className="w-72">
             <SheetTitle className="sr-only">Menu</SheetTitle>
             <nav className="flex flex-col gap-1 pt-8" aria-label="Mobile navigation">
-              <Link
-                href="/shop"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-button text-body px-2 py-2 font-medium"
-              >
-                Shop all
-              </Link>
-              {categories.map((category) => (
+              {PRIMARY_NAV.map((item) => (
                 <Link
-                  key={category.id}
-                  href={`/shop/${category.slug}`}
+                  key={item.href}
+                  href={item.href}
                   onClick={() => setMobileOpen(false)}
-                  className="rounded-button text-body text-muted-foreground px-2 py-2"
+                  className="rounded-button text-body px-2 py-2 font-medium"
                 >
-                  {category.name}
+                  {item.label}
                 </Link>
               ))}
               <Link
-                href="/blog"
+                href="/account"
                 onClick={() => setMobileOpen(false)}
-                className="rounded-button text-body text-muted-foreground px-2 py-2"
+                className="rounded-button text-body px-2 py-2 font-medium"
               >
-                Blog
-              </Link>
-              <Link
-                href="/contact"
-                onClick={() => setMobileOpen(false)}
-                className="rounded-button text-body text-muted-foreground px-2 py-2"
-              >
-                Contact
+                Account
               </Link>
             </nav>
           </SheetContent>
@@ -80,24 +75,15 @@ export function SiteHeader({ categories }: { categories: StorefrontCategory[] })
         </Link>
 
         <nav className="hidden items-center gap-6 lg:flex" aria-label="Primary navigation">
-          <Link href="/shop" className="text-body text-foreground hover:text-primary">
-            Shop
-          </Link>
-          {categories.slice(0, 5).map((category) => (
+          {PRIMARY_NAV.map((item) => (
             <Link
-              key={category.id}
-              href={`/shop/${category.slug}`}
-              className="text-body text-muted-foreground hover:text-primary"
+              key={item.href}
+              href={item.href}
+              className="text-body text-foreground hover:text-primary"
             >
-              {category.name}
+              {item.label}
             </Link>
           ))}
-          <Link href="/blog" className="text-body text-muted-foreground hover:text-primary">
-            Blog
-          </Link>
-          <Link href="/contact" className="text-body text-muted-foreground hover:text-primary">
-            Contact
-          </Link>
         </nav>
 
         <form

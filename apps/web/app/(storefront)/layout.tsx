@@ -5,18 +5,8 @@ import { JsonLd } from '@/components/seo/json-ld';
 import { AnnouncementBanner } from '@/components/storefront/announcement-banner';
 import { SiteFooter } from '@/components/storefront/site-footer';
 import { SiteHeader } from '@/components/storefront/site-header';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 export default async function StorefrontLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createSupabaseServerClient();
-  const { data: categories } = await supabase
-    .from('categories')
-    .select('id, name, slug')
-    .eq('is_active', true)
-    .is('deleted_at', null)
-    .order('sort_order', { ascending: true })
-    .limit(8);
-
   const env = getPublicEnv();
   const appUrl = env.NEXT_PUBLIC_APP_URL;
   const nonce = (await headers()).get('x-nonce') ?? undefined;
@@ -40,7 +30,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
           logo: `${appUrl}/icon.svg`,
         }}
       />
-      <SiteHeader categories={categories ?? []} />
+      <SiteHeader />
       <AnnouncementBanner />
       <div className="flex-1">{children}</div>
       <SiteFooter />
