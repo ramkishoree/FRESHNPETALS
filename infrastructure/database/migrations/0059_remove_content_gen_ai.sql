@@ -22,6 +22,21 @@
 -- exactly the rows the agent wrote. Cascades to blog_blocks and
 -- blog_category_links via their blog_id FK.
 
+-- ai_cost_tracking and ai_audit_log are spend/history ledgers (owner
+-- cares about $ spent and what happened even after the agents that did
+-- it are gone) — detach their nullable FKs rather than deleting rows,
+-- so historical data survives. ai_workflow_steps' agent/tool FKs are
+-- likewise nullable and detached for the same reason. ai_feedback's
+-- task_id FK is NOT NULL and has no meaning without the task it's
+-- feedback on, so those rows are deleted outright.
+update public.ai_cost_tracking set task_id = null where task_id is not null;
+update public.ai_cost_tracking set agent_id = null where agent_id is not null;
+update public.ai_audit_log set task_id = null where task_id is not null;
+update public.ai_audit_log set agent_id = null where agent_id is not null;
+update public.ai_workflow_steps set agent = null where agent is not null;
+update public.ai_workflow_steps set tool = null where tool is not null;
+delete from public.ai_feedback;
+
 delete from public.ai_approvals;
 delete from public.ai_tasks;
 delete from public.ai_agents;
