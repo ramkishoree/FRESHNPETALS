@@ -34,7 +34,7 @@ export function FloralCorner({
   return (
     <div
       aria-hidden="true"
-      className={`pointer-events-none absolute -z-10 hidden opacity-80 lg:block ${POSITION_CLASSES[position]} ${className}`}
+      className={`pointer-events-none absolute z-0 hidden opacity-80 lg:block ${POSITION_CLASSES[position]} ${className}`}
       style={{ width: size }}
     >
       <Image

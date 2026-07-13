@@ -174,7 +174,7 @@ export default async function HomePage() {
 
       {/* ==================== SHOP BY CATEGORY ==================== */}
       {categories.length > 0 && (
-        <section className="container-brand relative pt-16">
+        <section className="container-brand relative isolate pt-16">
           <FloralCorner variant={2} position="top-right" size={220} />
           <div className="mb-7 flex items-end justify-between gap-4">
             <div>
@@ -227,7 +227,7 @@ export default async function HomePage() {
 
       {/* ==================== OUR OUTLETS ==================== */}
       {outlets.length > 0 && (
-        <section className="container-brand relative pt-20">
+        <section className="container-brand relative isolate pt-20">
           <FloralCorner variant={1} position="bottom-left" size={220} />
           <div className="mb-7 text-center">
             <p className="eyebrow mb-2">We deliver from</p>
