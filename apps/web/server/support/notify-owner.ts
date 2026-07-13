@@ -5,12 +5,14 @@ import { isWhatsAppConfigured, sendWhatsAppTemplate } from '@/server/whatsapp/me
 
 /**
  * Owner's explicit call after removing the WhatsApp support bot: every
- * order still gets a WhatsApp alert to the owner with order id, the
- * items, customer name, phone, and delivery address — enough to act on
+ * order still gets a WhatsApp alert to the owner with everything the
+ * order detail page itself shows — items (plus the first item's photo
+ * as the message's header image), customer name/phone, delivery
+ * address, delivery date/time, and payment method — enough to act on
  * without opening the admin dashboard. Never blocks/fails the webhook
  * that triggered it; a WhatsApp send failure is logged, not thrown.
  *
- * Template `order_placed_alert_v2` must be submitted to Meta for
+ * Template `order_placed_alert_v3` must be submitted to Meta for
  * approval before this actually sends — see docs/whatsapp-support.md
  * for the exact text and placeholder order.
  */
@@ -23,6 +25,11 @@ export async function notifyOwnerOrderPlaced(params: {
   customerPhone: string;
   deliveryAddress: string;
   paymentMethod: string;
+  deliveryDate: string;
+  deliveryTime: string;
+  /** First order item's product photo — Meta template header image
+   *  requires a public HTTPS link, so this is skipped when null. */
+  firstItemImageUrl: string | null;
 }): Promise<void> {
   const env = getServerEnv();
 
@@ -37,7 +44,8 @@ export async function notifyOwnerOrderPlaced(params: {
   try {
     await sendWhatsAppTemplate({
       to: env.META_WHATSAPP_OWNER_WA_ID,
-      templateName: 'order_placed_alert_v2',
+      templateName: 'order_placed_alert_v3',
+      ...(params.firstItemImageUrl ? { headerImageUrl: params.firstItemImageUrl } : {}),
       bodyParams: [
         params.orderNumber,
         params.itemsSummary,
@@ -46,6 +54,8 @@ export async function notifyOwnerOrderPlaced(params: {
         params.customerPhone,
         params.deliveryAddress,
         params.paymentMethod,
+        params.deliveryDate,
+        params.deliveryTime,
       ],
     });
   } catch (cause) {

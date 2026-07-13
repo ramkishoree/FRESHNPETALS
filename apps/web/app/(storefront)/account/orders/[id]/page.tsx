@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import { ContactUsButton } from '@/components/commerce/contact-us-button';
 import { InvoicePreview } from '@/components/commerce/invoice-preview';
@@ -28,7 +29,7 @@ export default async function AccountOrderDetailPage({
   const { data: order } = await supabase
     .from('orders')
     .select(
-      'id, order_number, status, payment_method, subtotal, delivery_fee, tax_total, grand_total, created_at, order_snapshot, order_items(product_name, quantity, line_total), invoices(invoice_number, invoice_url)',
+      'id, order_number, status, payment_method, subtotal, delivery_fee, tax_total, grand_total, created_at, order_snapshot, order_items(product_name, quantity, line_total, products(featured_image)), invoices(invoice_number, invoice_url)',
     )
     .eq('id', id)
     .eq('customer_id', customer.id)
@@ -38,7 +39,14 @@ export default async function AccountOrderDetailPage({
 
   const invoice = Array.isArray(order.invoices) ? order.invoices[0] : order.invoices;
   const items = order.order_items ?? [];
-  const delivery = (order.order_snapshot as { delivery?: Record<string, string | null> })?.delivery;
+  const snapshot = order.order_snapshot as {
+    delivery?: Record<string, string | null>;
+    address?: { flatNo?: string; formattedAddress?: string };
+  };
+  const delivery = snapshot?.delivery;
+  const deliveryAddress =
+    [snapshot?.address?.flatNo, snapshot?.address?.formattedAddress].filter(Boolean).join(', ') ||
+    null;
   const paymentMethodLabel = order.payment_method === 'cod' ? 'Cash on delivery' : 'Paid online';
 
   return (
@@ -56,13 +64,36 @@ export default async function AccountOrderDetailPage({
           <h2 className="text-h4 text-foreground font-semibold">Order details</h2>
         </CardHeader>
         <CardContent>
+          <div className="mb-5">
+            <dt className="text-caption text-muted-foreground">Order name</dt>
+            <dd className="mt-2 space-y-2">
+              {items.length === 0 ? (
+                <span className="text-body">No items on file</span>
+              ) : (
+                items.map((item, index) => {
+                  const product = Array.isArray(item.products) ? item.products[0] : item.products;
+                  return (
+                    <div key={index} className="flex items-center gap-3">
+                      {product?.featured_image ? (
+                        <Image
+                          src={product.featured_image}
+                          alt={item.product_name}
+                          width={48}
+                          height={48}
+                          className="rounded-card size-12 shrink-0 object-cover"
+                        />
+                      ) : (
+                        <div className="rounded-card bg-muted size-12 shrink-0" />
+                      )}
+                      <span className="text-body">{item.product_name}</span>
+                    </div>
+                  );
+                })
+              )}
+            </dd>
+          </div>
+
           <dl className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-caption text-muted-foreground">Order name</dt>
-              <dd className="text-body">
-                {items.map((item) => item.product_name).join(', ') || 'No items on file'}
-              </dd>
-            </div>
             <div>
               <dt className="text-caption text-muted-foreground">Order ID</dt>
               <dd className="text-body">{order.order_number}</dd>
@@ -82,6 +113,10 @@ export default async function AccountOrderDetailPage({
             <div>
               <dt className="text-caption text-muted-foreground">Delivery time</dt>
               <dd className="text-body">{delivery?.['slotLabel'] ?? 'Not yet scheduled'}</dd>
+            </div>
+            <div>
+              <dt className="text-caption text-muted-foreground">Delivery address</dt>
+              <dd className="text-body">{deliveryAddress ?? 'No address on file'}</dd>
             </div>
           </dl>
         </CardContent>

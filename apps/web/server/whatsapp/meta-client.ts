@@ -64,23 +64,37 @@ export async function sendWhatsAppTemplate(params: {
   templateName: string;
   languageCode?: string;
   bodyParams?: string[];
+  /** Public HTTPS image URL for a template with a HEADER IMAGE component
+   *  (e.g. the first item's product photo). Omit entirely if the
+   *  template has no image header, or Meta rejects the send. */
+  headerImageUrl?: string;
 }): Promise<SendResult> {
+  const components = [
+    ...(params.headerImageUrl
+      ? [
+          {
+            type: 'header',
+            parameters: [{ type: 'image', image: { link: params.headerImageUrl } }],
+          },
+        ]
+      : []),
+    ...(params.bodyParams && params.bodyParams.length > 0
+      ? [
+          {
+            type: 'body',
+            parameters: params.bodyParams.map((text) => ({ type: 'text', text })),
+          },
+        ]
+      : []),
+  ];
+
   return callSendApi({
     to: params.to,
     type: 'template',
     template: {
       name: params.templateName,
       language: { code: params.languageCode ?? 'en' },
-      ...(params.bodyParams && params.bodyParams.length > 0
-        ? {
-            components: [
-              {
-                type: 'body',
-                parameters: params.bodyParams.map((text) => ({ type: 'text', text })),
-              },
-            ],
-          }
-        : {}),
+      ...(components.length > 0 ? { components } : {}),
     },
   });
 }

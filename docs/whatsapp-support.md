@@ -10,9 +10,12 @@ on their order pages instead, which just dials a phone number directly
 ## How it works
 
 ```
-Order placed (Razorpay webhook → checkout_complete succeeds)
-   → notifyOwnerOrderPlaced(): WhatsApp template to the owner with
-     order id, items, customer name, phone, and delivery address
+Order placed (Razorpay webhook or synchronous COD checkout, both via
+runPostOrderSideEffects) → notifyOwnerOrderPlaced(): WhatsApp template
+   to the owner with everything the order detail page itself shows —
+   order id, items (+ the first item's photo as the message's header
+   image), customer name, phone, delivery address, delivery date/time,
+   and payment method.
 ```
 
 ## Setup (you do this — needs your Meta Business Manager login)
@@ -34,15 +37,19 @@ Order placed (Razorpay webhook → checkout_complete succeeds)
      us" call button
 4. **Submit the message template** (Meta App Dashboard → WhatsApp →
    Message Templates → Create). **Utility** category, language
-   English:
+   English, with a **HEADER** of type **Image** (dynamic — Meta will
+   ask for a sample image during submission, any product photo URL
+   works):
 
-   **`order_placed_alert_v2`**
+   **`order_placed_alert_v3`**
 
    ```
+   [Header: Image]
    New order {{1}}
    {{2}}
    Customer: {{4}} ({{5}})
    Deliver to: {{6}}
+   Delivery: {{8}} at {{9}}
    Total: {{3}}
    Payment: {{7}}
    ```
@@ -50,7 +57,15 @@ Order placed (Razorpay webhook → checkout_complete succeeds)
    Sample values for Meta's review: `{{1}}` = `FP-0001`, `{{2}}` =
    `Rose Bouquet ×2, Lily Box ×1`, `{{3}}` = `INR 999.00`, `{{4}}` =
    `Anaya Sharma`, `{{5}}` = `+911234567890`, `{{6}}` = `4/122 Vipul
-Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`
+Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`, `{{8}}` =
+   `20 July 2026`, `{{9}}` = `9 AM - 11 AM`. Header sample image: any
+   product photo URL from the `media` Supabase storage bucket.
+
+   The header image is the order's first line item's product photo
+   (`products.featured_image`) — sent as a `link`-type header parameter,
+   not an uploaded file, so it needs no separate media upload step. If
+   the order has no first-item image on file, `notifyOwnerOrderPlaced`
+   omits the header component entirely rather than failing the send.
 
    Template approval is usually same-day but can take longer. Until
    approved, `sendWhatsAppTemplate` calls fail with a clear error from
@@ -70,7 +85,7 @@ Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`
 **Needs your live Meta account to verify:**
 
 - An actual template message arriving on a real phone (needs the
-  `order_placed_alert_v2` template approved + a verified number).
+  `order_placed_alert_v3` template approved + a verified number).
 
 ## Cost
 

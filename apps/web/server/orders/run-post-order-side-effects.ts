@@ -33,16 +33,28 @@ export async function runPostOrderSideEffects(
   correlationId: string,
 ): Promise<void> {
   const snapshot = order.order_snapshot as {
-    checkout?: { items?: { name: string; quantity: number }[] };
+    checkout?: { items?: { product_id: string; name: string; quantity: number }[] };
     address?: {
       recipientName?: string;
       phone?: string;
       flatNo?: string;
       formattedAddress?: string;
     };
+    delivery?: { date?: string | null; slotLabel?: string | null };
   };
   const items = snapshot?.checkout?.items ?? [];
   const address = snapshot?.address;
+
+  let firstItemImageUrl: string | null = null;
+  const firstItemProductId = items[0]?.product_id;
+  if (firstItemProductId) {
+    const { data: product } = await admin
+      .from('products')
+      .select('featured_image')
+      .eq('id', firstItemProductId)
+      .maybeSingle();
+    firstItemImageUrl = product?.featured_image ?? null;
+  }
 
   await notifyOwnerOrderPlaced({
     orderNumber: order.order_number,
@@ -56,6 +68,9 @@ export async function runPostOrderSideEffects(
     deliveryAddress:
       [address?.flatNo, address?.formattedAddress].filter(Boolean).join(', ') ||
       'No address on file',
+    deliveryDate: snapshot?.delivery?.date ?? 'Not yet scheduled',
+    deliveryTime: snapshot?.delivery?.slotLabel ?? 'Not yet scheduled',
+    firstItemImageUrl,
   });
 
   // Queued (not just called directly) so a transient PDF/storage failure
