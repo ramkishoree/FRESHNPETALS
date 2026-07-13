@@ -73,7 +73,10 @@ export function SiteHeader() {
           Fresh <em>&amp;</em> Petals
         </Link>
 
-        <nav className="top-nav hidden lg:flex" aria-label="Primary navigation">
+        <nav
+          className="top-nav hidden flex-1 justify-center lg:flex"
+          aria-label="Primary navigation"
+        >
           {PRIMARY_NAV.map((item) => (
             <Link key={item.href} href={item.href}>
               {item.label}

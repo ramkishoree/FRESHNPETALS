@@ -94,7 +94,7 @@ export default async function HomePage() {
       )}
 
       {/* ============================ HERO ============================ */}
-      <section className="wrap pt-16 pb-14 text-center lg:pt-24 lg:pb-20">
+      <section className="wrap pt-20 pb-16 text-center lg:pt-32 lg:pb-24">
         <h1 className="display text-h1 mx-auto max-w-4xl">
           {hero.title ?? 'Fresh flowers, delivered'}{' '}
           <em className="text-[var(--petal)] not-italic">{hero.titleHighlight ?? 'same-day.'}</em>
@@ -111,7 +111,7 @@ export default async function HomePage() {
       </section>
 
       {/* ==================== GOOGLE REVIEWS — authority, first thing after hero ==================== */}
-      <div className="wrap">
+      <div className="wrap mt-4 mb-12 lg:mb-16">
         <GoogleReviewsCarousel />
       </div>
 
