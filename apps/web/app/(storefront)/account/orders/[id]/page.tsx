@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation';
 import { OrderTimeline, type OrderTimelineProps } from '@/components/commerce/order-timeline';
+import { ContactUsButton } from '@/components/commerce/contact-us-button';
 import { InvoicePreview } from '@/components/commerce/invoice-preview';
-import { WhatsAppSupportButton } from '@/components/commerce/whatsapp-support-button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { getPublicEnv } from '@/config/env';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
@@ -50,10 +50,7 @@ export default async function AccountOrderDetailPage({
           <h1 className="text-h2 text-foreground font-bold">{order.order_number}</h1>
           <p className="text-body text-muted-foreground">₹{order.grand_total}</p>
         </div>
-        <WhatsAppSupportButton
-          orderNumber={order.order_number}
-          whatsappBusinessNumber={getPublicEnv().NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER}
-        />
+        <ContactUsButton ownerPhoneNumber={getPublicEnv().NEXT_PUBLIC_OWNER_PHONE_NUMBER} />
       </div>
 
       <Card className="rounded-card">

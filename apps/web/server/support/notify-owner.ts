@@ -1,110 +1,56 @@
 import 'server-only';
 import { getServerEnv } from '@/config/env';
-import { isEmailConfigured, sendEmail } from '@/server/email/resend-client';
-import { isWhatsAppConfigured, sendWhatsAppTemplate } from '@/server/whatsapp/meta-client';
 import { logger } from '@/server/logger';
+import { isWhatsAppConfigured, sendWhatsAppTemplate } from '@/server/whatsapp/meta-client';
 
 /**
- * Owner-facing alerts always try both channels and never let one
- * channel's failure block the other — a WhatsApp outage shouldn't also
- * suppress the email, and vice versa (this is exactly the redundancy the
- * owner asked for). Each failure is logged, never thrown, since a
- * notification failure must not fail the checkout/webhook request that
- * triggered it.
+ * Owner's explicit call after removing the WhatsApp support bot: every
+ * order still gets a WhatsApp alert to the owner with order id, the
+ * items, customer name, phone, and delivery address — enough to act on
+ * without opening the admin dashboard. Never blocks/fails the webhook
+ * that triggered it; a WhatsApp send failure is logged, not thrown.
  *
- * Template names below (`order_placed_alert`, `support_escalation_alert`)
- * must be submitted to Meta for approval before they'll actually send —
- * see docs/whatsapp-support.md for the exact wording to submit.
+ * Template `order_placed_alert_v2` must be submitted to Meta for
+ * approval before this actually sends — see docs/whatsapp-support.md
+ * for the exact text and placeholder order.
  */
-async function notifyBothChannels(params: {
-  whatsappTemplateName: string;
-  whatsappParams: string[];
-  emailSubject: string;
-  emailHtml: string;
-  logContext: Record<string, unknown>;
-  /** send-order-confirmation-emails.ts sends the real owner email for
-   *  order-placed (item photos/names/invoice PDF attached) — this skips
-   *  the bare-bones one here so the owner doesn't get two emails. */
-  skipEmail?: boolean;
-}): Promise<void> {
-  const env = getServerEnv();
-
-  if (isWhatsAppConfigured() && env.META_WHATSAPP_OWNER_WA_ID) {
-    try {
-      await sendWhatsAppTemplate({
-        to: env.META_WHATSAPP_OWNER_WA_ID,
-        templateName: params.whatsappTemplateName,
-        bodyParams: params.whatsappParams,
-      });
-    } catch (cause) {
-      logger.error('support.notify_owner.whatsapp_failed', {
-        ...params.logContext,
-        message: cause instanceof Error ? cause.message : String(cause),
-      });
-    }
-  } else {
-    logger.warn('support.notify_owner.whatsapp_not_configured', params.logContext);
-  }
-
-  if (params.skipEmail) return;
-
-  if (isEmailConfigured() && env.OWNER_NOTIFICATION_EMAIL) {
-    try {
-      await sendEmail({
-        to: env.OWNER_NOTIFICATION_EMAIL,
-        subject: params.emailSubject,
-        html: params.emailHtml,
-      });
-    } catch (cause) {
-      logger.error('support.notify_owner.email_failed', {
-        ...params.logContext,
-        message: cause instanceof Error ? cause.message : String(cause),
-      });
-    }
-  } else {
-    logger.warn('support.notify_owner.email_not_configured', params.logContext);
-  }
-}
-
 export async function notifyOwnerOrderPlaced(params: {
   orderNumber: string;
   grandTotal: number;
   currency: string;
+  itemsSummary: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
 }): Promise<void> {
-  await notifyBothChannels({
-    whatsappTemplateName: 'order_placed_alert',
-    whatsappParams: [params.orderNumber, `${params.currency} ${params.grandTotal.toFixed(2)}`],
-    emailSubject: `New order ${params.orderNumber} — ${params.currency} ${params.grandTotal.toFixed(2)}`,
-    emailHtml: `<p>New order placed.</p><p><strong>Order:</strong> ${params.orderNumber}</p><p><strong>Total:</strong> ${params.currency} ${params.grandTotal.toFixed(2)}</p>`,
-    logContext: { event: 'order_placed', orderNumber: params.orderNumber },
-    skipEmail: true,
-  });
-}
+  const env = getServerEnv();
 
-export async function notifyOwnerEscalation(params: {
-  orderNumber: string | null;
-  customerWaId: string;
-  reason: string;
-  recentMessages: Array<{ sender: string; body: string }>;
-}): Promise<void> {
-  const transcript = params.recentMessages.map((m) => `${m.sender}: ${m.body}`).join('\n');
-
-  await notifyBothChannels({
-    whatsappTemplateName: 'support_escalation_alert',
-    whatsappParams: [params.orderNumber ?? 'unknown order', params.reason],
-    emailSubject: `WhatsApp support escalation${params.orderNumber ? ` — ${params.orderNumber}` : ''}`,
-    emailHtml:
-      `<p>A customer conversation needs a human reply.</p>` +
-      `<p><strong>Order:</strong> ${params.orderNumber ?? 'unknown'}</p>` +
-      `<p><strong>Reason:</strong> ${params.reason}</p>` +
-      `<p><strong>Customer WhatsApp:</strong> ${params.customerWaId}</p>` +
-      `<pre>${transcript}</pre>` +
-      `<p>Reply from the Support Inbox in the admin dashboard.</p>`,
-    logContext: {
-      event: 'support_escalation',
+  if (!isWhatsAppConfigured() || !env.META_WHATSAPP_OWNER_WA_ID) {
+    logger.warn('support.notify_owner.whatsapp_not_configured', {
+      event: 'order_placed',
       orderNumber: params.orderNumber,
-      customerWaId: params.customerWaId,
-      reason: params.reason,
-    },
-  });
+    });
+    return;
+  }
+
+  try {
+    await sendWhatsAppTemplate({
+      to: env.META_WHATSAPP_OWNER_WA_ID,
+      templateName: 'order_placed_alert_v2',
+      bodyParams: [
+        params.orderNumber,
+        params.itemsSummary,
+        `${params.currency} ${params.grandTotal.toFixed(2)}`,
+        params.customerName,
+        params.customerPhone,
+        params.deliveryAddress,
+      ],
+    });
+  } catch (cause) {
+    logger.error('support.notify_owner.whatsapp_failed', {
+      event: 'order_placed',
+      orderNumber: params.orderNumber,
+      message: cause instanceof Error ? cause.message : String(cause),
+    });
+  }
 }

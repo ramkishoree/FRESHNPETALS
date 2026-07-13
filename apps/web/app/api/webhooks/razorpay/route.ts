@@ -108,10 +108,29 @@ export async function POST(request: NextRequest) {
       // catches per-channel failures internally, so awaiting it here
       // can't turn a notification failure into a webhook failure.
       if (order) {
+        const snapshot = order.order_snapshot as {
+          checkout?: { items?: { name: string; quantity: number }[] };
+          address?: {
+            recipientName?: string;
+            phone?: string;
+            flatNo?: string;
+            formattedAddress?: string;
+          };
+        };
+        const items = snapshot?.checkout?.items ?? [];
+        const address = snapshot?.address;
+
         await notifyOwnerOrderPlaced({
           orderNumber: order.order_number,
           grandTotal: Number(order.grand_total),
           currency: order.currency,
+          itemsSummary:
+            items.map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No items on file',
+          customerName: address?.recipientName ?? 'Unknown customer',
+          customerPhone: address?.phone ?? 'No phone on file',
+          deliveryAddress:
+            [address?.flatNo, address?.formattedAddress].filter(Boolean).join(', ') ||
+            'No address on file',
         });
 
         // Queued (not just called directly) so a transient PDF/storage

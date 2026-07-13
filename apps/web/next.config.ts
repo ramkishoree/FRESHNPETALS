@@ -63,13 +63,7 @@ const nextConfig: NextConfig = {
   // packages/* ship TypeScript source directly (no build step, see Phase 1
   // package.json "main"/"exports") — Next.js only runs its TS/JSX
   // transform on the app itself plus whatever's listed here.
-  transpilePackages: [
-    '@prana/core',
-    '@prana/commerce',
-    '@prana/identity',
-    '@prana/operations',
-    '@prana/ai',
-  ],
+  transpilePackages: ['@prana/core', '@prana/commerce', '@prana/identity', '@prana/operations'],
   // ffmpeg-static's binary is resolved at runtime via a dynamic path
   // (fluent-ffmpeg calls setFfmpegPath with it), so Next's automatic
   // dependency tracer can't reliably detect it belongs in the deployed

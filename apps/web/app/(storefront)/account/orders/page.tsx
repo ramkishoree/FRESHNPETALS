@@ -1,6 +1,8 @@
 import Link from 'next/link';
+import { ContactUsButton } from '@/components/commerce/contact-us-button';
 import { EmptyState } from '@/components/states/empty-state';
 import { Badge } from '@/components/ui/badge';
+import { getPublicEnv } from '@/config/env';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -33,7 +35,10 @@ export default async function AccountOrdersPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-h2 text-foreground font-bold">My orders</h1>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <h1 className="text-h2 text-foreground font-bold">My orders</h1>
+        <ContactUsButton ownerPhoneNumber={getPublicEnv().NEXT_PUBLIC_OWNER_PHONE_NUMBER} />
+      </div>
 
       {(orders ?? []).length === 0 ? (
         <EmptyState

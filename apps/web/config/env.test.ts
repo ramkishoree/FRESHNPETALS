@@ -8,7 +8,7 @@ async function loadEnv() {
   return import('./env');
 }
 
-describe('env parsing — blank optional vars must not crash (regression: NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER="" broke every request via middleware)', () => {
+describe('env parsing — blank optional vars must not crash (regression: an empty-string optional public var once broke every request via middleware)', () => {
   beforeEach(() => {
     process.env['NEXT_PUBLIC_APP_URL'] = 'http://localhost:3100';
     process.env['NEXT_PUBLIC_SUPABASE_URL'] = 'http://localhost:54321';
@@ -24,16 +24,16 @@ describe('env parsing — blank optional vars must not crash (regression: NEXT_P
   });
 
   it('treats an empty-string optional public var as absent, not invalid', async () => {
-    process.env['NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER'] = '';
+    process.env['NEXT_PUBLIC_OWNER_PHONE_NUMBER'] = '';
     const { getPublicEnv } = await loadEnv();
     expect(() => getPublicEnv()).not.toThrow();
-    expect(getPublicEnv().NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER).toBeUndefined();
+    expect(getPublicEnv().NEXT_PUBLIC_OWNER_PHONE_NUMBER).toBeUndefined();
   });
 
   it('still accepts a real value for that same var', async () => {
-    process.env['NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER'] = '911234567890';
+    process.env['NEXT_PUBLIC_OWNER_PHONE_NUMBER'] = '+911234567890';
     const { getPublicEnv } = await loadEnv();
-    expect(getPublicEnv().NEXT_PUBLIC_WHATSAPP_BUSINESS_NUMBER).toBe('911234567890');
+    expect(getPublicEnv().NEXT_PUBLIC_OWNER_PHONE_NUMBER).toBe('+911234567890');
   });
 
   it('treats every blank optional server var as absent, not invalid', async () => {
