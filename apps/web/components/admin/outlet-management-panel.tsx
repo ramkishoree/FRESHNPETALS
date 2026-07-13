@@ -94,7 +94,7 @@ function GoogleBusinessSection() {
 export function OutletManagementPanel() {
   return (
     <details className="border-border rounded-card border">
-      <summary className="text-body text-foreground cursor-pointer select-none p-4 font-medium">
+      <summary className="text-body text-foreground cursor-pointer p-4 font-medium select-none">
         Outlets (store locations)
       </summary>
       <div className="space-y-6 border-t p-4">
@@ -116,6 +116,12 @@ export function OutletManagementPanel() {
             { name: 'phone', label: 'Phone', type: 'text' },
             { name: 'email', label: 'Email', type: 'text' },
             { name: 'is_active', label: 'Active', type: 'boolean' },
+            {
+              name: 'google_cover_photo_url',
+              label: 'Cover photo',
+              type: 'image',
+              helperText: 'Shown in the "Our outlets" section on the homepage.',
+            },
           ]}
         />
       </div>

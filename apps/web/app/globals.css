@@ -15,12 +15,25 @@
 
   html {
     scroll-behavior: smooth;
+    overflow-x: hidden;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+
+  /* Mobile rubber-band overscroll paints past the viewport edge using
+     html/body's own background — only the nested .storefront-theme div
+     carried the paper-ivory tone, so bouncing past an edge flashed the
+     admin theme's plain background instead. :has() lets html/body match
+     the storefront palette only on storefront pages, leaving the admin
+     panel's own background untouched. */
+  html:has(.storefront-theme),
+  body:has(.storefront-theme) {
+    background-color: #f4efe2;
   }
 
   /* Ch.5.26 — focus rings must be visible. */

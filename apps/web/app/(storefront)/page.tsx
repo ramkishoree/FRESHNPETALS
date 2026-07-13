@@ -76,11 +76,10 @@ export default async function HomePage() {
   const outlets = outletsResult.data ?? [];
 
   // Editable via Admin → Pages → the "home" entry's Body content field
-  // ({eyebrow, title, titleHighlight, subtitle, ctaLabel}).
+  // ({title, titleHighlight, subtitle, ctaLabel}).
   // Falls back to the original copy when that row doesn't exist yet or a
   // field is left blank, so this never renders empty hero text.
   interface HomeHeroContent {
-    eyebrow?: string;
     title?: string;
     titleHighlight?: string;
     subtitle?: string;
@@ -96,7 +95,6 @@ export default async function HomePage() {
 
       {/* ============================ HERO ============================ */}
       <section className="wrap pt-16 pb-14 text-center lg:pt-24 lg:pb-20">
-        <p className="label mb-6">{hero.eyebrow ?? "Lucknow's neighbourhood florist"}</p>
         <h1 className="display text-h1 mx-auto max-w-4xl">
           {hero.title ?? 'Fresh flowers, delivered'}{' '}
           <em className="text-[var(--petal)] not-italic">{hero.titleHighlight ?? 'same-day.'}</em>

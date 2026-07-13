@@ -24,6 +24,7 @@ const schema = z.object({
   phone: z.string().optional(),
   email: z.string().email().optional(),
   is_active: z.boolean().optional(),
+  google_cover_photo_url: z.string().optional(),
 });
 
 export const { GET, POST } = createAdminCrudCollectionRoute({

@@ -1,6 +1,7 @@
 'use client';
 
 import type { Product } from '@prana/commerce';
+import * as React from 'react';
 import { toast } from 'sonner';
 import { ProductCarousel } from '@/components/commerce/product-carousel';
 import { ProductGrid } from '@/components/commerce/product-grid';
@@ -22,6 +23,7 @@ export function AddToCartProductGrid({
   layout?: 'grid' | 'carousel';
 }) {
   const { addItem } = useCart();
+  const [wishlistedIds, setWishlistedIds] = React.useState<ReadonlySet<string>>(new Set());
 
   function handleAddToCart(productId: string) {
     const product = products.find((item) => item.id === productId);
@@ -38,12 +40,15 @@ export function AddToCartProductGrid({
   }
 
   async function handleToggleWishlist(productId: string) {
+    const alreadyWishlisted = wishlistedIds.has(productId);
     try {
-      const response = await fetch('/api/v1/account/wishlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId }),
-      });
+      const response = alreadyWishlisted
+        ? await fetch(`/api/v1/account/wishlist/${productId}`, { method: 'DELETE' })
+        : await fetch('/api/v1/account/wishlist', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ productId }),
+          });
       if (response.status === 401) {
         toast.error('Sign in to save products to your wishlist.');
         return;
@@ -51,7 +56,14 @@ export function AddToCartProductGrid({
       const body = await response.json();
       if (!response.ok || !body.success)
         throw new Error(body.error?.message ?? 'Failed to update wishlist.');
-      toast.success('Added to wishlist.');
+
+      setWishlistedIds((previous) => {
+        const next = new Set(previous);
+        if (alreadyWishlisted) next.delete(productId);
+        else next.add(productId);
+        return next;
+      });
+      toast.success(alreadyWishlisted ? 'Removed from wishlist.' : 'Added to wishlist.');
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Failed to update wishlist.');
     }
@@ -63,6 +75,7 @@ export function AddToCartProductGrid({
         products={products}
         onAddToCart={handleAddToCart}
         onToggleWishlist={handleToggleWishlist}
+        wishlistedIds={wishlistedIds}
       />
     );
   }
@@ -72,6 +85,7 @@ export function AddToCartProductGrid({
       products={products}
       onAddToCart={handleAddToCart}
       onToggleWishlist={handleToggleWishlist}
+      wishlistedIds={wishlistedIds}
     />
   );
 }
