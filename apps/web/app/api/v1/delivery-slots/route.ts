@@ -1,5 +1,5 @@
 import type { NextRequest } from 'next/server';
-import { InfrastructureError, err, ok } from '@prana/core';
+import { InfrastructureError, ValidationError, err, ok } from '@prana/core';
 import { z } from 'zod';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createApiRoute } from '@/server/http/route-handler';
@@ -76,6 +76,11 @@ const route = createApiRoute({
     const now = istPartsNow();
     const todayStr = istDateString(now.year, now.month, now.day);
     const requestedDate = query.date ?? todayStr;
+
+    if (requestedDate < todayStr) {
+      return err(new ValidationError('That date has already passed — pick today or later.'));
+    }
+
     const isToday = requestedDate === todayStr;
 
     const admin = createSupabaseAdminClient();

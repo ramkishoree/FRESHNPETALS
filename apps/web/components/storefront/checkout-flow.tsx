@@ -18,6 +18,13 @@ declare global {
   }
 }
 
+/** Today's date in IST (YYYY-MM-DD) — matches the server's own IST-based
+ *  cutoff so the picker can't offer a date the API will reject anyway. */
+function getTodayIST(): string {
+  const fmt = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Kolkata' });
+  return fmt.format(new Date());
+}
+
 const EMPTY_ADDRESS = {
   recipientName: '',
   phone: '',
@@ -214,6 +221,9 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             setSlotDate(data.nextAvailableDate);
             return;
           }
+        } else if (slotDate !== null) {
+          toast.error(body.error?.message ?? 'That date is not available — pick another.');
+          setSlotDate(null);
         }
       } catch {
         // Non-critical — checkout can proceed without a slot.
@@ -441,9 +451,14 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
               <Input
                 type="date"
                 value={slotsResponse?.date ?? ''}
-                min={new Date().toISOString().slice(0, 10)}
+                min={getTodayIST()}
                 onChange={(e) => {
-                  if (e.target.value) setSlotDate(e.target.value);
+                  if (!e.target.value) return;
+                  if (e.target.value < getTodayIST()) {
+                    toast.error("Can't select a date that has already passed.");
+                    return;
+                  }
+                  setSlotDate(e.target.value);
                 }}
                 className="w-auto rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
               />

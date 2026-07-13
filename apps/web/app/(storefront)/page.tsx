@@ -6,6 +6,7 @@ import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
 import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
+import { HeroTrustBar } from '@/components/storefront/hero-trust-bar';
 import { OfferPopup } from '@/components/storefront/offer-popup';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SupabaseProductRepository } from '@/server/repositories/supabase-product-repository';
@@ -100,6 +101,7 @@ export default async function HomePage() {
       <section className="relative overflow-hidden">
         <div className="container-brand grid items-center gap-10 pt-14 pb-10 lg:grid-cols-[1.05fr_1fr] lg:pt-20 lg:pb-14">
           <div className="max-w-xl">
+            <HeroTrustBar />
             <p className="eyebrow mb-5">{hero.eyebrow ?? "Lucknow's neighbourhood florist"}</p>
             <h1 className="text-h1">
               {hero.title ?? 'Fresh flowers, delivered'}{' '}
