@@ -232,6 +232,9 @@ export function AdminResourcePage<TRow extends ResourceRow>({
                       setFormValues((prev) => ({ ...prev, [field.name]: value }))
                     }
                   />
+                  {field.helperText && (
+                    <p className="text-caption text-muted-foreground">{field.helperText}</p>
+                  )}
                 </div>
               ))}
             </div>

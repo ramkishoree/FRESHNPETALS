@@ -5,4 +5,6 @@ export interface AdminResourceField {
   options?: { label: string; value: string }[];
   required?: boolean;
   placeholder?: string;
+  /** Small note shown under the field — e.g. explaining why a select has no options yet. */
+  helperText?: string;
 }

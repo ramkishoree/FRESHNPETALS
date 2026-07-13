@@ -28,7 +28,6 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     children: [
       { label: 'Products', href: '/admin/products' },
       { label: 'Categories', href: '/admin/categories' },
-      { label: 'Collections', href: '/admin/collections' },
     ],
   },
   {
@@ -38,19 +37,17 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     children: [
       { label: 'Orders', href: '/admin/orders' },
       { label: 'Customers', href: '/admin/customers' },
-      { label: 'Coupons', href: '/admin/coupons' },
-      { label: 'Offers', href: '/admin/offers' },
       { label: 'Reviews', href: '/admin/reviews' },
     ],
   },
   {
     label: 'Marketing',
-    href: '/admin/blogs',
+    href: '/admin/marketing',
     icon: Megaphone,
     children: [
+      { label: 'Campaigns', href: '/admin/marketing' },
       { label: 'Blogs', href: '/admin/blogs' },
       { label: 'Pages', href: '/admin/pages' },
-      { label: 'Announcements', href: '/admin/announcements' },
     ],
   },
   {
