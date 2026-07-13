@@ -14,6 +14,7 @@ export default async function BlogListPage() {
     .from('blogs')
     .select('id, slug, title, excerpt, featured_image, published_at')
     .eq('status', 'published')
+    .is('deleted_at', null)
     .order('published_at', { ascending: false })
     .limit(24);
 
@@ -27,7 +28,7 @@ export default async function BlogListPage() {
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {(blogs ?? []).map((blog) => (
             <Link key={blog.id} href={`/blog/${blog.slug}`} className="group space-y-2">
-              <div className="aspect-4/3 rounded-image bg-muted relative overflow-hidden">
+              <div className="rounded-image bg-muted relative aspect-4/3 overflow-hidden">
                 {blog.featured_image && (
                   <Image
                     src={blog.featured_image}

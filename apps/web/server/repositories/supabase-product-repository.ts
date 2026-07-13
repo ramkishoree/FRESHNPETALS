@@ -3,7 +3,7 @@ import type { Product, ProductRepository, ProductStatus } from '@prana/commerce'
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const SELECT_COLUMNS =
-  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at))';
+  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at)), product_media(url, media_type, position)';
 
 export interface ProductPriceRow {
   base_price: string | number;
@@ -22,6 +22,12 @@ export interface ProductInventoryRow {
     | null;
 }
 
+export interface ProductMediaRow {
+  url: string;
+  media_type: string;
+  position: number;
+}
+
 export interface ProductRow {
   id: string;
   sku: string;
@@ -33,6 +39,21 @@ export interface ProductRow {
   created_at: string;
   product_prices: ProductPriceRow | ProductPriceRow[] | null;
   inventory: ProductInventoryRow[] | null;
+  product_media: ProductMediaRow[] | null;
+}
+
+/** featuredImage first (the card's default/cover photo), then product_media
+ *  photos in position order — a listing card hovers through this list for
+ *  a quick preview instead of just the one static featuredImage. */
+export function buildImageList(featuredImage: string | null, media: ProductMediaRow[]): string[] {
+  const galleryUrls = [...media]
+    .filter((item) => item.media_type === 'image')
+    .sort((a, b) => a.position - b.position)
+    .map((item) => item.url);
+  return [
+    ...(featuredImage ? [featuredImage] : []),
+    ...galleryUrls.filter((url) => url !== featuredImage),
+  ];
 }
 
 export function mapRow(row: ProductRow): Product {
@@ -47,6 +68,7 @@ export function mapRow(row: ProductRow): Product {
     name: row.name,
     shortDescription: row.short_description,
     featuredImage: row.featured_image,
+    images: buildImageList(row.featured_image, row.product_media ?? []),
     status: row.status,
     basePrice: priceRow ? Number(priceRow.base_price) : 0,
     salePrice: priceRow?.sale_price != null ? Number(priceRow.sale_price) : null,

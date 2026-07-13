@@ -22,9 +22,26 @@ export function Spine() {
   const pathname = usePathname();
   const isHome = pathname === '/';
   const ref = React.useRef<HTMLDivElement>(null);
+  const pathRef = React.useRef<SVGPathElement>(null);
 
   React.useEffect(() => {
-    if (!isHome) return;
+    const pathEl = pathRef.current;
+    if (!pathEl) return;
+    // Measured once from the actual rendered path — under this SVG's
+    // non-uniform scale (preserveAspectRatio="none"), a hardcoded
+    // dasharray value fights the coordinate remapping and the reveal
+    // silently renders invisible instead of drawing the line. The real
+    // length (close to but not exactly the 3000 viewBox height, since
+    // the zigzag curve has real arc length beyond pure vertical
+    // distance) sidesteps that entirely.
+    const length = pathEl.getTotalLength();
+    pathEl.style.strokeDasharray = `${length}`;
+
+    if (!isHome) {
+      pathEl.style.strokeDashoffset = '0';
+      return;
+    }
+
     const el = ref.current;
     if (!el) return;
     let ticking = false;
@@ -32,7 +49,9 @@ export function Spine() {
     function update() {
       const max = document.documentElement.scrollHeight - window.innerHeight;
       const g = max > 0 ? Math.min(1, Math.max(0, window.scrollY / max)) : 0;
-      el?.style.setProperty('--grow', (g * 0.92 + 0.08).toFixed(4));
+      const grow = g * 0.92 + 0.08;
+      el?.style.setProperty('--grow', grow.toFixed(4));
+      if (pathEl) pathEl.style.strokeDashoffset = `${length * (1 - grow)}`;
       ticking = false;
     }
     function onScroll() {
@@ -60,6 +79,7 @@ export function Spine() {
     >
       <svg viewBox="0 0 90 3000" fill="none" preserveAspectRatio="none">
         <path
+          ref={pathRef}
           className="stem-line"
           d="M45 0 C45 200 20 340 45 520 C70 700 20 880 45 1080 C70 1280 22 1450 45 1650 C68 1850 24 2020 45 2220 C66 2420 30 2600 45 2800 C52 2900 45 2950 45 3000"
         />

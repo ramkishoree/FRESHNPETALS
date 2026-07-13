@@ -45,6 +45,7 @@ function mapEntry(entry: WishlistEntry): Product | null {
     name: product.name,
     shortDescription: null,
     featuredImage: product.featured_image,
+    images: product.featured_image ? [product.featured_image] : [],
     status: product.status,
     basePrice: priceRow ? Number(priceRow.base_price) : 0,
     salePrice: priceRow?.sale_price != null ? Number(priceRow.sale_price) : null,

@@ -39,6 +39,7 @@ export default async function SearchPage({
           .from('blogs')
           .select('id, slug, title')
           .eq('status', 'published')
+          .is('deleted_at', null)
           .ilike('title', `%${safeQuery}%`)
           .limit(5)
       : Promise.resolve({ data: [] as never[] }),

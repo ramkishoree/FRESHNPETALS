@@ -19,6 +19,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .from('blogs')
     .select('title, excerpt')
     .eq('slug', slug)
+    .is('deleted_at', null)
     .maybeSingle();
   if (!data) return { title: 'Article not found | Fresh & Petals' };
   return { title: `${data.title} | Fresh & Petals`, description: data.excerpt ?? undefined };
@@ -63,7 +64,8 @@ export default async function BlogDetailPage({ params }: PageProps) {
   let blogQuery = supabase
     .from('blogs')
     .select('id, title, excerpt, featured_image, published_at, reading_time_minutes, status')
-    .eq('slug', slug);
+    .eq('slug', slug)
+    .is('deleted_at', null);
   if (!isDraft) blogQuery = blogQuery.eq('status', 'published');
   const { data: blog } = await blogQuery.maybeSingle();
   if (!blog) notFound();

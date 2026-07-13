@@ -36,6 +36,7 @@ const search = createApiRoute({
         .from('blogs')
         .select('id, slug, title, featured_image')
         .eq('status', 'published')
+        .is('deleted_at', null)
         .ilike('title', `%${safeQuery}%`)
         .limit(5),
     ]);

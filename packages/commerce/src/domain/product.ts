@@ -22,6 +22,12 @@ export interface Product {
   name: string;
   shortDescription: string | null;
   featuredImage: string | null;
+  /** Every photo for this product, featuredImage first, then product_media
+   *  in position order — a listing card hovers through this for a quick
+   *  preview instead of just the one static featuredImage. Always has at
+   *  least featuredImage's entry when one exists; empty when there's no
+   *  image at all. */
+  images: string[];
   status: ProductStatus;
   basePrice: number;
   salePrice: number | null;

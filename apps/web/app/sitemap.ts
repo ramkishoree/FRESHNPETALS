@@ -38,7 +38,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         .select('slug, updated_at')
         .eq('is_active', true)
         .is('deleted_at', null),
-      admin.from('blogs').select('slug, updated_at').eq('status', 'published'),
+      admin
+        .from('blogs')
+        .select('slug, updated_at')
+        .eq('status', 'published')
+        .is('deleted_at', null),
       admin.from('outlets').select('city').eq('is_active', true).is('deleted_at', null),
     ]);
 

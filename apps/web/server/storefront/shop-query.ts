@@ -1,7 +1,7 @@
 import type { Product, ProductStatus } from '@prana/commerce';
 
 export const PRODUCT_SELECT_COLUMNS =
-  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at))';
+  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at)), product_media(url, media_type, position)';
 
 interface ProductPriceRow {
   base_price: string | number;
@@ -16,6 +16,12 @@ interface ProductInventoryRow {
     | null;
 }
 
+interface ProductMediaRow {
+  url: string;
+  media_type: string;
+  position: number;
+}
+
 interface ProductRow {
   id: string;
   sku: string;
@@ -27,6 +33,7 @@ interface ProductRow {
   created_at: string;
   product_prices: ProductPriceRow | ProductPriceRow[] | null;
   inventory: ProductInventoryRow[] | null;
+  product_media: ProductMediaRow[] | null;
 }
 
 /** Same mapping as SupabaseProductRepository — duplicated rather than imported because storefront listing queries (category-filtered, sorted) don't fit the repository's fixed `list`/`findPublished` shapes cleanly. */
@@ -34,6 +41,14 @@ export function mapProductRow(row: ProductRow): Product {
   const priceRow = Array.isArray(row.product_prices)
     ? (row.product_prices[0] ?? null)
     : row.product_prices;
+  const galleryUrls = (row.product_media ?? [])
+    .filter((item) => item.media_type === 'image')
+    .sort((a, b) => a.position - b.position)
+    .map((item) => item.url);
+  const images = [
+    ...(row.featured_image ? [row.featured_image] : []),
+    ...galleryUrls.filter((url) => url !== row.featured_image),
+  ];
   return {
     id: row.id,
     sku: row.sku,
@@ -41,6 +56,7 @@ export function mapProductRow(row: ProductRow): Product {
     name: row.name,
     shortDescription: row.short_description,
     featuredImage: row.featured_image,
+    images,
     status: row.status,
     basePrice: priceRow ? Number(priceRow.base_price) : 0,
     salePrice: priceRow?.sale_price != null ? Number(priceRow.sale_price) : null,

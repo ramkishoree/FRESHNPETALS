@@ -279,8 +279,14 @@
   stroke-width: 2;
   fill: none;
   vector-effect: non-scaling-stroke;
-  stroke-dasharray: 3000;
-  stroke-dashoffset: calc(3000 - (var(--grow) * 3000));
+  /* stroke-dasharray/dashoffset are set inline from JS (spine.tsx) using
+     the path's own measured getTotalLength() — under this SVG's
+     non-uniform scale (preserveAspectRatio="none" stretches X and Y by
+     different factors), a CSS-authored dasharray value gets interpreted
+     in the wrong coordinate space and the "revealed" segment silently
+     renders as nothing instead of a visible drawn line. Measuring the
+     real path length and setting both properties together as unitless
+     inline values avoids that mismatch entirely. */
   transition: stroke-dashoffset 0.1s linear;
 }
 .storefront-theme .leaf {
@@ -489,10 +495,14 @@
 }
 
 /* ---------- product: gallery of "plates" — name+price, minimal chrome ---------- */
+/* Owner's explicit call: fixed 3-column grid made each plate stretch to
+   ~380px+ on a normal desktop width — a medium, standard thumbnail size
+   (auto-fill more, smaller columns) reads as a proper catalog instead of
+   a few oversized tiles. */
 .storefront-theme .plates {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: clamp(1.5rem, 3vw, 2.75rem);
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: clamp(1.25rem, 2.5vw, 2rem);
 }
 .storefront-theme .plate {
   text-decoration: none;
@@ -526,6 +536,26 @@
   font-size: 0.85rem;
   color: var(--paper);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
+}
+/* Hover mini-carousel position dots — only rendered when a product has
+   more than one photo. */
+.storefront-theme .plate-dots {
+  position: absolute;
+  bottom: 0.75rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 0.35rem;
+}
+.storefront-theme .plate-dots span {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--paper) 70%, transparent);
+  transition: background 0.25s var(--ease);
+}
+.storefront-theme .plate-dots span.is-active {
+  background: var(--paper);
 }
 .storefront-theme .plate-meta {
   display: flex;

@@ -1,7 +1,10 @@
+'use client';
+
 import type { Product } from '@prana/commerce';
 import { Heart } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
+import * as React from 'react';
 import { PriceDisplay } from './price-display';
 
 export interface ProductCardProps {
@@ -19,6 +22,8 @@ export interface ProductCardProps {
  * wishlist stays as a corner glyph — CLS must stay 0, hence the fixed
  * aspect-ratio image wrapper rather than an intrinsic-sized <img>.
  */
+const HOVER_INTERVAL_MS = 700;
+
 export function ProductCard({
   product,
   onAddToCart,
@@ -26,14 +31,34 @@ export function ProductCard({
   isWishlisted,
 }: ProductCardProps) {
   const outOfStock = product.availableQuantity <= 0;
+  const images = product.images.length > 0 ? product.images : [];
+  const [hoverIndex, setHoverIndex] = React.useState(0);
+  const intervalRef = React.useRef<ReturnType<typeof setInterval> | null>(null);
+
+  function startHoverCycle() {
+    if (images.length <= 1) return;
+    intervalRef.current = setInterval(() => {
+      setHoverIndex((previous) => (previous + 1) % images.length);
+    }, HOVER_INTERVAL_MS);
+  }
+
+  function stopHoverCycle() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = null;
+    setHoverIndex(0);
+  }
+
+  React.useEffect(() => stopHoverCycle, []);
+
+  const activeImage = images[hoverIndex] ?? product.featuredImage;
 
   return (
-    <article className="plate">
+    <article className="plate" onMouseEnter={startHoverCycle} onMouseLeave={stopHoverCycle}>
       <div className="plate-img">
         <Link href={`/product/${product.slug}`} className="block" aria-label={product.name}>
-          {product.featuredImage ? (
+          {activeImage ? (
             <Image
-              src={product.featuredImage}
+              src={activeImage}
               alt={product.name}
               width={600}
               height={750}
@@ -53,6 +78,13 @@ export function ProductCard({
             </div>
           )}
         </Link>
+        {images.length > 1 && (
+          <div className="plate-dots" aria-hidden="true">
+            {images.map((url, index) => (
+              <span key={url} className={index === hoverIndex ? 'is-active' : ''} />
+            ))}
+          </div>
+        )}
         {product.shortDescription && <span className="plate-tag">{product.shortDescription}</span>}
 
         {onToggleWishlist && (
