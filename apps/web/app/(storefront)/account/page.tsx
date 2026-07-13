@@ -1,3 +1,4 @@
+import Image from 'next/image';
 import Link from 'next/link';
 import { AccountSignOutButton } from '@/components/storefront/account-sign-out-button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -15,7 +16,14 @@ export default async function AccountOverviewPage({
   const { confirmed } = await searchParams;
 
   return (
-    <div className="space-y-8">
+    <div className="relative space-y-8">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-10 -left-16 hidden w-64 opacity-90 lg:block"
+      >
+        <Image src="/illustrations/bicycle.png" alt="" width={807} height={557} />
+      </div>
+
       {confirmed === '1' && (
         <div className="rounded-card border border-green-600/30 bg-green-600/10 px-4 py-3 text-sm text-green-700">
           Email confirmed! You&apos;re all set.

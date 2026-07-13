@@ -5,7 +5,9 @@ import { CategoryCard } from '@/components/commerce/category-card';
 import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
+import { FloralCorner } from '@/components/storefront/floral-corner';
 import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
+import { HeroFeatureStrip } from '@/components/storefront/hero-feature-strip';
 import { HeroTrustBar } from '@/components/storefront/hero-trust-bar';
 import { OfferPopup } from '@/components/storefront/offer-popup';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -129,18 +131,21 @@ export default async function HomePage() {
               aria-hidden="true"
               className="pointer-events-none absolute -inset-6 -z-10 rounded-[32px] bg-[radial-gradient(60%_60%_at_60%_30%,rgba(200,162,93,0.18),transparent_70%)]"
             />
-            <div className="relative overflow-hidden rounded-[26px] border border-[var(--sf-border)] bg-[var(--sf-surface)] shadow-[var(--shadow-lift)]">
-              <div className="relative aspect-[4/5] w-full">
-                <Image
-                  src={hero.heroImageUrl ?? '/logo-mark.svg'}
-                  alt=""
-                  fill
-                  className={hero.heroImageUrl ? 'object-cover' : 'object-contain p-16'}
-                />
-              </div>
+            <div
+              className={`relative w-full ${hero.heroImageUrl ? 'aspect-[4/5]' : 'aspect-[933/585]'}`}
+            >
+              <Image
+                src={hero.heroImageUrl ?? '/illustrations/storefront.png'}
+                alt=""
+                fill
+                priority
+                className="object-contain"
+              />
             </div>
           </div>
         </div>
+
+        <HeroFeatureStrip />
       </section>
 
       {/* ==================== GOOGLE REVIEWS — authority, first thing after hero ==================== */}
@@ -169,7 +174,8 @@ export default async function HomePage() {
 
       {/* ==================== SHOP BY CATEGORY ==================== */}
       {categories.length > 0 && (
-        <section className="container-brand pt-16">
+        <section className="container-brand relative pt-16">
+          <FloralCorner variant={2} position="top-right" size={220} />
           <div className="mb-7 flex items-end justify-between gap-4">
             <div>
               <p className="eyebrow mb-2">Browse</p>
@@ -221,7 +227,8 @@ export default async function HomePage() {
 
       {/* ==================== OUR OUTLETS ==================== */}
       {outlets.length > 0 && (
-        <section className="container-brand pt-20">
+        <section className="container-brand relative pt-20">
+          <FloralCorner variant={1} position="bottom-left" size={220} />
           <div className="mb-7 text-center">
             <p className="eyebrow mb-2">We deliver from</p>
             <h2 className="text-h2">Our outlets</h2>
