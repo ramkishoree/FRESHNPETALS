@@ -11,6 +11,7 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     name: 'Rose Bouquet',
     shortDescription: null,
     featuredImage: null,
+    images: [],
     status: 'published',
     basePrice: 999,
     salePrice: null,
