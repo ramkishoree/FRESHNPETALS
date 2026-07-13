@@ -68,6 +68,11 @@ const serverEnvSchema = publicEnvSchema.extend({
   RESEND_API_KEY: optionalString(),
   RESEND_FROM_EMAIL: optionalEmail(),
   OWNER_NOTIFICATION_EMAIL: optionalEmail(),
+  // Developer-facing free-tier usage alert (server/ops/usage-threshold-sweep.ts)
+  // — deliberately separate from OWNER_NOTIFICATION_EMAIL: the store owner
+  // doesn't need to know about Supabase database/storage ceilings, the
+  // developer running the free tiers does.
+  DEV_ALERT_EMAIL: optionalEmail(),
   // Server-side Places Details calls (outlet Google review sync) —
   // separate from NEXT_PUBLIC_GOOGLE_MAPS_API_KEY because that key is
   // typically HTTP-referrer-restricted for client-side safety, which
@@ -115,6 +120,7 @@ export function getServerEnv(): ServerEnv {
     RESEND_API_KEY: process.env['RESEND_API_KEY'],
     RESEND_FROM_EMAIL: process.env['RESEND_FROM_EMAIL'],
     OWNER_NOTIFICATION_EMAIL: process.env['OWNER_NOTIFICATION_EMAIL'],
+    DEV_ALERT_EMAIL: process.env['DEV_ALERT_EMAIL'],
     GOOGLE_MAPS_API_KEY: process.env['GOOGLE_MAPS_API_KEY'],
   });
   return cachedServerEnv;

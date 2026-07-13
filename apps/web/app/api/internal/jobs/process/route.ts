@@ -7,6 +7,7 @@ import { logger } from '@/server/logger';
 import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
 import { handleInvoiceGenerate } from '@/server/invoices/generate-invoice-job';
 import { sweepGoogleReviews } from '@/server/outlets/google-reviews-sweep';
+import { sweepUsageThresholds } from '@/server/ops/usage-threshold-sweep';
 import { sweepReviewRequestNudges } from '@/server/reviews/review-nudge-sweep';
 
 function isAuthorized(authHeader: string | null, cronSecret: string): boolean {
@@ -84,6 +85,7 @@ async function runWorker(request: NextRequest): Promise<NextResponse> {
   await sweepExpiredReservations(admin);
   await sweepReviewRequestNudges(admin);
   await sweepGoogleReviews(admin);
+  await sweepUsageThresholds(admin);
 
   const jobHandlers = buildJobHandlers(admin);
   for (const jobType of Object.keys(jobHandlers)) {
