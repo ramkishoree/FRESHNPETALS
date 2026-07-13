@@ -44,12 +44,13 @@ Order placed (Razorpay webhook → checkout_complete succeeds)
    Customer: {{4}} ({{5}})
    Deliver to: {{6}}
    Total: {{3}}
+   Payment: {{7}}
    ```
 
    Sample values for Meta's review: `{{1}}` = `FP-0001`, `{{2}}` =
    `Rose Bouquet ×2, Lily Box ×1`, `{{3}}` = `INR 999.00`, `{{4}}` =
    `Anaya Sharma`, `{{5}}` = `+911234567890`, `{{6}}` = `4/122 Vipul
-Khand, Gomti Nagar, Lucknow`
+Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`
 
    Template approval is usually same-day but can take longer. Until
    approved, `sendWhatsAppTemplate` calls fail with a clear error from

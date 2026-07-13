@@ -87,6 +87,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [couponMessage, setCouponMessage] = React.useState<string | null>(null);
   const [isPaying, setIsPaying] = React.useState(false);
   const [scriptReady, setScriptReady] = React.useState(false);
+  const [paymentMethod, setPaymentMethod] = React.useState<'razorpay' | 'cod'>('razorpay');
 
   // ---- Delivery slot state ---------------------------------------------------
   const [slotDate, setSlotDate] = React.useState<string | null>(null);
@@ -354,11 +355,19 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           },
           ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
           ...(selectedSlotId ? { deliverySlotId: selectedSlotId } : {}),
+          ...(slotsResponse?.date ? { deliveryDate: slotsResponse.date } : {}),
+          paymentMethod,
         }),
       });
       const body = await response.json();
       if (!response.ok || !body.success)
         throw new Error(body.error?.message ?? 'Failed to start checkout.');
+
+      if (body.data.paymentMethod === 'cod') {
+        clear();
+        router.push(`/checkout/${body.data.checkoutSessionId}/processing`);
+        return;
+      }
 
       const { checkoutSessionId, razorpayOrderId, razorpayKeyId, amount, currency } = body.data;
 
@@ -607,6 +616,34 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         {/* ---- Order summary sidebar ---- */}
         <aside className="h-fit rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface-2)] p-6 lg:sticky lg:top-24">
           <h2 className="text-h4 mb-4">Order summary</h2>
+
+          <div className="mb-5 space-y-2 border-b border-[var(--sf-border)] pb-5">
+            <p className="text-caption text-[var(--sf-ink-muted)]">Payment method</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('razorpay')}
+                className={`flex-1 rounded-[var(--r-md)] border px-3 py-2 text-sm transition-colors ${
+                  paymentMethod === 'razorpay'
+                    ? 'border-[var(--sf-ink)] bg-[var(--sf-ink)] text-[var(--sf-surface)]'
+                    : 'border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] hover:border-[var(--sf-ink)]'
+                }`}
+              >
+                Pay online
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod('cod')}
+                className={`flex-1 rounded-[var(--r-md)] border px-3 py-2 text-sm transition-colors ${
+                  paymentMethod === 'cod'
+                    ? 'border-[var(--sf-ink)] bg-[var(--sf-ink)] text-[var(--sf-surface)]'
+                    : 'border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] hover:border-[var(--sf-ink)]'
+                }`}
+              >
+                Cash on delivery
+              </button>
+            </div>
+          </div>
           <ul className="space-y-3">
             {items.map((item) => (
               <li key={item.productId} className="flex justify-between gap-3 text-sm">
@@ -685,10 +722,18 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             disabled={isPaying}
             className="btn btn-primary mt-6 flex w-full items-center justify-center px-7 py-4 text-sm disabled:opacity-60"
           >
-            {isPaying ? 'Processing...' : `Pay ₹${pricing ? pricing.grandTotal : subtotal}`}
+            {isPaying
+              ? 'Processing...'
+              : paymentMethod === 'cod'
+                ? `Place order (COD) ₹${pricing ? pricing.grandTotal : subtotal}`
+                : `Pay ₹${pricing ? pricing.grandTotal : subtotal}`}
           </button>
 
-          <p className="text-caption mt-4 text-center">🔒 Payments secured by Razorpay</p>
+          <p className="text-caption mt-4 text-center">
+            {paymentMethod === 'cod'
+              ? '💵 Pay in cash on delivery'
+              : '🔒 Payments secured by Razorpay'}
+          </p>
         </aside>
       </div>
     </div>

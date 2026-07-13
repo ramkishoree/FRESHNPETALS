@@ -1,0 +1,90 @@
+import 'server-only';
+import { processNextJob } from '@prana/operations';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import { handleInvoiceGenerate } from '@/server/invoices/generate-invoice-job';
+import { logger } from '@/server/logger';
+import { sendOrderConfirmationEmails } from '@/server/orders/send-order-confirmation-emails';
+import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
+import { notifyOwnerOrderPlaced } from '@/server/support/notify-owner';
+
+interface CompletedOrder {
+  id: string;
+  order_number: string;
+  grand_total: number | string;
+  currency: string;
+  payment_method: string;
+  order_snapshot: unknown;
+}
+
+/**
+ * Everything that must happen once an order is real, regardless of how
+ * it got there — the async Razorpay webhook (payment captured minutes
+ * or hours after checkout) and the synchronous COD path (order
+ * completes inside the same request that started checkout) both call
+ * this exact function, so an order is never missing its WhatsApp alert,
+ * invoice, or confirmation email just because it came from a different
+ * payment method. Every side effect here is caught and logged, never
+ * thrown — a notification/invoice failure must never undo an order
+ * that's already real in the database.
+ */
+export async function runPostOrderSideEffects(
+  admin: SupabaseClient,
+  order: CompletedOrder,
+  correlationId: string,
+): Promise<void> {
+  const snapshot = order.order_snapshot as {
+    checkout?: { items?: { name: string; quantity: number }[] };
+    address?: {
+      recipientName?: string;
+      phone?: string;
+      flatNo?: string;
+      formattedAddress?: string;
+    };
+  };
+  const items = snapshot?.checkout?.items ?? [];
+  const address = snapshot?.address;
+
+  await notifyOwnerOrderPlaced({
+    orderNumber: order.order_number,
+    grandTotal: Number(order.grand_total),
+    currency: order.currency,
+    paymentMethod: order.payment_method === 'cod' ? 'Cash on delivery' : 'Paid online',
+    itemsSummary:
+      items.map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No items on file',
+    customerName: address?.recipientName ?? 'Unknown customer',
+    customerPhone: address?.phone ?? 'No phone on file',
+    deliveryAddress:
+      [address?.flatNo, address?.formattedAddress].filter(Boolean).join(', ') ||
+      'No address on file',
+  });
+
+  // Queued (not just called directly) so a transient PDF/storage failure
+  // gets the job queue's exponential-backoff retry via the next cron
+  // sweep — but also attempted immediately right here so the customer
+  // isn't left waiting on a once-daily cron for something this
+  // time-sensitive.
+  try {
+    const jobQueue = new SupabaseJobQueue(admin);
+    await jobQueue.enqueue('invoice.generate', { orderId: order.id });
+    const workerId = `order-${correlationId.slice(0, 8)}`;
+    await processNextJob(jobQueue, 'invoice.generate', workerId, (job) =>
+      handleInvoiceGenerate(admin, job),
+    );
+  } catch (cause) {
+    logger.error('order.side_effects.invoice_generate_failed', {
+      correlationId,
+      orderId: order.id,
+      message: cause instanceof Error ? cause.message : String(cause),
+    });
+  }
+
+  try {
+    await sendOrderConfirmationEmails(admin, order.id);
+  } catch (cause) {
+    logger.error('order.side_effects.confirmation_email_failed', {
+      correlationId,
+      orderId: order.id,
+      message: cause instanceof Error ? cause.message : String(cause),
+    });
+  }
+}

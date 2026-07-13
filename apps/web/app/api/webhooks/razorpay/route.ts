@@ -1,13 +1,9 @@
-import { processNextJob } from '@prana/operations';
 import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { handleInvoiceGenerate } from '@/server/invoices/generate-invoice-job';
 import { logger } from '@/server/logger';
-import { sendOrderConfirmationEmails } from '@/server/orders/send-order-confirmation-emails';
+import { runPostOrderSideEffects } from '@/server/orders/run-post-order-side-effects';
 import { verifyWebhookSignature } from '@/server/payments/razorpay-adapter';
-import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
-import { notifyOwnerOrderPlaced } from '@/server/support/notify-owner';
 
 interface RazorpayWebhookPayload {
   event: string;
@@ -101,73 +97,17 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Failed to complete order' }, { status: 500 });
       }
 
-      // Order-placed owner alert. Awaited (not fire-and-forget) — a
-      // serverless function can be frozen the instant it returns a
-      // response, which would kill an in-flight unawaited promise before
-      // the notification actually sends. notifyOwnerOrderPlaced already
-      // catches per-channel failures internally, so awaiting it here
-      // can't turn a notification failure into a webhook failure.
+      // Order-placed owner alert + invoice + confirmation email. Awaited
+      // (not fire-and-forget) — a serverless function can be frozen the
+      // instant it returns a response, which would kill an in-flight
+      // unawaited promise before these side effects actually run.
+      // runPostOrderSideEffects catches its own per-channel failures, so
+      // awaiting it here can't turn a notification/invoice/email failure
+      // into a webhook failure (Razorpay would just retry the whole
+      // webhook, re-triggering checkout_complete's idempotency path for
+      // no benefit).
       if (order) {
-        const snapshot = order.order_snapshot as {
-          checkout?: { items?: { name: string; quantity: number }[] };
-          address?: {
-            recipientName?: string;
-            phone?: string;
-            flatNo?: string;
-            formattedAddress?: string;
-          };
-        };
-        const items = snapshot?.checkout?.items ?? [];
-        const address = snapshot?.address;
-
-        await notifyOwnerOrderPlaced({
-          orderNumber: order.order_number,
-          grandTotal: Number(order.grand_total),
-          currency: order.currency,
-          itemsSummary:
-            items.map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No items on file',
-          customerName: address?.recipientName ?? 'Unknown customer',
-          customerPhone: address?.phone ?? 'No phone on file',
-          deliveryAddress:
-            [address?.flatNo, address?.formattedAddress].filter(Boolean).join(', ') ||
-            'No address on file',
-        });
-
-        // Queued (not just called directly) so a transient PDF/storage
-        // failure gets the job queue's exponential-backoff retry via the
-        // next cron sweep — but also attempted immediately right here so
-        // the customer isn't left waiting on a once-daily cron for
-        // something this time-sensitive. Failure here is caught and
-        // logged, never allowed to fail the webhook itself (Razorpay would
-        // just retry the whole webhook, re-triggering checkout_complete's
-        // idempotency path for no benefit).
-        try {
-          const jobQueue = new SupabaseJobQueue(admin);
-          await jobQueue.enqueue('invoice.generate', { orderId: order.id });
-          const workerId = `webhook-${correlationId.slice(0, 8)}`;
-          await processNextJob(jobQueue, 'invoice.generate', workerId, (job) =>
-            handleInvoiceGenerate(admin, job),
-          );
-        } catch (cause) {
-          logger.error('webhook.razorpay.invoice_generate_failed', {
-            correlationId,
-            message: cause instanceof Error ? cause.message : String(cause),
-          });
-        }
-
-        // Customer's first-ever order email, plus the richer owner alert
-        // (item photos/names/invoice PDF attached) that supersedes
-        // notifyOwnerOrderPlaced's bare-bones one above. Its own failures
-        // are caught internally per-recipient — never allowed to fail the
-        // webhook itself, same discipline as the invoice job above.
-        try {
-          await sendOrderConfirmationEmails(admin, order.id);
-        } catch (cause) {
-          logger.error('webhook.razorpay.confirmation_email_failed', {
-            correlationId,
-            message: cause instanceof Error ? cause.message : String(cause),
-          });
-        }
+        await runPostOrderSideEffects(admin, order, correlationId);
       }
     } else if (event.event === 'payment.failed') {
       // Deliberately does NOT cancel the checkout session or release its

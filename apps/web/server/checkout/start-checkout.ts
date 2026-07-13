@@ -23,6 +23,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getRateConfig } from '@/server/checkout/get-rate-config';
 import { resolveActiveOffer } from '@/server/checkout/resolve-offer';
 import { resolveCouponEligibilityContext } from '@/server/checkout/coupon-eligibility';
+import { runPostOrderSideEffects } from '@/server/orders/run-post-order-side-effects';
 import { createRazorpayOrder, isRazorpayConfigured } from '@/server/payments/razorpay-adapter';
 
 export interface StartCheckoutInput {
@@ -34,15 +35,30 @@ export interface StartCheckoutInput {
   /** When the customer has manually selected an outlet, skip auto-ranking
    *  and use this one (after verifying it has sufficient inventory). */
   selectedOutletId?: string;
+  /** The calendar day the customer picked in the slot picker (the slot
+   *  itself is only a recurring time-of-day template, never tied to a
+   *  date on its own — this is the only place that day gets recorded). */
+  deliveryDate?: string;
+  /** Defaults to 'razorpay'. 'cod' skips Razorpay order creation entirely
+   *  and completes the order synchronously in this same request. */
+  paymentMethod?: 'razorpay' | 'cod';
 }
 
-export interface StartCheckoutResult {
-  checkoutSessionId: string;
-  razorpayOrderId: string;
-  razorpayKeyId: string;
-  amount: number;
-  currency: string;
-}
+export type StartCheckoutResult =
+  | {
+      paymentMethod: 'razorpay';
+      checkoutSessionId: string;
+      razorpayOrderId: string;
+      razorpayKeyId: string;
+      amount: number;
+      currency: string;
+    }
+  | {
+      paymentMethod: 'cod';
+      checkoutSessionId: string;
+      orderId: string;
+      orderNumber: string;
+    };
 
 /**
  * Ch.8 §92 Checkout Pipeline, the parts before "Redirect to Payment."
@@ -366,6 +382,7 @@ export async function startCheckout(
     },
     p_selected_delivery_slot: input.deliverySlotId ?? null,
     p_coupon_snapshot: couponSnapshot,
+    p_delivery_date: input.deliveryDate ?? null,
   });
 
   if (sessionError) {
@@ -396,6 +413,34 @@ export async function startCheckout(
 
   const session = sessionRow as { id: string };
 
+  if (input.paymentMethod === 'cod') {
+    const { data: order, error: completeError } = await admin.rpc('checkout_complete', {
+      p_checkout_session_id: session.id,
+      p_razorpay_order_id: null,
+      p_razorpay_payment_id: null,
+      p_razorpay_signature: null,
+      p_amount: pricing.grandTotal,
+      p_payment_method: 'cod',
+    });
+
+    if (completeError || !order) {
+      return err(
+        new InfrastructureError('Failed to place COD order.', {
+          cause: completeError?.message,
+        }),
+      );
+    }
+
+    await runPostOrderSideEffects(admin, order, crypto.randomUUID());
+
+    return ok({
+      paymentMethod: 'cod',
+      checkoutSessionId: session.id,
+      orderId: order.id,
+      orderNumber: order.order_number,
+    });
+  }
+
   if (!isRazorpayConfigured()) {
     return err(new ExternalServiceError('Payments are not configured yet.'));
   }
@@ -415,6 +460,7 @@ export async function startCheckout(
       .eq('id', session.id);
 
     return ok({
+      paymentMethod: 'razorpay',
       checkoutSessionId: session.id,
       razorpayOrderId: razorpayOrder.id,
       razorpayKeyId: process.env['RAZORPAY_KEY_ID'] ?? '',

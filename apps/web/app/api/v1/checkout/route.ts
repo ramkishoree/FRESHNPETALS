@@ -26,6 +26,9 @@ const bodySchema = z.object({
   /** Customer-selected outlet (picked from the outlet selector). When
    *  omitted the server auto-selects the nearest outlet with stock. */
   selectedOutletId: zUuid().optional(),
+  /** The calendar day picked in the slot picker, YYYY-MM-DD. */
+  deliveryDate: z.string().optional(),
+  paymentMethod: z.enum(['razorpay', 'cod']).optional(),
 });
 
 const checkout = createApiRoute({
@@ -43,6 +46,8 @@ const checkout = createApiRoute({
       ...(body.couponCode ? { couponCode: body.couponCode } : {}),
       ...(body.deliverySlotId ? { deliverySlotId: body.deliverySlotId } : {}),
       ...(body.selectedOutletId ? { selectedOutletId: body.selectedOutletId } : {}),
+      ...(body.deliveryDate ? { deliveryDate: body.deliveryDate } : {}),
+      ...(body.paymentMethod ? { paymentMethod: body.paymentMethod } : {}),
     });
   },
 });

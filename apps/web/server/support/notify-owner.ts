@@ -22,6 +22,7 @@ export async function notifyOwnerOrderPlaced(params: {
   customerName: string;
   customerPhone: string;
   deliveryAddress: string;
+  paymentMethod: string;
 }): Promise<void> {
   const env = getServerEnv();
 
@@ -44,6 +45,7 @@ export async function notifyOwnerOrderPlaced(params: {
         params.customerName,
         params.customerPhone,
         params.deliveryAddress,
+        params.paymentMethod,
       ],
     });
   } catch (cause) {
