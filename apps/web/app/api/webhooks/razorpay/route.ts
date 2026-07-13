@@ -151,20 +151,21 @@ export async function POST(request: NextRequest) {
         }
       }
     } else if (event.event === 'payment.failed') {
-      const payment = event.payload.payment?.entity;
-      if (payment) {
-        const { data: session } = await admin
-          .from('checkout_sessions')
-          .select('id')
-          .eq('metadata->>razorpayOrderId', payment.order_id)
-          .maybeSingle();
-        if (session) {
-          await admin.rpc('checkout_cancel', {
-            p_checkout_session_id: session.id,
-            p_new_status: 'cancelled',
-          });
-        }
-      }
+      // Deliberately does NOT cancel the checkout session or release its
+      // reserved inventory — a Razorpay order accepts multiple payment
+      // attempts (wrong OTP, switched payment method, etc.), and a later
+      // attempt on the *same* order can still succeed. Cancelling here
+      // used to permanently lock the session out of checkout_complete
+      // ("not payable, status cancelled") the moment the customer's next
+      // attempt actually succeeded — the payment was captured by
+      // Razorpay but no order was ever created. Genuinely abandoned
+      // checkouts are already reclaimed by checkout_expire_stale_sessions
+      // (0045) once the reservation window lapses, so nothing here needs
+      // to eagerly free the reservation.
+      logger.info('webhook.razorpay.payment_attempt_failed', {
+        correlationId,
+        razorpayOrderId: event.payload.payment?.entity.order_id,
+      });
     }
 
     logger.info('webhook.razorpay.processed', { correlationId, event: event.event });
