@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { BrandDivider } from '@/components/storefront/brand-divider';
+import { Reveal } from '@/components/storefront/reveal';
 import { ShopSortControl } from '@/components/storefront/shop-sort-control';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
@@ -32,20 +33,22 @@ export default async function ShopPage({
 
   return (
     <div className="container-brand py-14">
-      <header className="text-center">
+      <header className="hero-in text-center">
         <p className="eyebrow mb-3">The whole shop</p>
         <h1 className="text-h1">Every bloom, box &amp; bouquet</h1>
         <BrandDivider className="mt-6" />
       </header>
 
-      <div className="mb-6 mt-10 flex items-center justify-between gap-4">
-        <p className="text-caption">
-          {products.length} {products.length === 1 ? 'item' : 'items'}
-        </p>
-        <ShopSortControl {...(sort ? { currentSort: sort } : {})} />
-      </div>
+      <Reveal>
+        <div className="mt-10 mb-6 flex items-center justify-between gap-4">
+          <p className="text-caption">
+            {products.length} {products.length === 1 ? 'item' : 'items'}
+          </p>
+          <ShopSortControl {...(sort ? { currentSort: sort } : {})} />
+        </div>
 
-      <AddToCartProductGrid products={products} />
+        <AddToCartProductGrid products={products} />
+      </Reveal>
     </div>
   );
 }

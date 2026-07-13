@@ -62,10 +62,7 @@ export function GoogleReviewsCarouselClient({
         )}
       </h2>
       <BrandDivider className="my-6" />
-      <div
-        key={index}
-        className="animate-in fade-in mx-auto max-w-2xl space-y-3 text-left duration-500"
-      >
+      <div key={index} className="review-fade mx-auto max-w-2xl space-y-3 text-left">
         <div className="flex items-center gap-3">
           {review.profilePhotoUrl && (
             // eslint-disable-next-line @next/next/no-img-element -- Google-hosted avatar, not a storefront asset next/image should optimize

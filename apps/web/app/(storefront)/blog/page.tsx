@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import Image from 'next/image';
 import Link from 'next/link';
 import { EmptyState } from '@/components/states/empty-state';
+import { Reveal } from '@/components/storefront/reveal';
 import { formatDate } from '@/lib/format-date';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
@@ -20,12 +21,12 @@ export default async function BlogListPage() {
 
   return (
     <div className="container-brand space-y-6 py-10">
-      <h1 className="text-h2 text-foreground font-bold">Blog</h1>
+      <h1 className="hero-in text-h2 text-foreground font-bold">Blog</h1>
 
       {(blogs ?? []).length === 0 ? (
         <EmptyState title="No articles yet" />
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        <Reveal className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {(blogs ?? []).map((blog) => (
             <Link key={blog.id} href={`/blog/${blog.slug}`} className="group space-y-2">
               <div className="rounded-image bg-muted relative aspect-4/3 overflow-hidden">
@@ -50,7 +51,7 @@ export default async function BlogListPage() {
               )}
             </Link>
           ))}
-        </div>
+        </Reveal>
       )}
     </div>
   );

@@ -456,8 +456,12 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Delivery time</h2>
             <div className="mb-4 flex items-center gap-3">
-              <Label className="text-caption shrink-0">Date</Label>
+              <Label htmlFor="checkout-delivery-date" className="text-caption shrink-0">
+                Date
+              </Label>
               <Input
+                id="checkout-delivery-date"
+                name="deliveryDate"
                 type="date"
                 value={slotsResponse?.date ?? ''}
                 min={getTodayIST()}
@@ -524,8 +528,13 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <Label className="text-caption mb-1.5 block">Name</Label>
+                <Label htmlFor="checkout-name" className="text-caption mb-1.5 block">
+                  Name
+                </Label>
                 <Input
+                  id="checkout-name"
+                  name="name"
+                  autoComplete="name"
                   required
                   value={manualAddress.recipientName}
                   onChange={(e) =>
@@ -535,8 +544,13 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 />
               </div>
               <div>
-                <Label className="text-caption mb-1.5 block">Phone</Label>
+                <Label htmlFor="checkout-phone" className="text-caption mb-1.5 block">
+                  Phone
+                </Label>
                 <Input
+                  id="checkout-phone"
+                  name="tel"
+                  autoComplete="tel"
                   required
                   type="tel"
                   value={manualAddress.phone}
@@ -545,8 +559,13 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 />
               </div>
               <div>
-                <Label className="text-caption mb-1.5 block">Email</Label>
+                <Label htmlFor="checkout-email" className="text-caption mb-1.5 block">
+                  Email
+                </Label>
                 <Input
+                  id="checkout-email"
+                  name="email"
+                  autoComplete="email"
                   required
                   type="email"
                   value={manualAddress.email}
@@ -555,8 +574,13 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 />
               </div>
               <div>
-                <Label className="text-caption mb-1.5 block">Flat / house no. (optional)</Label>
+                <Label htmlFor="checkout-flat-no" className="text-caption mb-1.5 block">
+                  Flat / house no. (optional)
+                </Label>
                 <Input
+                  id="checkout-flat-no"
+                  name="flatNo"
+                  autoComplete="address-line2"
                   value={manualAddress.flatNo}
                   onChange={(e) => setManualAddress((a) => ({ ...a, flatNo: e.target.value }))}
                   className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
@@ -581,7 +605,12 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
               </div>
             ) : (
               <div className="flex max-w-xs gap-2">
+                <Label htmlFor="checkout-coupon" className="sr-only">
+                  Coupon code
+                </Label>
                 <Input
+                  id="checkout-coupon"
+                  name="coupon"
                   value={couponInput}
                   onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
                   onKeyDown={(e) => {

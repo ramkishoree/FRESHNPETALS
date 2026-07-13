@@ -627,4 +627,29 @@
     opacity: 1;
     transform: none;
   }
+
+  /* Hero is already above the fold at mount — a plain load-time fade
+     rather than the scroll-triggered .reveal above, which would never
+     fire since it's never scrolled into view. */
+  @keyframes hero-fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .storefront-theme .hero-in {
+    animation: hero-fade-in 0.8s var(--ease) both;
+  }
+
+  /* Review carousel's per-quote crossfade — replaces `animate-in fade-in
+     duration-500`, which never actually animated anything: those are
+     tailwindcss-animate utility classes and that plugin isn't installed,
+     so they silently no-op every time the quote swaps. */
+  .storefront-theme .review-fade {
+    animation: hero-fade-in 0.5s var(--ease) both;
+  }
 }

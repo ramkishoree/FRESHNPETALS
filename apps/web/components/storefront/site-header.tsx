@@ -88,6 +88,8 @@ export function SiteHeader() {
           {searchOpen ? (
             <form onSubmit={submitSearch} className="flex max-w-[220px] items-center sm:max-w-xs">
               <Input
+                id="site-search"
+                name="q"
                 autoFocus
                 value={searchValue}
                 onChange={(event) => setSearchValue(event.target.value)}
