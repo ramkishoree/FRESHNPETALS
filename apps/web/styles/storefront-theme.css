@@ -200,8 +200,12 @@
   color: var(--petal);
   font-style: italic;
 }
+/* display intentionally not set here — the JSX's own `hidden lg:flex`
+   Tailwind utilities own the mobile/desktop display toggle; a plain
+   class rule setting `display: flex` unconditionally would win the
+   cascade over `.hidden` (equal specificity, loaded later) and force
+   the desktop nav to always render, overflowing the mobile header. */
 .storefront-theme .top-nav {
-  display: flex;
   align-items: center;
   gap: 1.75rem;
   margin-left: 0.5rem;
