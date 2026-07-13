@@ -31,9 +31,10 @@ function PinIcon() {
 /**
  * Owner's explicit call: "dead simple, authority in a glance" — the
  * moment the site opens it's hero (tagline + Shop now), then Google
- * reviews immediately, then featured products, then category browsing,
- * all before the full catalogue. Nothing below the fold is removed,
- * just reordered and, for the catalogue, no longer capped at 8.
+ * reviews immediately, then featured products, all before the full
+ * catalogue (category browsing there is the existing small pill bar,
+ * not a separate section). Nothing below the fold is removed, just
+ * reordered and, for the catalogue, no longer capped at 8.
  */
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
@@ -132,33 +133,6 @@ export default async function HomePage() {
             </Link>
           </div>
           <AddToCartProductGrid products={featuredProducts} layout="carousel" />
-        </section>
-      )}
-
-      {/* ==================== SHOP BY CATEGORY — editorial index list ==================== */}
-      {categories.length > 0 && (
-        <section className="container-brand pt-16">
-          <div className="mb-2 flex items-end justify-between gap-4">
-            <div>
-              <p className="eyebrow mb-2">Browse</p>
-              <h2 className="text-h3">Shop by category</h2>
-            </div>
-            <Link
-              href="/shop"
-              className="text-caption text-[var(--gold-deep)] underline-offset-4 hover:underline"
-            >
-              View all →
-            </Link>
-          </div>
-          <div>
-            {categories.map((category, index) => (
-              <Link key={category.id} href={`/shop/${category.slug}`} className="cat-row">
-                <span className="idx">{String(index + 1).padStart(2, '0')}</span>
-                <span className="nm">{category.name}</span>
-                <span className="cnt">→</span>
-              </Link>
-            ))}
-          </div>
         </section>
       )}
 

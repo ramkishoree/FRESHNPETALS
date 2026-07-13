@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import * as React from 'react';
 
 /**
@@ -10,11 +11,20 @@ import * as React from 'react';
  * this element; every leaf/flower derives its own state from --grow in
  * pure CSS (see .stem-line/.leaf/.bloom in storefront-theme.css) — no
  * per-frame React state, no re-render.
+ *
+ * Owner's explicit call: the scroll-driven grow-in animation is a
+ * homepage-only moment. Every other storefront page shows the stem
+ * fully bloomed and static — no listener, no motion — so it reads as
+ * a fixed decorative mark rather than something that looks broken or
+ * stuck mid-animation on a short page.
  */
 export function Spine() {
+  const pathname = usePathname();
+  const isHome = pathname === '/';
   const ref = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
+    if (!isHome) return;
     const el = ref.current;
     if (!el) return;
     let ticking = false;
@@ -39,10 +49,15 @@ export function Spine() {
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onScroll);
     };
-  }, []);
+  }, [isHome]);
 
   return (
-    <div className="spine" aria-hidden="true" ref={ref}>
+    <div
+      className="spine"
+      aria-hidden="true"
+      ref={ref}
+      style={isHome ? undefined : ({ '--grow': 1 } as React.CSSProperties)}
+    >
       <svg viewBox="0 0 90 3000" fill="none" preserveAspectRatio="none">
         <path
           className="stem-line"

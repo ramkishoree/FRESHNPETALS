@@ -171,6 +171,54 @@
   padding: 0 clamp(1.25rem, 5vw, 3.5rem);
 }
 
+/* ---------- site header: sticky, blurred paper backdrop ---------- */
+.storefront-theme .top {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: color-mix(in srgb, var(--paper) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--line);
+}
+.storefront-theme .top-in {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  padding-top: 1rem;
+  padding-bottom: 1rem;
+}
+.storefront-theme .brand {
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 400;
+  color: var(--ink);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.storefront-theme .brand em {
+  color: var(--petal);
+  font-style: italic;
+}
+.storefront-theme .top-nav {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+  margin-left: 0.5rem;
+}
+.storefront-theme .top-nav a {
+  font-family: var(--font-body);
+  font-size: 0.92rem;
+  color: var(--ink-2);
+  text-decoration: none;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  transition: color 0.25s var(--ease);
+}
+.storefront-theme .top-nav a:hover {
+  color: var(--petal);
+}
+
 /* ---------- the living stem ("spine") signature motif ----------
    A gold botanical line that draws itself downward as the page is
    scrolled, leaves greening and flowers blooming as it passes them.
@@ -436,44 +484,6 @@
   border-radius: 2px;
 }
 
-/* ---------- category: editorial index list, not cards ---------- */
-.storefront-theme .cat-row {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 2rem;
-  align-items: center;
-  padding: 1.4rem 0;
-  border-top: 1px solid var(--line);
-  text-decoration: none;
-  color: var(--ink);
-  transition: padding-left 0.4s var(--ease);
-}
-.storefront-theme .cat-row:last-child {
-  border-bottom: 1px solid var(--line);
-}
-.storefront-theme .cat-row:hover {
-  padding-left: 1rem;
-}
-.storefront-theme .cat-row .idx {
-  font-family: var(--font-body);
-  font-style: italic;
-  color: var(--sage);
-  font-size: 1rem;
-  width: 2rem;
-}
-.storefront-theme .cat-row .nm {
-  font-family: var(--font-display);
-  font-weight: 340;
-  font-size: clamp(1.6rem, 3.5vw, 2.6rem);
-  line-height: 1;
-}
-.storefront-theme .cat-row .cnt {
-  font-family: var(--font-body);
-  font-style: italic;
-  color: var(--sage);
-  font-size: 0.95rem;
-}
-
 /* ---------- product: gallery of "plates" — name+price, minimal chrome ---------- */
 .storefront-theme .plates {
   display: grid;
@@ -539,14 +549,14 @@
   font-size: 0.85rem;
   margin-right: 0.35rem;
 }
+/* Owner's explicit call: mobile stays a dense 2-column grid, never a
+   single full-width column — a full-bleed image per row means endless
+   scrolling to see the same handful of products a desktop view shows
+   at a glance. */
 @media (max-width: 820px) {
   .storefront-theme .plates {
     grid-template-columns: repeat(2, 1fr);
-  }
-}
-@media (max-width: 520px) {
-  .storefront-theme .plates {
-    grid-template-columns: 1fr;
+    gap: 1rem;
   }
 }
 
