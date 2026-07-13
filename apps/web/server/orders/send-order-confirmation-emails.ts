@@ -14,11 +14,16 @@ interface OrderAddressSnapshot {
   email?: string;
 }
 
+interface OrderDeliverySnapshot {
+  date?: string | null;
+  slotLabel?: string | null;
+}
+
 interface OrderRow {
   id: string;
   order_number: string;
   created_at: string;
-  order_snapshot: { address?: OrderAddressSnapshot } | null;
+  order_snapshot: { address?: OrderAddressSnapshot; delivery?: OrderDeliverySnapshot } | null;
   subtotal: number;
   discount_total: number;
   delivery_fee: number;
@@ -71,6 +76,7 @@ export async function sendOrderConfirmationEmails(
   }
   const orderRow = order as unknown as OrderRow;
   const address = orderRow.order_snapshot?.address ?? {};
+  const delivery = orderRow.order_snapshot?.delivery ?? {};
 
   const productIds = [...new Set(orderRow.order_items.map((item) => item.product_id))];
   const { data: products } = await admin
@@ -114,6 +120,8 @@ export async function sendOrderConfirmationEmails(
       ...(address.flatNo ? { flatNo: address.flatNo } : {}),
       phone: address.phone ?? '',
       email: address.email ?? '',
+      ...(delivery.date ? { deliveryDate: delivery.date } : {}),
+      ...(delivery.slotLabel ? { deliveryTime: delivery.slotLabel } : {}),
       items: orderRow.order_items.map((item) => ({
         name: item.product_name,
         sku: item.sku,
@@ -139,6 +147,8 @@ export async function sendOrderConfirmationEmails(
     orderNumber: orderRow.order_number,
     orderDate: new Date(orderRow.created_at),
     formattedAddress: address.formattedAddress ?? '',
+    ...(delivery.date ? { deliveryDate: delivery.date } : {}),
+    ...(delivery.slotLabel ? { deliveryTime: delivery.slotLabel } : {}),
     items,
     subtotal: Number(orderRow.subtotal),
     deliveryFee: Number(orderRow.delivery_fee),

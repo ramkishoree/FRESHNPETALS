@@ -21,6 +21,8 @@ export interface InvoicePdfInput {
   flatNo?: string;
   phone: string;
   email: string;
+  deliveryDate?: string;
+  deliveryTime?: string;
   items: InvoiceLineItem[];
   subtotal: number;
   discountTotal: number;
@@ -72,6 +74,8 @@ export async function generateInvoicePdf(input: InvoicePdfInput): Promise<Uint8A
     ['Invoice #', input.invoiceNumber],
     ['Order #', input.orderNumber],
     ['Date', input.issuedAt.toLocaleDateString('en-IN', { dateStyle: 'medium' })],
+    ...(input.deliveryDate ? ([['Delivery date', input.deliveryDate]] as [string, string][]) : []),
+    ...(input.deliveryTime ? ([['Delivery time', input.deliveryTime]] as [string, string][]) : []),
     ...(input.gstin ? ([['GSTIN', input.gstin]] as [string, string][]) : []),
   ];
   for (const [label, value] of meta) {

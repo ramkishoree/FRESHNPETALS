@@ -14,6 +14,8 @@ export interface OrderConfirmationEmailParams {
   orderDate: Date;
   recipientName: string;
   formattedAddress: string;
+  deliveryDate?: string;
+  deliveryTime?: string;
   items: OrderConfirmationItem[];
   subtotal: number;
   deliveryFee: number;
@@ -44,12 +46,8 @@ function escapeHtml(text: string): string {
  * almost entirely the same; `recipient` only changes the greeting and
  * whether an admin deep-link is shown.
  *
- * "Estimated delivery time" / "date selected" are deliberately NOT
- * fabricated here — checkout doesn't collect a delivery slot or date
- * today (Ch.8 §88's simplification dropped that field), so inventing one
- * would be a real lie in a receipt. The delivery-commitment line is
- * honest, general service language instead, with the business phone
- * number as the real channel for exact timing.
+ * deliveryDate/deliveryTime are only shown when the checkout snapshot
+ * actually recorded a slot (customer picked one) — never fabricated.
  */
 export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailParams): string {
   const {
@@ -58,6 +56,8 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
     orderDate,
     recipientName,
     formattedAddress,
+    deliveryDate,
+    deliveryTime,
     items,
     subtotal,
     deliveryFee,
@@ -109,6 +109,11 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
     ? `<p style="color:#555;font-size:14px;margin:16px 0 0;">Questions about your order? Call us at <strong>${escapeHtml(businessPhone)}</strong>.</p>`
     : '';
 
+  const deliverySlotLine =
+    deliveryDate || deliveryTime
+      ? `<p style="color:#555;font-size:14px;margin:0 0 4px;">Scheduled delivery: <strong>${escapeHtml([deliveryDate, deliveryTime].filter(Boolean).join(' · '))}</strong></p>`
+      : '';
+
   const deliveryCommitment =
     recipient === 'customer'
       ? `<p style="color:#555;font-size:14px;margin:0 0 20px;">We arrange and dispatch same-day wherever possible — we'll be in touch if your delivery window changes. Your invoice is attached to this email.</p>`
@@ -130,7 +135,9 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
               <td style="padding:32px;">
                 ${greeting}
                 <p style="color:#555;font-size:14px;margin:0 0 4px;"><strong>Order ${escapeHtml(orderNumber)}</strong> · ${orderDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                <p style="color:#555;font-size:14px;margin:0 0 20px;">Delivering to: ${escapeHtml(formattedAddress)}</p>
+                <p style="color:#555;font-size:14px;margin:0 0 4px;">Delivering to: ${escapeHtml(formattedAddress)}</p>
+                ${deliverySlotLine}
+                <div style="margin-bottom:16px;"></div>
                 ${deliveryCommitment}
 
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">

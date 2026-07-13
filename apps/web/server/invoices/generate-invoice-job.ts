@@ -22,10 +22,15 @@ interface OrderAddressSnapshot {
   email?: string;
 }
 
+interface OrderDeliverySnapshot {
+  date?: string | null;
+  slotLabel?: string | null;
+}
+
 interface OrderRow {
   id: string;
   order_number: string;
-  order_snapshot: { address?: OrderAddressSnapshot } | null;
+  order_snapshot: { address?: OrderAddressSnapshot; delivery?: OrderDeliverySnapshot } | null;
   subtotal: number;
   discount_total: number;
   delivery_fee: number;
@@ -89,6 +94,7 @@ export async function handleInvoiceGenerate(
   const invoiceRow = invoice as InvoiceRow;
 
   const address = orderRow.order_snapshot?.address ?? {};
+  const delivery = orderRow.order_snapshot?.delivery ?? {};
 
   const pdfBytes = await generateInvoicePdf({
     invoiceNumber: invoiceRow.invoice_number,
@@ -99,6 +105,8 @@ export async function handleInvoiceGenerate(
     ...(address.flatNo ? { flatNo: address.flatNo } : {}),
     phone: address.phone ?? '',
     email: address.email ?? '',
+    ...(delivery.date ? { deliveryDate: delivery.date } : {}),
+    ...(delivery.slotLabel ? { deliveryTime: delivery.slotLabel } : {}),
     items: orderRow.order_items.map((item) => ({
       name: item.product_name,
       sku: item.sku,
