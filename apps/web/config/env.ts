@@ -58,6 +58,12 @@ const serverEnvSchema = publicEnvSchema.extend({
   META_WHATSAPP_ACCESS_TOKEN: optionalString(),
   META_WHATSAPP_PHONE_NUMBER_ID: optionalString(),
   META_WHATSAPP_OWNER_WA_ID: optionalString(),
+  // Meta's own app-setup wizard requires a webhook callback URL that
+  // answers its GET verification handshake before it'll let you proceed
+  // through "Production setup" — this app has no inbound-message logic
+  // to run (see the comment above), so the handler below only ever
+  // answers that handshake and 200s any POST it's sent, unread.
+  META_WHATSAPP_WEBHOOK_VERIFY_TOKEN: optionalString(),
   // Order-placed/escalation owner email alert — optional, same fail-closed pattern.
   RESEND_API_KEY: optionalString(),
   RESEND_FROM_EMAIL: optionalEmail(),
@@ -105,6 +111,7 @@ export function getServerEnv(): ServerEnv {
     META_WHATSAPP_ACCESS_TOKEN: process.env['META_WHATSAPP_ACCESS_TOKEN'],
     META_WHATSAPP_PHONE_NUMBER_ID: process.env['META_WHATSAPP_PHONE_NUMBER_ID'],
     META_WHATSAPP_OWNER_WA_ID: process.env['META_WHATSAPP_OWNER_WA_ID'],
+    META_WHATSAPP_WEBHOOK_VERIFY_TOKEN: process.env['META_WHATSAPP_WEBHOOK_VERIFY_TOKEN'],
     RESEND_API_KEY: process.env['RESEND_API_KEY'],
     RESEND_FROM_EMAIL: process.env['RESEND_FROM_EMAIL'],
     OWNER_NOTIFICATION_EMAIL: process.env['OWNER_NOTIFICATION_EMAIL'],
