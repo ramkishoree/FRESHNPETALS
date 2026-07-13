@@ -2,7 +2,7 @@ import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
-import { Cormorant_Garamond, Newsreader } from 'next/font/google';
+import { Fraunces, Newsreader } from 'next/font/google';
 import { headers } from 'next/headers';
 import { CartProvider } from '@/lib/cart-context';
 import { Toaster } from '@/components/ui/sonner';
@@ -13,14 +13,16 @@ import './globals.css';
 // customer-facing redesign) — exposed as CSS vars only, scoped to
 // `.storefront-theme` in styles/storefront-theme.css, so admin (which never
 // references these vars) is unaffected by adding them here.
-const cormorantGaramond = Cormorant_Garamond({
+const fraunces = Fraunces({
   subsets: ['latin'],
-  weight: ['500', '600'],
-  variable: '--font-cormorant',
+  weight: ['300', '400', '500', '600'],
+  style: ['normal', 'italic'],
+  variable: '--font-fraunces',
   display: 'swap',
 });
 const newsreader = Newsreader({
   subsets: ['latin'],
+  style: ['normal', 'italic'],
   variable: '--font-newsreader',
   display: 'swap',
 });
@@ -43,7 +45,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} ${cormorantGaramond.variable} ${newsreader.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable} ${newsreader.variable}`}
       suppressHydrationWarning
     >
       <body>

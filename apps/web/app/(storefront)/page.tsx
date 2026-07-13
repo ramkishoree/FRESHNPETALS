@@ -1,14 +1,9 @@
 import { ListPublishedProductsService } from '@prana/commerce';
-import Image from 'next/image';
 import Link from 'next/link';
-import { CategoryCard } from '@/components/commerce/category-card';
 import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
-import { FloralCorner } from '@/components/storefront/floral-corner';
 import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
-import { HeroFeatureStrip } from '@/components/storefront/hero-feature-strip';
-import { HeroTrustBar } from '@/components/storefront/hero-trust-bar';
 import { OfferPopup } from '@/components/storefront/offer-popup';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { SupabaseProductRepository } from '@/server/repositories/supabase-product-repository';
@@ -80,7 +75,7 @@ export default async function HomePage() {
   const outlets = outletsResult.data ?? [];
 
   // Editable via Admin → Pages → the "home" entry's Body content field
-  // ({eyebrow, title, titleHighlight, subtitle, ctaLabel, heroImageUrl}).
+  // ({eyebrow, title, titleHighlight, subtitle, ctaLabel}).
   // Falls back to the original copy when that row doesn't exist yet or a
   // field is left blank, so this never renders empty hero text.
   interface HomeHeroContent {
@@ -89,7 +84,6 @@ export default async function HomePage() {
     titleHighlight?: string;
     subtitle?: string;
     ctaLabel?: string;
-    heroImageUrl?: string;
   }
   const hero = (homePageResult.data?.content as HomeHeroContent | null) ?? {};
 
@@ -100,56 +94,25 @@ export default async function HomePage() {
       )}
 
       {/* ============================ HERO ============================ */}
-      <section className="relative overflow-hidden">
-        <div className="container-brand grid items-center gap-10 pt-14 pb-10 lg:grid-cols-[1.05fr_1fr] lg:pt-20 lg:pb-14">
-          <div className="max-w-xl">
-            <HeroTrustBar />
-            <p className="eyebrow mb-5">{hero.eyebrow ?? "Lucknow's neighbourhood florist"}</p>
-            <h1 className="text-h1">
-              {hero.title ?? 'Fresh flowers, delivered'}{' '}
-              <em className="text-[var(--gold-deep)] not-italic">
-                {hero.titleHighlight ?? 'same-day.'}
-              </em>
-            </h1>
-            <p className="text-body-lg mt-6 max-w-md">
-              {hero.subtitle ??
-                "Hand-picked bouquets for every occasion — Lucknow's freshest flower delivery, arranged fresh the morning it ships."}
-            </p>
-
-            <div className="mt-9 flex flex-wrap items-center gap-3">
-              <Link
-                href="/shop"
-                className="btn btn-primary inline-flex items-center px-7 py-3.5 text-sm"
-              >
-                {hero.ctaLabel ?? 'Shop now'}
-              </Link>
-            </div>
-          </div>
-
-          <div className="relative">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute -inset-6 -z-10 rounded-[32px] bg-[radial-gradient(60%_60%_at_60%_30%,rgba(200,162,93,0.18),transparent_70%)]"
-            />
-            <div
-              className={`relative w-full ${hero.heroImageUrl ? 'aspect-[4/5]' : 'aspect-[933/585]'}`}
-            >
-              <Image
-                src={hero.heroImageUrl ?? '/illustrations/storefront.png'}
-                alt=""
-                fill
-                priority
-                className="object-contain"
-              />
-            </div>
-          </div>
+      <section className="wrap pt-16 pb-14 text-center lg:pt-24 lg:pb-20">
+        <p className="label mb-6">{hero.eyebrow ?? "Lucknow's neighbourhood florist"}</p>
+        <h1 className="display text-h1 mx-auto max-w-4xl">
+          {hero.title ?? 'Fresh flowers, delivered'}{' '}
+          <em className="text-[var(--petal)] not-italic">{hero.titleHighlight ?? 'same-day.'}</em>
+        </h1>
+        <p className="lead mx-auto mt-7 max-w-lg">
+          {hero.subtitle ??
+            "Hand-picked bouquets for every occasion — Lucknow's freshest flower delivery, arranged fresh the morning it ships."}
+        </p>
+        <div className="mt-9 flex justify-center">
+          <Link href="/shop" className="commit">
+            {hero.ctaLabel ?? 'Shop now'}
+          </Link>
         </div>
-
-        <HeroFeatureStrip />
       </section>
 
       {/* ==================== GOOGLE REVIEWS — authority, first thing after hero ==================== */}
-      <div className="pt-10">
+      <div className="wrap">
         <GoogleReviewsCarousel />
       </div>
 
@@ -172,11 +135,10 @@ export default async function HomePage() {
         </section>
       )}
 
-      {/* ==================== SHOP BY CATEGORY ==================== */}
+      {/* ==================== SHOP BY CATEGORY — editorial index list ==================== */}
       {categories.length > 0 && (
-        <section className="container-brand relative isolate pt-16">
-          <FloralCorner variant={2} position="top-right" size={220} />
-          <div className="mb-7 flex items-end justify-between gap-4">
+        <section className="container-brand pt-16">
+          <div className="mb-2 flex items-end justify-between gap-4">
             <div>
               <p className="eyebrow mb-2">Browse</p>
               <h2 className="text-h3">Shop by category</h2>
@@ -188,14 +150,13 @@ export default async function HomePage() {
               View all →
             </Link>
           </div>
-          <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-6">
-            {categories.map((category) => (
-              <CategoryCard
-                key={category.id}
-                name={category.name}
-                slug={category.slug}
-                image={category.image_url}
-              />
+          <div>
+            {categories.map((category, index) => (
+              <Link key={category.id} href={`/shop/${category.slug}`} className="cat-row">
+                <span className="idx">{String(index + 1).padStart(2, '0')}</span>
+                <span className="nm">{category.name}</span>
+                <span className="cnt">→</span>
+              </Link>
             ))}
           </div>
         </section>
@@ -227,8 +188,7 @@ export default async function HomePage() {
 
       {/* ==================== OUR OUTLETS ==================== */}
       {outlets.length > 0 && (
-        <section className="container-brand relative isolate pt-20">
-          <FloralCorner variant={1} position="bottom-left" size={220} />
+        <section className="container-brand pt-20">
           <div className="mb-7 text-center">
             <p className="eyebrow mb-2">We deliver from</p>
             <h2 className="text-h2">Our outlets</h2>

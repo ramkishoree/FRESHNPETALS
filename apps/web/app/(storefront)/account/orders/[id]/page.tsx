@@ -73,17 +73,17 @@ export default async function AccountOrderDetailPage({
                 items.map((item, index) => {
                   const product = Array.isArray(item.products) ? item.products[0] : item.products;
                   return (
-                    <div key={index} className="flex items-center gap-3">
+                    <div key={index} className="flex items-center gap-4">
                       {product?.featured_image ? (
                         <Image
                           src={product.featured_image}
                           alt={item.product_name}
-                          width={48}
-                          height={48}
-                          className="rounded-card size-12 shrink-0 object-cover"
+                          width={96}
+                          height={96}
+                          className="rounded-card size-24 shrink-0 object-cover"
                         />
                       ) : (
-                        <div className="rounded-card bg-muted size-12 shrink-0" />
+                        <div className="rounded-card bg-muted size-24 shrink-0" />
                       )}
                       <span className="text-body">{item.product_name}</span>
                     </div>

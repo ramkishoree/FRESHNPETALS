@@ -5,6 +5,7 @@ import { JsonLd } from '@/components/seo/json-ld';
 import { AnnouncementBanner } from '@/components/storefront/announcement-banner';
 import { SiteFooter } from '@/components/storefront/site-footer';
 import { SiteHeader } from '@/components/storefront/site-header';
+import { Spine } from '@/components/storefront/spine';
 
 export default async function StorefrontLayout({ children }: { children: React.ReactNode }) {
   const env = getPublicEnv();
@@ -32,7 +33,10 @@ export default async function StorefrontLayout({ children }: { children: React.R
       />
       <SiteHeader />
       <AnnouncementBanner />
-      <div className="flex-1">{children}</div>
+      <div className="spine-page spine-host relative flex-1">
+        <Spine />
+        {children}
+      </div>
       <SiteFooter />
     </div>
   );
