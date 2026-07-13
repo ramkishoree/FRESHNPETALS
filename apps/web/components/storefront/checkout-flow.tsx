@@ -25,6 +25,21 @@ const EMPTY_ADDRESS = {
   flatNo: '',
 };
 
+interface DeliverySlotOption {
+  id: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  bookable: boolean;
+}
+
+interface DeliverySlotsResponse {
+  date: string;
+  slots: DeliverySlotOption[];
+  hasBookableSlot: boolean;
+  nextAvailableDate: string | null;
+}
+
 interface PricingBreakdown {
   subtotal: number;
   discountTotal: number;
@@ -65,6 +80,12 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [couponMessage, setCouponMessage] = React.useState<string | null>(null);
   const [isPaying, setIsPaying] = React.useState(false);
   const [scriptReady, setScriptReady] = React.useState(false);
+
+  // ---- Delivery slot state ---------------------------------------------------
+  const [slotDate, setSlotDate] = React.useState<string | null>(null);
+  const [slotsResponse, setSlotsResponse] = React.useState<DeliverySlotsResponse | null>(null);
+  const [selectedSlotId, setSelectedSlotId] = React.useState<string | null>(null);
+  const [isLoadingSlots, setIsLoadingSlots] = React.useState(true);
 
   // ---- Outlet selection state ------------------------------------------------
   const [outlets, setOutlets] = React.useState<OutletWithStock[]>([]);
@@ -168,6 +189,43 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   const selectedOutletId = manualOutletId ?? nearestOutletId;
 
+  // Fetch delivery slots for the selected date (defaults to today on the
+  // server). Auto-advances to the server's suggested next-available date
+  // the first time today comes back with nothing bookable, so the
+  // customer doesn't land on a picker with every slot already crossed
+  // out — but only once (only when slotDate is still null), so a manual
+  // pick of today by the customer later never gets silently overridden.
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      setIsLoadingSlots(true);
+      try {
+        const url = slotDate
+          ? `/api/v1/delivery-slots?date=${encodeURIComponent(slotDate)}`
+          : '/api/v1/delivery-slots';
+        const res = await fetch(url);
+        const body = await res.json();
+        if (cancelled) return;
+        if (res.ok && body.success) {
+          const data = body.data as DeliverySlotsResponse;
+          setSlotsResponse(data);
+          setSelectedSlotId(null);
+          if (slotDate === null && !data.hasBookableSlot && data.nextAvailableDate) {
+            setSlotDate(data.nextAvailableDate);
+            return;
+          }
+        }
+      } catch {
+        // Non-critical — checkout can proceed without a slot.
+      } finally {
+        if (!cancelled) setIsLoadingSlots(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [slotDate]);
+
   // Re-fetch pricing when outlet selection or delivery pin changes.
   React.useEffect(() => {
     if (items.length === 0) return;
@@ -262,6 +320,11 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       return;
     }
 
+    if (slotsResponse?.hasBookableSlot && !selectedSlotId) {
+      toast.error('Please choose a delivery time slot.');
+      return;
+    }
+
     setIsPaying(true);
     try {
       const response = await fetch('/api/v1/checkout', {
@@ -280,6 +343,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             longitude: deliveryPin.lng,
           },
           ...(appliedCoupon ? { couponCode: appliedCoupon } : {}),
+          ...(selectedSlotId ? { deliverySlotId: selectedSlotId } : {}),
         }),
       });
       const body = await response.json();
@@ -369,6 +433,58 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             </section>
           )}
 
+          {/* ---- Delivery time slot ---- */}
+          <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
+            <h2 className="text-h4 mb-4">Delivery time</h2>
+            <div className="mb-4 flex items-center gap-3">
+              <Label className="text-caption shrink-0">Date</Label>
+              <Input
+                type="date"
+                value={slotsResponse?.date ?? ''}
+                min={new Date().toISOString().slice(0, 10)}
+                onChange={(e) => {
+                  if (e.target.value) setSlotDate(e.target.value);
+                }}
+                className="w-auto rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)]"
+              />
+            </div>
+
+            {isLoadingSlots ? (
+              <p className="text-caption text-[var(--sf-ink-muted)]">Loading slots…</p>
+            ) : slotsResponse && slotsResponse.slots.length > 0 ? (
+              <>
+                {!slotsResponse.hasBookableSlot && (
+                  <p className="text-caption mb-3 text-[var(--sale)]">
+                    No slots left for this date — please pick another date above.
+                  </p>
+                )}
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  {slotsResponse.slots.map((slot) => (
+                    <button
+                      key={slot.id}
+                      type="button"
+                      disabled={!slot.bookable}
+                      onClick={() => setSelectedSlotId(slot.id)}
+                      className={`rounded-[var(--r-md)] border px-3 py-2 text-sm transition-colors ${
+                        selectedSlotId === slot.id
+                          ? 'border-[var(--sf-ink)] bg-[var(--sf-ink)] text-[var(--sf-surface)]'
+                          : slot.bookable
+                            ? 'border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] hover:border-[var(--sf-ink)]'
+                            : 'cursor-not-allowed border-[var(--sf-border)] bg-[var(--sf-surface)] text-[var(--sf-ink-muted)] opacity-50'
+                      }`}
+                    >
+                      {slot.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-caption text-[var(--sf-ink-muted)]">
+                No delivery slots configured yet.
+              </p>
+            )}
+          </section>
+
           {/* ---- Delivery address ---- */}
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Delivery details</h2>
@@ -451,7 +567,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                     }
                   }}
                   placeholder="WELCOME10"
-                  className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] uppercase tracking-wide"
+                  className="rounded-[var(--r-md)] border-[var(--sf-border-strong)] bg-[var(--sf-surface-2)] tracking-wide uppercase"
                 />
                 <button
                   type="button"
