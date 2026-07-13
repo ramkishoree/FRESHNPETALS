@@ -98,7 +98,20 @@ export function AdminResourcePage<TRow extends ResourceRow>({
 
   function openEdit(row: TRow) {
     setEditing(row);
-    setFormValues({ ...row });
+    // Only seed the form with fields this resource actually declares as
+    // editable — spreading the whole row also round-trips read-only
+    // columns (timestamps, computed flags) back through PATCH, which
+    // then fails strict schema validation the moment one of them is in a
+    // format the update schema doesn't accept (e.g. Postgres's "+00:00"
+    // offset vs. zod's default datetime() Z-only format) — surfaced as a
+    // generic "Invalid request body" on every resource using this
+    // component, not just the one row type that happened to have a
+    // populated timestamp.
+    const initial: Record<string, unknown> = {};
+    for (const field of fields) {
+      initial[field.name] = row[field.name];
+    }
+    setFormValues(initial);
     setDialogOpen(true);
   }
 
