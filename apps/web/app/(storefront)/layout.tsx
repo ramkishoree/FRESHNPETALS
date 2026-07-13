@@ -3,6 +3,7 @@ import { getPublicEnv } from '@/config/env';
 import { GoogleAnalytics } from '@/components/seo/google-analytics';
 import { JsonLd } from '@/components/seo/json-ld';
 import { AnnouncementBanner } from '@/components/storefront/announcement-banner';
+import { PageViewTracker } from '@/components/storefront/page-view-tracker';
 import { SiteFooter } from '@/components/storefront/site-footer';
 import { SiteHeader } from '@/components/storefront/site-header';
 import { Spine } from '@/components/storefront/spine';
@@ -31,6 +32,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
           logo: `${appUrl}/icon.svg`,
         }}
       />
+      <PageViewTracker />
       <SiteHeader />
       <AnnouncementBanner />
       <div className="spine-page spine-host relative flex-1">

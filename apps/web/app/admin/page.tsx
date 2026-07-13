@@ -1,4 +1,4 @@
-import { AlertTriangle, Package, ShoppingCart, Users } from 'lucide-react';
+import { AlertTriangle, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import Link from 'next/link';
 import { StatTile } from '@/components/dashboard/stat-tile';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -26,7 +26,7 @@ export default async function AdminDashboardPage() {
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const [ordersToday, activeCustomers, pendingDeliveries, lowStock, recentEvents] =
+  const [ordersToday, activeCustomers, pendingDeliveries, lowStock, recentEvents, trafficDaily] =
     await Promise.all([
       admin
         .from('orders')
@@ -46,12 +46,22 @@ export default async function AdminDashboardPage() {
         .select('id, event_type, aggregate_type, severity, created_at')
         .order('created_at', { ascending: false })
         .limit(8),
+      admin
+        .from('site_traffic_daily')
+        .select('date, page_views')
+        .order('date', { ascending: false })
+        .limit(7),
     ]);
 
   const todaysRevenue = (ordersToday.data ?? []).reduce(
     (sum, row) => sum + Number(row.grand_total),
     0,
   );
+
+  const trafficDays = [...(trafficDaily.data ?? [])].reverse();
+  const todaysPageViews = trafficDays.at(-1)?.page_views ?? 0;
+  const weekPageViews = trafficDays.reduce((sum, row) => sum + row.page_views, 0);
+  const maxDayViews = Math.max(1, ...trafficDays.map((row) => row.page_views));
 
   return (
     <div className="space-y-6">
@@ -63,6 +73,46 @@ export default async function AdminDashboardPage() {
         <StatTile label="Active customers" value={String(activeCustomers.count ?? 0)} />
         <StatTile label="Pending deliveries" value={String(pendingDeliveries.count ?? 0)} />
       </div>
+
+      <Card className="rounded-card">
+        <CardHeader className="flex flex-row items-center gap-2">
+          <TrendingUp className="text-muted-foreground size-4" aria-hidden="true" />
+          <h2 className="text-h4 text-foreground font-semibold">Traffic</h2>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-baseline gap-6">
+            <div>
+              <p className="text-hero text-foreground font-bold">{todaysPageViews}</p>
+              <p className="text-caption text-muted-foreground">Page views today</p>
+            </div>
+            <div>
+              <p className="text-h3 text-foreground font-semibold">{weekPageViews}</p>
+              <p className="text-caption text-muted-foreground">Last 7 days</p>
+            </div>
+          </div>
+          {trafficDays.length > 0 && (
+            <div className="mt-4 flex items-end gap-2" style={{ height: 64 }}>
+              {trafficDays.map((row) => (
+                <div key={row.date} className="flex flex-1 flex-col items-center gap-1">
+                  <div
+                    className="bg-primary/70 w-full rounded-sm"
+                    style={{ height: `${Math.max(4, (row.page_views / maxDayViews) * 56)}px` }}
+                    title={`${row.date}: ${row.page_views} views`}
+                  />
+                  <span className="text-muted-foreground text-[10px]">
+                    {new Date(row.date).toLocaleDateString('en-IN', { weekday: 'narrow' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+          {trafficDays.length === 0 && (
+            <p className="text-caption text-muted-foreground mt-3">
+              No traffic recorded yet — data appears after the first storefront visit.
+            </p>
+          )}
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="rounded-card lg:col-span-2">
