@@ -49,11 +49,6 @@ test.describe('Production smoke test', () => {
     expect(response?.status()).toBeLessThan(400);
   });
 
-  test('AI Dashboard gate responds (redirects a guest to login)', async ({ page }) => {
-    await page.goto('/admin/ai');
-    await expect(page).toHaveURL(/\/login/);
-  });
-
   test('Administrator Dashboard gate responds (redirects a guest to login)', async ({ page }) => {
     await page.goto('/admin');
     await expect(page).toHaveURL(/\/login/);

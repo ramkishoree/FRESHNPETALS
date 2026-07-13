@@ -45,10 +45,9 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
   },
   {
     label: 'Marketing',
-    href: '/admin/ai',
+    href: '/admin/blogs',
     icon: Megaphone,
     children: [
-      { label: 'AI Workspace', href: '/admin/ai' },
       { label: 'Blogs', href: '/admin/blogs' },
       { label: 'Pages', href: '/admin/pages' },
       { label: 'Announcements', href: '/admin/announcements' },

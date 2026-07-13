@@ -39,8 +39,8 @@ test.describe('Guest redirect gates', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('AI Workspace redirects an unauthenticated visitor to login', async ({ page }) => {
-    await page.goto('/admin/ai');
+  test('admin blogs redirects an unauthenticated visitor to login', async ({ page }) => {
+    await page.goto('/admin/blogs');
     await expect(page).toHaveURL(/\/login/);
   });
 });

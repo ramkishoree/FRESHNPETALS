@@ -1,4 +1,3 @@
-export * from './agent-registry';
 export * from './context-window';
 export * from './cost-controller';
 export * from './kill-switch';
