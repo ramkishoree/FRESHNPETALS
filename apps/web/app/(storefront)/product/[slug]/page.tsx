@@ -201,15 +201,15 @@ export default async function ProductDetailPage({ params }: PageProps) {
             basePrice={priceRow ? Number(priceRow.base_price) : 0}
             salePrice={priceRow?.sale_price != null ? Number(priceRow.sale_price) : null}
           />
+
+          {product.description && (
+            <section className="mt-10">
+              <p className="eyebrow mb-3">The details</p>
+              <p className="text-body-lg whitespace-pre-line">{product.description}</p>
+            </section>
+          )}
         </div>
       </div>
-
-      {product.description && (
-        <section className="mt-16 max-w-3xl">
-          <p className="eyebrow mb-3">The details</p>
-          <p className="text-body-lg whitespace-pre-line">{product.description}</p>
-        </section>
-      )}
 
       <GoogleReviewsCarousel />
     </div>

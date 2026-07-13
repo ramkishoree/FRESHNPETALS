@@ -1,6 +1,6 @@
 'use client';
 
-import { Heart, Minus, Plus } from 'lucide-react';
+import { Heart, Minus, Phone, Plus, ShieldCheck, Truck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
@@ -127,6 +127,24 @@ export function ProductActions({
         </span>
         Fresh, hand-arranged, same-day delivery.
       </p>
+
+      <div className="mt-8 grid grid-cols-1 gap-4 border-t border-[var(--sf-border)] pt-6 sm:grid-cols-3">
+        <div className="flex items-start gap-2.5">
+          <Truck className="mt-0.5 size-4 shrink-0 text-[var(--gold-deep)]" aria-hidden="true" />
+          <span className="text-caption">Same-day delivery on orders placed in time</span>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <ShieldCheck
+            className="mt-0.5 size-4 shrink-0 text-[var(--gold-deep)]"
+            aria-hidden="true"
+          />
+          <span className="text-caption">Secure payment — card, UPI, or cash on delivery</span>
+        </div>
+        <div className="flex items-start gap-2.5">
+          <Phone className="mt-0.5 size-4 shrink-0 text-[var(--gold-deep)]" aria-hidden="true" />
+          <span className="text-caption">Questions? Call us any time from your orders page</span>
+        </div>
+      </div>
     </div>
   );
 }
