@@ -31,12 +31,11 @@ function PinIcon() {
 }
 
 /**
- * Owner's explicit call: "dead simple, authority in a glance" — hero,
- * featured products, and Google reviews all land within the first couple
- * of swipes, before category browsing or the full catalogue. Ch.12 §15's
- * original section order (categories before featured products) is
- * inverted here for exactly that reason; nothing below the fold is
- * removed, just reordered and, for the catalogue, no longer capped at 8.
+ * Owner's explicit call: "dead simple, authority in a glance" — the
+ * moment the site opens it's hero (tagline + Shop now), then Google
+ * reviews immediately, then featured products, then category browsing,
+ * all before the full catalogue. Nothing below the fold is removed,
+ * just reordered and, for the catalogue, no longer capped at 8.
  */
 export default async function HomePage() {
   const supabase = await createSupabaseServerClient();
@@ -99,12 +98,12 @@ export default async function HomePage() {
 
       {/* ============================ HERO ============================ */}
       <section className="relative overflow-hidden">
-        <div className="container-brand grid items-center gap-10 pb-10 pt-14 lg:grid-cols-[1.05fr_1fr] lg:pb-14 lg:pt-20">
+        <div className="container-brand grid items-center gap-10 pt-14 pb-10 lg:grid-cols-[1.05fr_1fr] lg:pt-20 lg:pb-14">
           <div className="max-w-xl">
             <p className="eyebrow mb-5">{hero.eyebrow ?? "Lucknow's neighbourhood florist"}</p>
             <h1 className="text-h1">
               {hero.title ?? 'Fresh flowers, delivered'}{' '}
-              <em className="not-italic text-[var(--gold-deep)]">
+              <em className="text-[var(--gold-deep)] not-italic">
                 {hero.titleHighlight ?? 'same-day.'}
               </em>
             </h1>
@@ -142,9 +141,14 @@ export default async function HomePage() {
         </div>
       </section>
 
+      {/* ==================== GOOGLE REVIEWS — authority, first thing after hero ==================== */}
+      <div className="pt-10">
+        <GoogleReviewsCarousel />
+      </div>
+
       {/* ============= FEATURED PRODUCTS — quick glance carousel ============= */}
       {featuredProducts.length > 0 && (
-        <section className="container-brand pt-2">
+        <section className="container-brand pt-16">
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
               <p className="eyebrow mb-2">Most loved</p>
@@ -160,11 +164,6 @@ export default async function HomePage() {
           <AddToCartProductGrid products={featuredProducts} layout="carousel" />
         </section>
       )}
-
-      {/* ==================== GOOGLE REVIEWS — authority, early ==================== */}
-      <div className="pt-10">
-        <GoogleReviewsCarousel />
-      </div>
 
       {/* ==================== SHOP BY CATEGORY ==================== */}
       {categories.length > 0 && (
