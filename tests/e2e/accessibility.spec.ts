@@ -10,7 +10,17 @@ import { expect, test } from '@playwright/test';
  * reader and real-device review (§160, §179) still need a human.
  */
 
-const PAGES = ['/', '/login', '/signup', '/privacy', '/terms', '/cart', '/search?q=rose'];
+const PAGES = [
+  '/',
+  '/login',
+  '/signup',
+  '/privacy',
+  '/terms',
+  '/shipping',
+  '/refunds',
+  '/cart',
+  '/search?q=rose',
+];
 
 test.describe('Accessibility (axe-core, WCAG 2.2 AA)', () => {
   for (const path of PAGES) {

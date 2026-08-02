@@ -23,10 +23,24 @@ test.describe('Storefront', () => {
     expect(errors).toEqual([]);
   });
 
+  // Below the `lg` breakpoint the primary nav is `hidden` and the same
+  // three links live in the hamburger sheet instead, so asserting the
+  // desktop nav unconditionally fails on the mobile project rather than
+  // catching a regression. Both surfaces are checked, each where it
+  // actually renders.
   test('primary navigation is exactly Products, Orders, My Account', async ({ page }) => {
     await page.goto('/');
-    const nav = page.getByRole('navigation', { name: 'Primary navigation' });
-    await expect(nav.getByRole('link')).toHaveText(['Products', 'Orders', 'My Account']);
+    const expected = ['Products', 'Orders', 'My Account'];
+
+    const desktopNav = page.getByRole('navigation', { name: 'Primary navigation' });
+    if (await desktopNav.isVisible()) {
+      await expect(desktopNav.getByRole('link')).toHaveText(expected);
+      return;
+    }
+
+    await page.getByRole('button', { name: 'Open menu' }).click();
+    const mobileNav = page.getByRole('navigation', { name: 'Mobile navigation' });
+    await expect(mobileNav.getByRole('link')).toHaveText(expected);
   });
 
   test('the old /shop URL permanently redirects to the catalogue root', async ({ page }) => {
@@ -40,7 +54,7 @@ test.describe('Storefront', () => {
   });
 
   test.describe('legal pages', () => {
-    for (const path of ['/privacy', '/terms']) {
+    for (const path of ['/privacy', '/terms', '/shipping', '/refunds']) {
       test(`${path} loads without error`, async ({ page }) => {
         const response = await page.goto(path);
         expect(response?.status()).toBeLessThan(400);

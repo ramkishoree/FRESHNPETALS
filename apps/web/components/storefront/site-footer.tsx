@@ -17,9 +17,15 @@ export function SiteFooter() {
         <p className="text-caption text-muted-foreground">
           {`© ${new Date().getFullYear()} Fresh & Petals. Powered by Prana Commerce OS.`}
         </p>
-        <nav className="flex gap-5" aria-label="Legal">
+        {/* Razorpay's merchant activation checklist looks for all four of
+            these reachable from every page, and the Consumer Protection
+            (E-Commerce) Rules 2020 require the delivery and refund terms
+            to be published. */}
+        <nav className="flex flex-wrap gap-x-5 gap-y-2" aria-label="Legal">
           <FooterLink href="/privacy">Privacy policy</FooterLink>
           <FooterLink href="/terms">Terms of service</FooterLink>
+          <FooterLink href="/shipping">Shipping &amp; delivery</FooterLink>
+          <FooterLink href="/refunds">Cancellation &amp; refunds</FooterLink>
         </nav>
       </div>
     </footer>

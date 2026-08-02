@@ -12,7 +12,7 @@ import { createSupabaseAdminClient } from '@/lib/supabase/admin';
  * require a session. */
 export const revalidate = 3600;
 
-const STATIC_ROUTES = ['', '/privacy', '/terms'];
+const STATIC_ROUTES = ['', '/privacy', '/terms', '/shipping', '/refunds'];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;

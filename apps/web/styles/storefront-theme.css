@@ -31,7 +31,12 @@
   --gold: #c8a25d;
   --gold-deep: #9a7735;
   --petal: #b34a3a;
-  --sage: #8a9a82;
+  /* Darkened from #8a9a82, which failed WCAG 2.2 AA on every surface it
+     was used against (2.45-2.81:1 where small text needs 4.5:1) — the
+     axe spec caught 33 instances of it, mostly .text-caption and the
+     footer. This value clears 4.5:1 on all four paper/card surfaces
+     (4.73 on --paper-2 through 5.44 on --card) at the same hue. */
+  --sage: #5b6a54;
   --line: #ded3ba;
   --card: #fbf8ef;
 
