@@ -39,8 +39,8 @@ test.describe('Guest redirect gates', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('admin blogs redirects an unauthenticated visitor to login', async ({ page }) => {
-    await page.goto('/admin/blogs');
+  test('admin products redirects an unauthenticated visitor to login', async ({ page }) => {
+    await page.goto('/admin/products');
     await expect(page).toHaveURL(/\/login/);
   });
 });

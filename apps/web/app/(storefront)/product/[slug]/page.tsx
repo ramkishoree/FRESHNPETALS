@@ -16,6 +16,7 @@ import { DraftModeBanner } from '@/components/storefront/draft-mode-banner';
 import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
 import { ProductActions } from '@/components/storefront/product-actions';
 import { ProductGallery, type GalleryItem } from '@/components/storefront/product-gallery';
+import { ProductReviews } from '@/components/storefront/product-reviews';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 
 interface PageProps {
@@ -134,7 +135,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           '@context': 'https://schema.org',
           '@type': 'BreadcrumbList',
           itemListElement: [
-            { '@type': 'ListItem', position: 1, name: 'Home', item: appUrl },
+            { '@type': 'ListItem', position: 1, name: 'Products', item: appUrl },
             ...(category
               ? [
                   {
@@ -159,7 +160,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
           <BreadcrumbItem>
             <BreadcrumbLink asChild>
               <Link href="/" className="hover:text-[var(--gold-deep)]">
-                Home
+                Products
               </Link>
             </BreadcrumbLink>
           </BreadcrumbItem>
@@ -211,7 +212,20 @@ export default async function ProductDetailPage({ params }: PageProps) {
         </div>
       </div>
 
-      <GoogleReviewsCarousel />
+      <ProductReviews
+        reviews={approvedReviews.map((review) => {
+          const author = Array.isArray(review.customers) ? review.customers[0] : review.customers;
+          return {
+            id: review.id,
+            authorName: author?.first_name ?? 'Verified customer',
+            rating: review.rating,
+            comment: review.comment ?? review.title ?? '',
+            createdAt: review.created_at,
+            verifiedPurchase: review.verified_purchase ?? false,
+          };
+        })}
+        googleReviews={<GoogleReviewsCarousel />}
+      />
     </div>
   );
 }

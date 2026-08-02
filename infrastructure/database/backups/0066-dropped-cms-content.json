@@ -1,0 +1,300 @@
+{
+  "exported_at": "2026-08-02T14:33:55Z",
+  "note": "Content dropped by migration 0066. Blogs were already soft-deleted; privacy/terms copy now lives in apps/web/app/(storefront)/{privacy,terms}/page.tsx.",
+  "static_pages": [
+    {
+      "id": "019f555e-ee17-70ae-84fa-07d9dc639fc2",
+      "title": "Home",
+      "slug": "home",
+      "layout": null,
+      "status": "published",
+      "seo_id": null,
+      "content": {
+        "title": "Fresh flowers, delivered",
+        "eyebrow": "Lucknow's neighbourhood florist",
+        "ctaLabel": "Shop now",
+        "subtitle": "Hand-picked bouquets for every occasion — Lucknow's freshest flower delivery, arranged fresh the morning it ships.",
+        "titleHighlight": "same-day."
+      },
+      "version": 5,
+      "metadata": {},
+      "created_at": "2026-07-12T08:08:13.896053+00:00",
+      "updated_at": "2026-07-12T20:44:59.715124+00:00",
+      "deleted_at": null
+    },
+    {
+      "id": "019f5296-d7cf-7cc0-979b-b5ce895b8e8b",
+      "title": "About Fresh & Petals",
+      "slug": "about",
+      "layout": null,
+      "status": "published",
+      "seo_id": null,
+      "content": {
+        "blocks": [
+          {
+            "text": "Fresh & Petals started in Lucknow with a simple idea: flowers should be fresh, honestly priced, and delivered on time, every time.",
+            "type": "paragraph"
+          },
+          {
+            "text": "We work directly with local growers each morning so every bouquet that leaves our outlet is cut within hours of delivery — not days.",
+            "type": "paragraph"
+          },
+          {
+            "text": "Today we serve anniversaries, birthdays, and quiet condolence deliveries alike, with the same care for every order regardless of size.",
+            "type": "paragraph"
+          }
+        ]
+      },
+      "version": 2,
+      "metadata": {},
+      "created_at": "2026-07-11T19:10:30.857134+00:00",
+      "updated_at": "2026-07-12T08:08:13.896053+00:00",
+      "deleted_at": null
+    },
+    {
+      "id": "019f5296-d8dc-7ed6-acd7-d5383476f49b",
+      "title": "Contact Us",
+      "slug": "contact",
+      "layout": null,
+      "status": "published",
+      "seo_id": null,
+      "content": {
+        "blocks": [
+          {
+            "text": "Have a question about an order, a bulk/corporate enquiry, or same-day delivery? Reach us any of these ways:",
+            "type": "paragraph"
+          },
+          {
+            "text": "Phone: +91 12345 67890\nEmail: hello@freshnpetals.in\nHours: 9:00 AM – 8:00 PM, all days",
+            "type": "paragraph"
+          },
+          {
+            "text": "Outlet: Fresh & Petals - Lucknow Hub, Hazratganj, Lucknow, Uttar Pradesh",
+            "type": "paragraph"
+          }
+        ]
+      },
+      "version": 2,
+      "metadata": {},
+      "created_at": "2026-07-11T19:10:30.857134+00:00",
+      "updated_at": "2026-07-12T08:08:13.896053+00:00",
+      "deleted_at": null
+    },
+    {
+      "id": "019f5296-d9e7-7d8c-b96f-129f84ed7dc1",
+      "title": "Privacy Policy",
+      "slug": "privacy",
+      "layout": null,
+      "status": "published",
+      "seo_id": null,
+      "content": {
+        "blocks": [
+          {
+            "text": "This is placeholder demo content — replace with your actual privacy policy before launch.",
+            "type": "paragraph"
+          },
+          {
+            "text": "We collect only the information needed to process and deliver your order: name, delivery address, phone number, and payment confirmation from our payment processor. We never sell customer data to third parties.",
+            "type": "paragraph"
+          }
+        ]
+      },
+      "version": 2,
+      "metadata": {},
+      "created_at": "2026-07-11T19:10:30.857134+00:00",
+      "updated_at": "2026-07-12T08:08:13.896053+00:00",
+      "deleted_at": null
+    },
+    {
+      "id": "019f5296-daf0-7ff9-a55f-97410da9515a",
+      "title": "Terms of Service",
+      "slug": "terms",
+      "layout": "Hui",
+      "status": "published",
+      "seo_id": null,
+      "content": {
+        "blocks": [
+          {
+            "text": "This is placeholder demo content — replace with your actual terms before launch.",
+            "type": "paragraph"
+          },
+          {
+            "text": "Orders are confirmed once payment is captured. Delivery windows are estimates based on outlet capacity and distance; same-day orders placed after 6 PM may be scheduled for next-day delivery.",
+            "type": "paragraph"
+          }
+        ]
+      },
+      "version": 3,
+      "metadata": {},
+      "created_at": "2026-07-11T19:10:30.857134+00:00",
+      "updated_at": "2026-07-12T08:08:13.896053+00:00",
+      "deleted_at": null
+    },
+    {
+      "id": "019f5296-dbff-74c9-94d6-ad05cd951c49",
+      "title": "Delivery Policy",
+      "slug": "delivery-policy",
+      "layout": null,
+      "status": "published",
+      "seo_id": null,
+      "content": {
+        "blocks": [
+          {
+            "text": "Delivery fee is calculated by distance from your nearest Fresh & Petals outlet: ₹50 for the first 5 km, plus ₹5 per additional km.",
+            "type": "paragraph"
+          },
+          {
+            "text": "Same-day delivery is available for orders placed before 6 PM, subject to outlet stock and delivery slot availability. Choose your preferred slot at checkout.",
+            "type": "paragraph"
+          }
+        ]
+      },
+      "version": 2,
+      "metadata": {},
+      "created_at": "2026-07-11T19:10:30.857134+00:00",
+      "updated_at": "2026-07-12T08:08:13.896053+00:00",
+      "deleted_at": null
+    }
+  ],
+  "blogs": [
+    {
+      "id": "019f59be-31ff-78bd-9808-2a52bffe86f2",
+      "title": "E2E Test Post Delete Me",
+      "slug": "e2e-test-post-delete-me",
+      "excerpt": "",
+      "featured_image": "",
+      "author": null,
+      "status": "draft",
+      "reading_time_minutes": null,
+      "published_at": null,
+      "scheduled_at": null,
+      "seo_id": null,
+      "ai_generated": false,
+      "version": 2,
+      "metadata": {},
+      "created_at": "2026-07-13T04:31:04.676069+00:00",
+      "updated_at": "2026-07-13T04:31:22.434639+00:00",
+      "deleted_at": "2026-07-13T04:31:22.417+00:00"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000401",
+      "title": "How to Make Your Bouquet Last Longer",
+      "slug": "how-to-make-your-bouquet-last-longer",
+      "excerpt": "Simple care tips to keep your fresh flowers vibrant for days longer.",
+      "featured_image": "https://swenryjqcdogbhvvwqvq.supabase.co/storage/v1/object/public/media/demo-seed/blog-bouquet-care.webp",
+      "author": null,
+      "status": "published",
+      "reading_time_minutes": 3,
+      "published_at": "2026-07-10T16:39:59.455197+00:00",
+      "scheduled_at": null,
+      "seo_id": null,
+      "ai_generated": false,
+      "version": 4,
+      "metadata": {},
+      "created_at": "2026-07-10T16:39:59.455197+00:00",
+      "updated_at": "2026-07-13T09:19:36.310643+00:00",
+      "deleted_at": "2026-07-13T09:19:36.294+00:00"
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000402",
+      "title": "Choosing the Right Flowers for Every Occasion",
+      "slug": "choosing-flowers-for-every-occasion",
+      "excerpt": "A quick guide to picking the perfect bouquet for anniversaries, birthdays, and more.",
+      "featured_image": "https://swenryjqcdogbhvvwqvq.supabase.co/storage/v1/object/public/media/demo-seed/blog-choosing-flowers.webp",
+      "author": null,
+      "status": "published",
+      "reading_time_minutes": 3,
+      "published_at": "2026-07-10T16:39:59.455197+00:00",
+      "scheduled_at": null,
+      "seo_id": null,
+      "ai_generated": false,
+      "version": 4,
+      "metadata": {},
+      "created_at": "2026-07-10T16:39:59.455197+00:00",
+      "updated_at": "2026-07-13T09:19:38.93448+00:00",
+      "deleted_at": "2026-07-13T09:19:38.914+00:00"
+    }
+  ],
+  "blog_blocks": [
+    {
+      "id": "019f4ce6-9926-7461-a38c-dbc1be4c8086",
+      "blog_id": "00000000-0000-0000-0000-000000000401",
+      "block_type": "heading",
+      "position": 0,
+      "content": { "text": "Fresh Cuts Matter", "level": 2 }
+    },
+    {
+      "id": "019f4ce6-9a3f-72d2-8265-4dff11dcb227",
+      "blog_id": "00000000-0000-0000-0000-000000000401",
+      "block_type": "paragraph",
+      "position": 1,
+      "content": {
+        "text": "Trim about an inch off each stem at a 45-degree angle before placing your bouquet in water — this helps the flowers absorb water more efficiently."
+      }
+    },
+    {
+      "id": "019f4ce6-9b50-7e72-a715-644863a629b4",
+      "blog_id": "00000000-0000-0000-0000-000000000401",
+      "block_type": "heading",
+      "position": 2,
+      "content": { "text": "Change the Water Often", "level": 2 }
+    },
+    {
+      "id": "019f4ce6-9c64-71ca-9631-db131a8da10e",
+      "blog_id": "00000000-0000-0000-0000-000000000401",
+      "block_type": "paragraph",
+      "position": 3,
+      "content": {
+        "text": "Replace the water every two days and keep your arrangement away from direct sunlight and heating vents to extend its life by up to a week."
+      }
+    },
+    {
+      "id": "019f4ce6-9e92-70b4-a116-e4d8dc247ffe",
+      "blog_id": "00000000-0000-0000-0000-000000000402",
+      "block_type": "heading",
+      "position": 0,
+      "content": { "text": "Anniversaries", "level": 2 }
+    },
+    {
+      "id": "019f4ce6-9fa8-76f5-b7cb-b752771822ff",
+      "blog_id": "00000000-0000-0000-0000-000000000402",
+      "block_type": "paragraph",
+      "position": 1,
+      "content": {
+        "text": "Red roses remain the classic choice for romance, while a mix of red and white roses symbolizes unity and lasting love."
+      }
+    },
+    {
+      "id": "019f4ce6-a0bf-7811-8312-76e0ffe23bb0",
+      "blog_id": "00000000-0000-0000-0000-000000000402",
+      "block_type": "heading",
+      "position": 2,
+      "content": { "text": "Birthdays", "level": 2 }
+    },
+    {
+      "id": "019f4ce6-a1d6-7601-be62-3f552b3e03d0",
+      "blog_id": "00000000-0000-0000-0000-000000000402",
+      "block_type": "paragraph",
+      "position": 3,
+      "content": {
+        "text": "Bright, playful blooms like gerberas and sunflowers suit the celebratory mood of a birthday far better than more formal arrangements."
+      }
+    },
+    {
+      "id": "019f59be-38a0-7e3e-8e41-636a988e3bb8",
+      "blog_id": "019f59be-31ff-78bd-9808-2a52bffe86f2",
+      "block_type": "heading",
+      "position": 0,
+      "content": { "text": "Test Heading", "level": 2 }
+    },
+    {
+      "id": "019f59be-38a5-7e7c-8f03-07007032fe7c",
+      "blog_id": "019f59be-31ff-78bd-9808-2a52bffe86f2",
+      "block_type": "paragraph",
+      "position": 1,
+      "content": { "text": "Test paragraph body text for E2E verification." }
+    }
+  ],
+  "blog_categories": [],
+  "blog_category_links": []
+}

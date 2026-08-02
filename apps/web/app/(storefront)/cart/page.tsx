@@ -25,7 +25,7 @@ export default function CartPage() {
           A room always feels warmer with flowers in it. Let&rsquo;s fix that.
         </p>
         <BrandDivider className="my-8" />
-        <Link href="/shop" className="btn btn-primary inline-flex px-8 py-3.5 text-sm">
+        <Link href="/" className="btn btn-primary inline-flex px-8 py-3.5 text-sm">
           Shop now
         </Link>
       </div>
@@ -73,7 +73,7 @@ export default function CartPage() {
             Proceed to checkout
           </Link>
           <Link
-            href="/shop"
+            href="/"
             className="text-caption mt-3 block text-center text-[var(--gold-deep)] underline-offset-4 hover:underline"
           >
             Continue shopping

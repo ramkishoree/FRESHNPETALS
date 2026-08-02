@@ -14,6 +14,13 @@ interface DeliveryMapProps {
   onLocationChange: (location: MapLocation) => void;
   /** Center the map on these coords initially (default: Lucknow city centre). */
   defaultCenter?: { lat: number; lng: number };
+  /**
+   * Imperatively move the pin after mount — used when the customer picks
+   * a saved address at checkout. Every change to these coords recentres
+   * the map and repositions the marker. `defaultCenter` can't do this: the
+   * setup effect runs once, so it only ever applies on first mount.
+   */
+  pinTo?: { lat: number; lng: number } | null;
 }
 
 /**
@@ -22,7 +29,7 @@ interface DeliveryMapProps {
  * order delivered; the distance from the selected outlet to this pin
  * determines the delivery fee.
  */
-export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProps) {
+export function DeliveryMap({ onLocationChange, defaultCenter, pinTo }: DeliveryMapProps) {
   const mapRef = React.useRef<HTMLDivElement>(null);
   const searchContainerRef = React.useRef<HTMLDivElement>(null);
   const [status, setStatus] = React.useState<'loading' | 'ready' | 'error'>('loading');
@@ -154,6 +161,19 @@ export function DeliveryMap({ onLocationChange, defaultCenter }: DeliveryMapProp
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Follow `pinTo` once the map exists. Deliberately does NOT call
+  // `onLocationChange` — the caller supplied these coords, so echoing
+  // them back would be a render -> setState -> render loop.
+  React.useEffect(() => {
+    const map = mapInstanceRef.current;
+    const marker = markerRef.current;
+    if (!pinTo || !map || !marker) return;
+    const position = { lat: pinTo.lat, lng: pinTo.lng };
+    marker.setPosition(position);
+    map.setCenter(position);
+    map.setZoom(15);
+  }, [pinTo?.lat, pinTo?.lng, status]);
 
   return (
     <div className="space-y-3">

@@ -6,16 +6,22 @@ import { createApiRoute } from '@/server/http/route-handler';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { runSecurityChain } from '@/server/security/chain';
 
-/** Ch.16 §73 Address API. RLS (`customer_addresses_select_own`/`_insert_own`) is the real ownership boundary; `customer_id` here still has to be supplied for the insert (RLS's WITH CHECK verifies it, doesn't invent it). */
+/** Ch.16 §73 Address API. RLS (`customer_addresses_select_own`/`_insert_own`) is the real ownership boundary; `customer_id` here still has to be supplied for the insert (RLS's WITH CHECK verifies it, doesn't invent it).
+ *
+ * `city`/`postalCode` are optional as of migration 0066: a saved address
+ * is now captured the same way checkout captures one — a map pin, which
+ * yields a single Google-formatted string plus lat/lng and no separately
+ * typed city or postal code. They stay accepted so an address that does
+ * have them (older rows, admin-entered ones) still round-trips. */
 const createSchema = z.object({
   label: z.string().max(40).optional(),
   recipientName: z.string().min(1).max(120),
   phone: z.string().min(6).max(20),
   addressLine1: z.string().min(1),
   addressLine2: z.string().optional(),
-  city: z.string().min(1),
+  city: z.string().min(1).optional(),
   state: z.string().optional(),
-  postalCode: z.string().min(4).max(12),
+  postalCode: z.string().min(4).max(12).optional(),
   latitude: z.number().min(-90).max(90).optional(),
   longitude: z.number().min(-180).max(180).optional(),
   isDefault: z.boolean().optional(),

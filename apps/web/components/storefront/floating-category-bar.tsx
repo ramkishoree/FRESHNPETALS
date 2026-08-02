@@ -18,10 +18,10 @@ export function FloatingCategoryBar({ categories }: { categories: CategoryPill[]
   if (categories.length === 0) return null;
 
   return (
-    <div className="bg-[var(--sf-surface)]/95 sticky top-16 z-30 -mx-4 border-b border-[var(--sf-border)] px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-full sm:border sm:px-2">
+    <div className="sticky top-16 z-30 -mx-4 border-b border-[var(--sf-border)] bg-[var(--sf-surface)]/95 px-4 py-3 backdrop-blur sm:mx-0 sm:rounded-full sm:border sm:px-2">
       <div className="flex gap-2 overflow-x-auto sm:justify-center">
         <Link
-          href="/shop"
+          href="/"
           className="shrink-0 rounded-full border border-[var(--sf-border)] px-4 py-1.5 text-sm font-medium hover:border-[var(--gold)] hover:text-[var(--gold-deep)]"
         >
           All

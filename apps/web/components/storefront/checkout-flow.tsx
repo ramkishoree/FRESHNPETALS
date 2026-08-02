@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { PriceDisplay } from '@/components/commerce/price-display';
+import { formatSavedAddress, type SavedAddress } from '@/components/storefront/address-manager';
 import { DeliveryMap, type MapLocation } from '@/components/storefront/delivery-map';
 import { OutletSelector, type OutletWithStock } from '@/components/storefront/outlet-selector';
 import { BrandDivider } from '@/components/storefront/brand-divider';
@@ -94,6 +95,14 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [slotsResponse, setSlotsResponse] = React.useState<DeliverySlotsResponse | null>(null);
   const [selectedSlotId, setSelectedSlotId] = React.useState<string | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = React.useState(true);
+
+  // ---- Saved address state ---------------------------------------------------
+  // Only addresses that carry a map pin are offered: without lat/lng
+  // there's nothing to restore, and the delivery fee is computed from the
+  // pin. (Rows saved before migration 0066 can lack one.)
+  const [savedAddresses, setSavedAddresses] = React.useState<SavedAddress[]>([]);
+  const [selectedAddressId, setSelectedAddressId] = React.useState<string | null>(null);
+  const [pinTarget, setPinTarget] = React.useState<{ lat: number; lng: number } | null>(null);
 
   // ---- Outlet selection state ------------------------------------------------
   const [outlets, setOutlets] = React.useState<OutletWithStock[]>([]);
@@ -236,6 +245,45 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       cancelled = true;
     };
   }, [slotDate]);
+
+  // Load the customer's saved addresses. 401s for a guest checkout —
+  // that's expected, and just means no picker is offered.
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/v1/account/addresses');
+        const body = await res.json();
+        if (cancelled || !res.ok || !body.success) return;
+        const usable = (body.data as SavedAddress[]).filter(
+          (address) => address.latitude != null && address.longitude != null,
+        );
+        setSavedAddresses(usable);
+      } catch {
+        // Non-critical — the map is always available as the primary path.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  /** Replay a saved address: move the pin, and fill the details form. */
+  function applySavedAddress(address: SavedAddress) {
+    const lat = Number(address.latitude);
+    const lng = Number(address.longitude);
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+    setSelectedAddressId(address.id);
+    setPinTarget({ lat, lng });
+    setDeliveryPin({ lat, lng, formattedAddress: address.address_line_1 });
+    setManualAddress((current) => ({
+      ...current,
+      recipientName: address.recipient_name,
+      phone: address.phone,
+      flatNo: address.address_line_2 ?? '',
+    }));
+  }
 
   // Re-fetch pricing when outlet selection or delivery pin changes.
   React.useEffect(() => {
@@ -428,10 +476,54 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
       <div className="grid min-w-0 gap-10 lg:grid-cols-[1.5fr_1fr]">
         <div className="min-w-0 space-y-8">
+          {/* ---- Saved addresses ---- */}
+          {savedAddresses.length > 0 && (
+            <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
+              <h2 className="text-h4 mb-4">Deliver to a saved address</h2>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {savedAddresses.map((address) => {
+                  const isSelected = selectedAddressId === address.id;
+                  return (
+                    <button
+                      key={address.id}
+                      type="button"
+                      onClick={() => applySavedAddress(address)}
+                      aria-pressed={isSelected}
+                      className={`rounded-[var(--r-md)] border p-3 text-left transition-colors ${
+                        isSelected
+                          ? 'border-[var(--sf-ink)] bg-[var(--sf-surface-2)]'
+                          : 'border-[var(--sf-border-strong)] hover:border-[var(--sf-ink)]'
+                      }`}
+                    >
+                      <span className="block text-sm font-medium">
+                        {address.label || 'Address'}
+                        {address.is_default ? ' · Default' : ''}
+                      </span>
+                      <span className="text-caption mt-0.5 block text-[var(--sf-ink-muted)]">
+                        {formatSavedAddress(address)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-caption mt-3 text-[var(--sf-ink-muted)]">
+                Or pin a new location on the map below.
+              </p>
+            </section>
+          )}
+
           {/* ---- Pin your delivery location (Google Maps) ---- */}
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Pin your delivery location</h2>
-            <DeliveryMap onLocationChange={(loc) => setDeliveryPin(loc)} />
+            <DeliveryMap
+              onLocationChange={(loc) => {
+                // Any manual pin move means they're no longer on the
+                // saved address they picked.
+                setSelectedAddressId(null);
+                setDeliveryPin(loc);
+              }}
+              pinTo={pinTarget}
+            />
           </section>
 
           {/* ---- Outlet selector ---- */}

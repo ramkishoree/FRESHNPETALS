@@ -17,7 +17,6 @@ export const PERMISSIONS = [
   'orders.read',
   'orders.update',
   'inventory.update',
-  'blogs.publish',
   'coupons.create',
   'offers.publish',
   'users.manage',

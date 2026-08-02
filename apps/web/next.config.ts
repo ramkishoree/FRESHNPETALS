@@ -103,6 +103,29 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: '/:path*', headers: securityHeaders }];
   },
+  // The catalogue moved to `/` and the marketing/content pages were
+  // removed. These are permanent so search engines fold the old URLs'
+  // ranking into the pages that replaced them, and so any link already
+  // out in the world (WhatsApp shares, Google's index, printed cards)
+  // lands somewhere useful instead of on a 404.
+  async redirects() {
+    const gone = [
+      '/shop',
+      '/blog',
+      '/blog/:slug',
+      '/about',
+      '/faq',
+      '/contact',
+      '/delivery-policy',
+      '/locations',
+      '/locations/:citySlug',
+    ];
+    return [
+      ...gone.map((source) => ({ source, destination: '/', permanent: true })),
+      // Saved addresses moved onto the account page itself.
+      { source: '/account/addresses', destination: '/account', permanent: true },
+    ];
+  },
 };
 
 export default nextConfig;

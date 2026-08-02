@@ -49,7 +49,7 @@ export function OfferPopup({
           type="button"
           onClick={() => setOpen(false)}
           aria-label="Close"
-          className="text-muted-foreground hover:text-foreground absolute right-3 top-3 grid size-8 place-items-center rounded-full"
+          className="text-muted-foreground hover:text-foreground absolute top-3 right-3 grid size-8 place-items-center rounded-full"
         >
           ✕
         </button>
@@ -57,7 +57,7 @@ export function OfferPopup({
         <p className="text-h3 mb-2">{title}</p>
         {description && <p className="text-body text-[var(--sf-ink-muted)]">{description}</p>}
         <Link
-          href="/shop"
+          href="/"
           onClick={() => setOpen(false)}
           className="btn btn-primary mt-6 inline-flex items-center px-7 py-3 text-sm"
         >

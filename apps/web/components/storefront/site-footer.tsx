@@ -1,42 +1,26 @@
 import Link from 'next/link';
 
-/** Ch.12 §15 Homepage Structure footer slot + Ch.6 static-page IA (About/Contact/Privacy/Terms/FAQ/Delivery Policy). */
+/**
+ * Owner's explicit call: the site is Products / Orders / My Account and
+ * nothing else, so the footer carries no second navigation of its own —
+ * only the legal pages Razorpay's merchant terms require to stay
+ * reachable, plus the copyright line.
+ */
 export function SiteFooter() {
   return (
     <footer className="border-border bg-secondary border-t">
-      <div className="container-brand grid gap-8 py-12 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="space-y-2">
-          <p className="text-h4 text-foreground font-bold">Fresh &amp; Petals</p>
-          <p className="text-body text-muted-foreground">
-            Premium flower delivery, fresh and on time.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-body text-foreground font-semibold">Shop</p>
-          <FooterLink href="/shop">All products</FooterLink>
-          <FooterLink href="/blog">Blog</FooterLink>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-body text-foreground font-semibold">Company</p>
-          <FooterLink href="/about">About us</FooterLink>
-          <FooterLink href="/contact">Contact</FooterLink>
-          <FooterLink href="/faq">FAQ</FooterLink>
-          <FooterLink href="/delivery-policy">Delivery policy</FooterLink>
-          <FooterLink href="/locations">Where we deliver</FooterLink>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-body text-foreground font-semibold">Legal</p>
+      <div className="container-brand flex flex-wrap items-center justify-between gap-4 py-6">
+        {/* One template string rather than JSX text around an expression:
+            the latter renders as `2026<!-- -->Fresh` — React drops the
+            separating space when the interpolation sits between text
+            nodes, which is exactly what the old footer shipped. */}
+        <p className="text-caption text-muted-foreground">
+          {`© ${new Date().getFullYear()} Fresh & Petals. Powered by Prana Commerce OS.`}
+        </p>
+        <nav className="flex gap-5" aria-label="Legal">
           <FooterLink href="/privacy">Privacy policy</FooterLink>
           <FooterLink href="/terms">Terms of service</FooterLink>
-        </div>
-      </div>
-      <div className="border-border border-t py-4">
-        <p className="container-brand text-caption text-muted-foreground">
-          © {new Date().getFullYear()} Fresh &amp; Petals. Powered by Prana Commerce OS.
-        </p>
+        </nav>
       </div>
     </footer>
   );
@@ -44,7 +28,7 @@ export function SiteFooter() {
 
 function FooterLink({ href, children }: { href: string; children: React.ReactNode }) {
   return (
-    <Link href={href} className="text-body text-muted-foreground hover:text-foreground block">
+    <Link href={href} className="text-caption text-muted-foreground hover:text-foreground">
       {children}
     </Link>
   );

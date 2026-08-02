@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
+import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
 import { ShopSortControl } from '@/components/storefront/shop-sort-control';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
@@ -50,13 +51,24 @@ export default async function CategoryShopPage({ params, searchParams }: PagePro
 
   const products = (data ?? []).map(mapProductRow);
 
+  // Same pill bar as the catalogue landing page, so switching category —
+  // or getting back to "All" — never requires the browser back button.
+  const { data: categories } = await supabase
+    .from('categories')
+    .select('name, slug')
+    .eq('is_active', true)
+    .is('deleted_at', null)
+    .order('sort_order', { ascending: true });
+
   return (
-    <div className="container-brand space-y-6 py-10">
-      <div className="flex items-center justify-between">
+    <div className="container-brand py-6 pb-20">
+      <FloatingCategoryBar categories={categories ?? []} />
+
+      <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-h2 text-foreground font-bold">{category.name}</h1>
+          <h1 className="text-h4 text-foreground font-semibold">{category.name}</h1>
           {category.description && (
-            <p className="text-body text-muted-foreground">{category.description}</p>
+            <p className="text-caption text-muted-foreground">{category.description}</p>
           )}
         </div>
         <ShopSortControl {...(sort ? { currentSort: sort } : {})} />

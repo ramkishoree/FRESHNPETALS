@@ -44,11 +44,7 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     label: 'Marketing',
     href: '/admin/marketing',
     icon: Megaphone,
-    children: [
-      { label: 'Campaigns', href: '/admin/marketing' },
-      { label: 'Blogs', href: '/admin/blogs' },
-      { label: 'Pages', href: '/admin/pages' },
-    ],
+    children: [{ label: 'Campaigns', href: '/admin/marketing' }],
   },
   {
     label: 'Admin',

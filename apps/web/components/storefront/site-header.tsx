@@ -10,18 +10,16 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from '@/components/ui/s
 import { useCart } from '@/lib/cart-context';
 
 const PRIMARY_NAV = [
-  { href: '/', label: 'Home' },
-  { href: '/shop', label: 'Products' },
-  { href: '/blog', label: 'Blog' },
-  { href: '/delivery-policy', label: 'Delivery policy' },
+  { href: '/', label: 'Products' },
   { href: '/account/orders', label: 'Orders' },
+  { href: '/account', label: 'My Account' },
 ];
 
 /**
- * Owner's explicit call: "dead simple" — Home/Products/Blog/Orders/
- * Account, nothing else in the primary nav. Editorial header treatment
- * per the owner's reference design: bare, sticky, blurred paper
- * backdrop, small serif wordmark, thin-tracked nav links.
+ * Owner's explicit call: exactly three destinations — Products, Orders,
+ * My Account — and nothing else. Editorial header treatment per the
+ * owner's reference design: bare, sticky, blurred paper backdrop, small
+ * serif wordmark, thin-tracked nav links.
  */
 export function SiteHeader() {
   const { itemCount } = useCart();
@@ -58,13 +56,6 @@ export function SiteHeader() {
                   {item.label}
                 </Link>
               ))}
-              <Link
-                href="/account"
-                onClick={() => setMobileOpen(false)}
-                className="serif px-2 py-2 text-base"
-              >
-                Account
-              </Link>
             </nav>
           </SheetContent>
         </Sheet>

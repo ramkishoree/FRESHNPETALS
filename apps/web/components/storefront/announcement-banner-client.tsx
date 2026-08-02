@@ -51,7 +51,7 @@ export function AnnouncementBannerClient({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <Link
-          href="/shop"
+          href="/"
           className="rounded-button bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium"
         >
           {offerName ? `Shop ${offerName}` : 'Shop now'}

@@ -44,8 +44,8 @@ test.describe('Production smoke test', () => {
     await expect(page).toHaveURL(/\/login/);
   });
 
-  test('CMS surface responds (blog index)', async ({ page }) => {
-    const response = await page.goto('/blog');
+  test('legal pages respond', async ({ page }) => {
+    const response = await page.goto('/terms');
     expect(response?.status()).toBeLessThan(400);
   });
 

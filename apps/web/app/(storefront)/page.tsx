@@ -1,221 +1,87 @@
-import { ListPublishedProductsService } from '@prana/commerce';
-import Link from 'next/link';
+import type { Metadata } from 'next';
 import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
-import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
 import { OfferPopup } from '@/components/storefront/offer-popup';
-import { Reveal } from '@/components/storefront/reveal';
+import { ShopSortControl } from '@/components/storefront/shop-sort-control';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { SupabaseProductRepository } from '@/server/repositories/supabase-product-repository';
+import {
+  mapProductRow,
+  PRODUCT_SELECT_COLUMNS,
+  sortToOrderBy,
+} from '@/server/storefront/shop-query';
 
-/** Map pin SVG for the outlet list. */
-function PinIcon() {
-  return (
-    <svg
-      className="size-4 shrink-0 text-[var(--gold-deep)]"
-      fill="none"
-      viewBox="0 0 24 24"
-      stroke="currentColor"
-      strokeWidth={2}
-    >
-      <path
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"
-      />
-      <path strokeLinecap="round" strokeLinejoin="round" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-    </svg>
-  );
-}
+export const metadata: Metadata = {
+  title: 'Fresh & Petals — Flowers, bouquets & gifts',
+  description:
+    'Every bloom, box and bouquet we make, delivered fresh across Lucknow. Browse the full catalogue and order in a couple of taps.',
+};
 
 /**
- * Owner's explicit call: "dead simple, authority in a glance" — the
- * moment the site opens it's hero (tagline + Shop now), then Google
- * reviews immediately, then featured products, all before the full
- * catalogue (category browsing there is the existing small pill bar,
- * not a separate section). Nothing below the fold is removed, just
- * reordered and, for the catalogue, no longer capped at 8.
+ * Owner's explicit call: the products ARE the landing page. No hero, no
+ * tagline block, no brand statement — the catalogue starts within the
+ * first screen and everything is on one page rather than paginated.
+ * Category pills scope to the existing `/shop/[category]` pages.
  */
-export default async function HomePage() {
+export default async function ProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sort?: string }>;
+}) {
+  const { sort } = await searchParams;
   const supabase = await createSupabaseServerClient();
-  const repository = new SupabaseProductRepository(supabase);
-  const service = new ListPublishedProductsService(repository);
+  const { column, ascending } = sortToOrderBy(sort);
 
-  const [productsResult, categoriesResult, offersResult, outletsResult, homePageResult] =
-    await Promise.all([
-      service.execute({ limit: 48 }),
-      supabase
-        .from('categories')
-        .select('id, name, slug, image_url')
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .order('sort_order', { ascending: true })
-        .limit(6),
-      supabase
-        .from('offers')
-        .select('id, name, description')
-        .eq('active', true)
-        .is('deleted_at', null)
-        .limit(1)
-        .maybeSingle(),
-      supabase
-        .from('outlets')
-        .select(
-          'id, name, slug, address, city, latitude, longitude, google_business_name, google_rating, google_rating_count, google_cover_photo_url',
-        )
-        .eq('is_active', true)
-        .is('deleted_at', null)
-        .order('name'),
-      supabase.from('static_pages').select('content').eq('slug', 'home').maybeSingle(),
-    ]);
+  const [productsResult, categoriesResult, offerResult] = await Promise.all([
+    supabase
+      .from('products')
+      .select(PRODUCT_SELECT_COLUMNS)
+      .eq('status', 'published')
+      .order(column, { ascending }),
+    supabase
+      .from('categories')
+      .select('name, slug')
+      .eq('is_active', true)
+      .is('deleted_at', null)
+      .order('sort_order', { ascending: true }),
+    supabase
+      .from('offers')
+      .select('id, name, description')
+      .eq('active', true)
+      .is('deleted_at', null)
+      .limit(1)
+      .maybeSingle(),
+  ]);
 
-  const products = productsResult.ok ? productsResult.value.items : [];
-  const featuredProducts = products.slice(0, 6);
+  const products = (productsResult.data ?? []).map(mapProductRow);
   const categories = categoriesResult.data ?? [];
-  const offer = offersResult.data;
-  const outlets = outletsResult.data ?? [];
-
-  // Editable via Admin → Pages → the "home" entry's Body content field
-  // ({title, titleHighlight, subtitle, ctaLabel}).
-  // Falls back to the original copy when that row doesn't exist yet or a
-  // field is left blank, so this never renders empty hero text.
-  interface HomeHeroContent {
-    title?: string;
-    titleHighlight?: string;
-    subtitle?: string;
-    ctaLabel?: string;
-  }
-  const hero = (homePageResult.data?.content as HomeHeroContent | null) ?? {};
+  const offer = offerResult.data;
 
   return (
-    <div className="pb-24">
+    <div className="container-brand py-6 pb-20">
       {offer && (
         <OfferPopup offerId={offer.id} title={offer.name} description={offer.description ?? ''} />
       )}
 
-      {/* ============================ HERO ============================ */}
-      <section className="wrap hero-in pt-20 pb-16 text-center lg:pt-32 lg:pb-24">
-        <h1 className="display text-h1 mx-auto max-w-4xl">
-          {hero.title ?? 'Fresh flowers, delivered'}{' '}
-          <em className="text-[var(--petal)] not-italic">{hero.titleHighlight ?? 'same-day.'}</em>
-        </h1>
-        <p className="lead mx-auto mt-7 max-w-lg">
-          {hero.subtitle ??
-            "Hand-picked bouquets for every occasion — Lucknow's freshest flower delivery, arranged fresh the morning it ships."}
-        </p>
-        <div className="mt-9 flex justify-center">
-          <Link href="/shop" className="commit">
-            {hero.ctaLabel ?? 'Shop now'}
-          </Link>
-        </div>
-      </section>
+      <FloatingCategoryBar categories={categories} />
 
-      {/* ==================== GOOGLE REVIEWS — authority, first thing after hero ==================== */}
-      <div className="wrap mt-4 mb-12 lg:mb-16">
-        <Reveal>
-          <GoogleReviewsCarousel />
-        </Reveal>
+      <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-h4 font-semibold">
+          {products.length} {products.length === 1 ? 'product' : 'products'}
+        </h1>
+        <ShopSortControl {...(sort ? { currentSort: sort } : {})} />
       </div>
 
-      {/* ============= FEATURED PRODUCTS — quick glance carousel ============= */}
-      {featuredProducts.length > 0 && (
-        <section className="container-brand pt-16">
-          <Reveal>
-            <div className="mb-5 flex items-end justify-between gap-4">
-              <div>
-                <p className="eyebrow mb-2">Most loved</p>
-                <h2 className="text-h3">Featured products</h2>
-              </div>
-              <Link
-                href="/shop"
-                className="text-caption shrink-0 text-[var(--gold-deep)] underline-offset-4 hover:underline"
-              >
-                View all →
-              </Link>
-            </div>
-            <AddToCartProductGrid products={featuredProducts} layout="carousel" />
-          </Reveal>
-        </section>
-      )}
+      <AddToCartProductGrid products={products} />
 
-      {/* ==================== FULL CATALOGUE ==================== */}
-      <section className="container-brand pt-12">
-        <Reveal>
-          <div className="mb-5">
-            <p className="eyebrow mb-2">Everything we grow</p>
-            <h2 className="text-h2">The full catalogue</h2>
-          </div>
-          <FloatingCategoryBar categories={categories} />
-          <div className="mt-6">
-            <AddToCartProductGrid products={products} />
-          </div>
-        </Reveal>
-      </section>
-
-      {/* ==================== OFFER BANNER ==================== */}
       {offer && (
-        <section className="container-brand pt-20">
-          <Reveal>
-            <OfferBanner
-              title={offer.name}
-              description={offer.description ?? ''}
-              ctaLabel="Shop the offer"
-              ctaHref="/shop"
-            />
-          </Reveal>
-        </section>
-      )}
-
-      {/* ==================== OUR OUTLETS ==================== */}
-      {outlets.length > 0 && (
-        <section className="container-brand pt-20">
-          <Reveal>
-            <div className="mb-7 text-center">
-              <p className="eyebrow mb-2">We deliver from</p>
-              <h2 className="text-h2">Our outlets</h2>
-              <p className="text-body mt-3 max-w-md text-[var(--sf-ink-muted)]">
-                At checkout, pin your delivery location on the map and pick the nearest outlet — the
-                delivery fee is calculated from there.
-              </p>
-            </div>
-            <div className="mx-auto grid max-w-3xl gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {outlets.map((outlet) => (
-                <div
-                  key={outlet.id}
-                  className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-4"
-                >
-                  {outlet.google_cover_photo_url && (
-                    <div className="relative -mx-1 -mt-1 mb-3 h-24 overflow-hidden rounded-[var(--r-md)]">
-                      {/* eslint-disable-next-line @next/next/no-img-element -- Google-hosted photo */}
-                      <img
-                        src={outlet.google_cover_photo_url}
-                        alt=""
-                        className="h-full w-full object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex items-start gap-3">
-                    <PinIcon />
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium">
-                        {outlet.google_business_name ?? outlet.name}
-                      </p>
-                      <p className="mt-0.5 text-xs text-[var(--sf-ink-muted)]">
-                        {outlet.address}, {outlet.city}
-                      </p>
-                      {outlet.google_rating != null && (
-                        <p className="mt-1 text-xs font-medium text-[var(--gold-deep)]">
-                          {outlet.google_rating}★ on Google
-                          {outlet.google_rating_count != null && ` (${outlet.google_rating_count})`}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Reveal>
+        <section className="pt-16">
+          <OfferBanner
+            title={offer.name}
+            description={offer.description ?? ''}
+            ctaLabel="Shop the offer"
+            ctaHref="/"
+          />
         </section>
       )}
     </div>
