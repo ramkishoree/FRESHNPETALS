@@ -1,10 +1,11 @@
 /**
  * Every real-world identifier the four policy pages need, in one place.
  *
- * ⚠️ THE FIVE VALUES MARKED `TODO` MUST BE FILLED IN BEFORE LAUNCH.
- * A policy that names the wrong legal person is worse than no policy:
- * it is unenforceable against customers and it will fail Razorpay's
- * merchant review, which cross-checks these against your KYC record.
+ * Keep these accurate. A policy that names the wrong legal person is
+ * worse than no policy: it is unenforceable against customers and it
+ * will fail Razorpay's merchant review, which cross-checks these
+ * against the KYC record. Anything changed here — a new outlet city, a
+ * changed support number — updates all four policy pages at once.
  *
  * Legal basis this set is sized against:
  *  - Digital Personal Data Protection Act 2023 (grievance officer and
@@ -20,33 +21,30 @@ export const BUSINESS = {
   tradeName: 'Fresh & Petals',
 
   /**
-   * TODO: the proprietor's full legal name as it appears on PAN/Aadhaar.
-   * A sole proprietorship has no separate legal personality — the
-   * proprietor is the contracting party, so this name is what actually
-   * binds. Example shape: 'Ram Kishore Verma'.
+   * The proprietor's full legal name. A sole proprietorship has no
+   * separate legal personality — the proprietor is the contracting
+   * party, so this name is what actually binds.
    */
-  proprietorName: 'TODO_PROPRIETOR_FULL_LEGAL_NAME',
+  proprietorName: 'Ram Kishore',
 
   /**
-   * TODO: full principal place of business including PIN code. Required
-   * verbatim by CP(E-Commerce) Rules 2020 r.5(3)(b). Example shape:
-   * 'Shop 4, Hazratganj, Lucknow, Uttar Pradesh 226001'.
+   * Principal place of business including PIN code. Required verbatim by
+   * CP(E-Commerce) Rules 2020 r.5(3)(b).
    */
-  registeredAddress: 'TODO_FULL_BUSINESS_ADDRESS_WITH_PIN',
+  registeredAddress:
+    'C-4, L.D.A Complex, Vivek Khand-2, Gomti Nagar, Lucknow, Uttar Pradesh 226010',
 
-  /** TODO: monitored support inbox, e.g. 'hello@freshnpetals.in'. */
-  supportEmail: 'TODO_SUPPORT_EMAIL',
+  supportEmail: 'ramk65726@gmail.com',
 
-  /** TODO: support phone in +91 XXXXX XXXXX form. */
-  supportPhone: 'TODO_SUPPORT_PHONE',
+  supportPhone: '+91 79854 30389',
 
   /**
-   * TODO: GSTIN if registered, or null. Set to null and the pages simply
-   * omit every GST sentence rather than printing a blank — below the
-   * ₹40 lakh threshold there is nothing to disclose and claiming a
-   * registration you don't hold is its own problem.
+   * Verified: 15 characters, state code 09 (Uttar Pradesh), embedded PAN
+   * IXEPK3008R whose 4th character `P` denotes an individual/proprietor
+   * — consistent with the sole proprietorship above — and the check
+   * digit computes to `V` as given.
    */
-  gstin: null as string | null,
+  gstin: '09IXEPK3008R1ZV' as string | null,
 
   /** Cities served. Fee and slots vary by city; see the shipping page. */
   serviceCities: ['Lucknow'],
