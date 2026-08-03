@@ -53,6 +53,50 @@ test.describe('Storefront', () => {
     await expect(page).toHaveURL(/\/search/);
   });
 
+  /**
+   * The catalogue grid overflowed a 360px screen by ~90px because grid
+   * items default to `min-width: auto`, so a long product name beside a
+   * nowrap price set a min-content floor wider than half the screen.
+   * `overflow-x: hidden` on html/body hid the symptom, which is why this
+   * measures with that lifted — otherwise the assertion passes on a page
+   * that still scrolls sideways for the user.
+   */
+  test.describe('no horizontal overflow', () => {
+    for (const width of [360, 390, 768, 1024]) {
+      test(`page fits a ${width}px viewport`, async ({ page }) => {
+        await page.setViewportSize({ width, height: 900 });
+        await page.goto('/');
+        const overflow = await page.evaluate(() => {
+          const html = document.documentElement;
+          const body = document.body;
+          const prevHtml = html.style.overflowX;
+          const prevBody = body.style.overflowX;
+          html.style.overflowX = 'visible';
+          body.style.overflowX = 'visible';
+          void html.offsetWidth;
+          const over = html.scrollWidth - html.clientWidth;
+          html.style.overflowX = prevHtml;
+          body.style.overflowX = prevBody;
+          return over;
+        });
+        expect(overflow).toBeLessThanOrEqual(0);
+      });
+    }
+  });
+
+  test('sort options cover price, stock and rating', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('combobox', { name: 'Sort products' }).click();
+    for (const label of [
+      'Price: low to high',
+      'Price: high to low',
+      'Stock: high to low',
+      'Rating: high to low',
+    ]) {
+      await expect(page.getByRole('option', { name: label })).toBeVisible();
+    }
+  });
+
   test.describe('legal pages', () => {
     for (const path of ['/privacy', '/terms', '/shipping', '/refunds']) {
       test(`${path} loads without error`, async ({ page }) => {
@@ -60,6 +104,30 @@ test.describe('Storefront', () => {
         expect(response?.status()).toBeLessThan(400);
       });
     }
+  });
+
+  /**
+   * The listing card has greyed out sold-out products for a long time,
+   * but the product page itself never fetched inventory — so an
+   * out-of-stock item could still be added to the cart and bought from
+   * the page a shared link lands on. Wishlist stays enabled on purpose.
+   */
+  test('an out-of-stock product cannot be bought, only wishlisted', async ({ page }) => {
+    await page.goto('/?sort=stock_desc');
+    // Lowest stock sorts last, so the final card is the surest sold-out
+    // one without hardcoding a slug that seed data may change.
+    const lastCard = page.locator('.plate').last();
+    await expect(lastCard).toBeVisible();
+    const soldOut = await lastCard.getByText('Out of stock').count();
+    test.skip(soldOut === 0, 'every product is in stock in this environment');
+
+    await lastCard.locator('a').first().click();
+    await expect(page).toHaveURL(/\/product\//);
+
+    await expect(page.getByText('No stock — currently unavailable')).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Out of stock' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Buy now' })).toBeDisabled();
+    await expect(page.getByRole('button', { name: 'Add to wishlist' })).toBeEnabled();
   });
 
   test.describe('removed pages redirect home', () => {

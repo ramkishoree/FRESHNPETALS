@@ -51,7 +51,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   let productQuery = supabase
     .from('products')
     .select(
-      'id, sku, slug, name, short_description, description, featured_image, status, categories(name, slug), product_prices(base_price, sale_price)',
+      'id, sku, slug, name, short_description, description, featured_image, status, categories(name, slug), product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at))',
     )
     .eq('slug', slug);
   if (!isDraft) productQuery = productQuery.eq('status', 'published');
@@ -63,6 +63,17 @@ export default async function ProductDetailPage({ params }: PageProps) {
     ? product.product_prices[0]
     : product.product_prices;
   const category = Array.isArray(product.categories) ? product.categories[0] : product.categories;
+
+  // Summed across active outlets only, matching how the listing card
+  // decides "out of stock" — browsing happens before an outlet is
+  // chosen, so 0 here means sold out everywhere. Checkout's per-outlet
+  // reservation check stays the authoritative one at purchase time.
+  const availableQuantity = (product.inventory ?? []).reduce((sum, row) => {
+    const outlet = Array.isArray(row.outlets) ? row.outlets[0] : row.outlets;
+    if (!outlet || !outlet.is_active || outlet.deleted_at) return sum;
+    return sum + Number(row.available_quantity);
+  }, 0);
+  const outOfStock = availableQuantity <= 0;
 
   const [{ data: reviews }, { data: extraMedia }] = await Promise.all([
     supabase
@@ -109,13 +120,15 @@ export default async function ProductDetailPage({ params }: PageProps) {
             url: productUrl,
             priceCurrency: 'INR',
             price: Number(displayPrice),
-            // Product detail only ever renders a `published` product (the
-            // query above filters on it), and this app treats "published"
-            // as "available for purchase" everywhere else too (see
-            // server/checkout/start-checkout.ts) — real-time per-outlet
-            // stock isn't fetched on this page, so this mirrors that same
-            // existing status semantic rather than a live inventory check.
-            availability: 'https://schema.org/InStock',
+            // Now a real stock check rather than a restatement of
+            // `status = 'published'`: the page fetches inventory across
+            // active outlets, so Google is told OutOfStock when the buy
+            // buttons are disabled. Advertising InStock for something a
+            // shopper then cannot buy is exactly what earns a Merchant
+            // Center mismatch.
+            availability: outOfStock
+              ? 'https://schema.org/OutOfStock'
+              : 'https://schema.org/InStock',
           },
           ...(approvedReviews.length > 0
             ? {
@@ -201,6 +214,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             image={product.featured_image}
             basePrice={priceRow ? Number(priceRow.base_price) : 0}
             salePrice={priceRow?.sale_price != null ? Number(priceRow.sale_price) : null}
+            availableQuantity={availableQuantity}
           />
 
           {product.description && (

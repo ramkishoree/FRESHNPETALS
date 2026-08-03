@@ -7,6 +7,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   mapProductRow,
   PRODUCT_SELECT_COLUMNS,
+  sortProducts,
   sortToOrderBy,
 } from '@/server/storefront/shop-query';
 
@@ -49,7 +50,7 @@ export default async function CategoryShopPage({ params, searchParams }: PagePro
     .order(column, { ascending })
     .limit(48);
 
-  const products = (data ?? []).map(mapProductRow);
+  const products = sortProducts((data ?? []).map(mapProductRow), sort);
 
   // Same pill bar as the catalogue landing page, so switching category —
   // or getting back to "All" — never requires the browser back button.

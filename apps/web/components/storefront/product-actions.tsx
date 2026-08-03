@@ -15,6 +15,8 @@ export interface ProductActionsProps {
   image: string | null;
   basePrice: number;
   salePrice: number | null;
+  /** Summed across active outlets. 0 means sold out everywhere. */
+  availableQuantity: number;
 }
 
 /** Ch.12 §22: Product Information -> Price -> Delivery -> Add To Cart -> Buy Now. */
@@ -26,17 +28,31 @@ export function ProductActions({
   image,
   basePrice,
   salePrice,
+  availableQuantity,
 }: ProductActionsProps) {
   const { addItem } = useCart();
   const router = useRouter();
   const [quantity, setQuantity] = React.useState(1);
 
+  /**
+   * The listing card has always greyed out a sold-out product, but this
+   * page never knew its own stock — so an out-of-stock product could be
+   * added to the cart and bought straight from its product page, which
+   * is the page a shared link actually lands on. Wishlist stays
+   * available: saving something you cannot buy yet is the whole point.
+   */
+  const outOfStock = availableQuantity <= 0;
+  // Never offer more than exists, even when stock is low but non-zero.
+  const maxQuantity = Math.max(1, availableQuantity);
+
   function addToCart() {
+    if (outOfStock) return;
     addItem({ productId, slug, name, image, unitPrice: basePrice, salePrice }, quantity);
     toast.success(`${name} added to cart.`);
   }
 
   function buyNow() {
+    if (outOfStock) return;
     addItem({ productId, slug, name, image, unitPrice: basePrice, salePrice }, quantity);
     router.push('/cart');
   }
@@ -71,6 +87,19 @@ export function ProductActions({
         <PriceDisplay basePrice={basePrice} salePrice={salePrice} size="lg" />
       </div>
 
+      <p
+        className={`text-caption mt-3 font-semibold ${outOfStock ? 'text-[var(--petal)]' : 'text-[var(--ink-2)]'}`}
+        // Announced so a screen-reader user learns the item is
+        // unavailable before reaching the disabled buttons below.
+        role="status"
+      >
+        {outOfStock
+          ? 'No stock — currently unavailable'
+          : availableQuantity <= 5
+            ? `In stock — only ${availableQuantity} left`
+            : 'In stock'}
+      </p>
+
       <div className="mt-8 flex items-center gap-4">
         <span className="text-caption">Quantity</span>
         <div className="inline-flex items-center rounded-[var(--r-pill)] border border-[var(--sf-border-strong)] bg-[var(--sf-surface)]">
@@ -78,7 +107,7 @@ export function ProductActions({
             type="button"
             onClick={() => setQuantity((q) => Math.max(1, q - 1))}
             aria-label="Decrease quantity"
-            disabled={quantity <= 1}
+            disabled={outOfStock || quantity <= 1}
             className="grid size-11 place-items-center rounded-l-[var(--r-pill)] text-[var(--sf-ink)] hover:bg-[var(--sf-surface-2)] disabled:opacity-40"
           >
             <Minus className="size-4" />
@@ -91,9 +120,10 @@ export function ProductActions({
           </span>
           <button
             type="button"
-            onClick={() => setQuantity((q) => q + 1)}
+            onClick={() => setQuantity((q) => Math.min(maxQuantity, q + 1))}
             aria-label="Increase quantity"
-            className="grid size-11 place-items-center rounded-r-[var(--r-pill)] text-[var(--sf-ink)] hover:bg-[var(--sf-surface-2)]"
+            disabled={outOfStock || quantity >= maxQuantity}
+            className="grid size-11 place-items-center rounded-r-[var(--r-pill)] text-[var(--sf-ink)] hover:bg-[var(--sf-surface-2)] disabled:opacity-40"
           >
             <Plus className="size-4" />
           </button>
@@ -104,11 +134,17 @@ export function ProductActions({
         <button
           type="button"
           onClick={addToCart}
-          className="btn btn-primary flex-1 px-7 py-3.5 text-sm"
+          disabled={outOfStock}
+          className="btn btn-primary flex-1 px-7 py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
         >
-          Add to cart
+          {outOfStock ? 'Out of stock' : 'Add to cart'}
         </button>
-        <button type="button" onClick={buyNow} className="btn btn-gold flex-1 px-7 py-3.5 text-sm">
+        <button
+          type="button"
+          onClick={buyNow}
+          disabled={outOfStock}
+          className="btn btn-gold flex-1 px-7 py-3.5 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+        >
           Buy now
         </button>
         <button
@@ -125,7 +161,9 @@ export function ProductActions({
         <span className="text-[var(--gold)]" aria-hidden="true">
           ✦
         </span>
-        Fresh, hand-arranged, same-day delivery.
+        {outOfStock
+          ? 'Save it to your wishlist and we’ll have it back soon.'
+          : 'Fresh, hand-arranged, same-day delivery.'}
       </p>
 
       <div className="mt-8 grid grid-cols-1 gap-4 border-t border-[var(--sf-border)] pt-6 sm:grid-cols-3">

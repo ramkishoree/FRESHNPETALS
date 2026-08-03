@@ -2,30 +2,18 @@ import { GeistMono } from 'geist/font/mono';
 import { GeistSans } from 'geist/font/sans';
 import type { Metadata } from 'next';
 import { ThemeProvider } from 'next-themes';
-import { Fraunces, Newsreader } from 'next/font/google';
 import { headers } from 'next/headers';
 import { CartProvider } from '@/lib/cart-context';
 import { Toaster } from '@/components/ui/sonner';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import './globals.css';
 
-// Storefront-only display/body faces (Ch.5.16-style brand identity for the
-// customer-facing redesign) — exposed as CSS vars only, scoped to
-// `.storefront-theme` in styles/storefront-theme.css, so admin (which never
-// references these vars) is unaffected by adding them here.
-const fraunces = Fraunces({
-  subsets: ['latin'],
-  weight: ['300', '400', '500', '600'],
-  style: ['normal', 'italic'],
-  variable: '--font-fraunces',
-  display: 'swap',
-});
-const newsreader = Newsreader({
-  subsets: ['latin'],
-  style: ['normal', 'italic'],
-  variable: '--font-newsreader',
-  display: 'swap',
-});
+// Owner's explicit call: drop the Fraunces/Newsreader serif pairing for a
+// plain, formal, highly legible face — Arial. It is installed on
+// effectively every device, so there is no @font-face, no network
+// request, no swap flash and no layout shift while a webfont loads. The
+// storefront's --font-display/--font-body vars now resolve to that stack
+// directly in styles/storefront-theme.css.
 
 export const metadata: Metadata = {
   title: 'Fresh & Petals',
@@ -45,7 +33,7 @@ export default async function RootLayout({
   return (
     <html
       lang="en"
-      className={`${GeistSans.variable} ${GeistMono.variable} ${fraunces.variable} ${newsreader.variable}`}
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
       <body>

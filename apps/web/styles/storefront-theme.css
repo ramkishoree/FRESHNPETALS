@@ -7,9 +7,11 @@
    text-h1..h4/text-body/text-caption utilities from tokens.css;
    these rules only ever apply inside `.storefront-theme`.
 
-   Palette/typography/components below match the owner's supplied
-   reference mockup exactly (forest ink / paper ivory / gold /
-   crushed-petal red / sage, Fraunces display + Newsreader body).
+   Palette/components below match the owner's supplied reference mockup
+   (forest ink / paper ivory / gold / crushed-petal red / sage). The
+   original Fraunces + Newsreader serif pairing has since been replaced,
+   at the owner's request, by a single plain Arial stack — see the font
+   vars at the top of the block below.
    Legacy var names (--green, --ivory, --sf-*, --sale, --price-was)
    are kept and mapped onto the new palette so every existing
    component that already references them repaints correctly
@@ -19,9 +21,17 @@
    ============================================================ */
 
 .storefront-theme {
-  --font-display: var(--font-fraunces, 'Fraunces'), Georgia, serif;
-  --font-body: var(--font-newsreader, 'Newsreader'), Georgia, 'Times New Roman', serif;
-  --font-util: var(--font-newsreader, 'Newsreader'), Georgia, serif;
+  /* Owner's explicit call: one plain, formal, highly legible face rather
+     than a display/body serif pairing. Arial is present on virtually
+     every device, so nothing is downloaded and there is no swap flash.
+     Helvetica/Liberation Sans cover macOS and Linux, where Arial may be
+     absent, at effectively identical metrics. All three vars resolve to
+     the same stack — the display/body/util split is kept so the rest of
+     the stylesheet does not have to change, and so a second face can be
+     reintroduced in one place later. */
+  --font-display: Arial, Helvetica, 'Liberation Sans', sans-serif;
+  --font-body: Arial, Helvetica, 'Liberation Sans', sans-serif;
+  --font-util: Arial, Helvetica, 'Liberation Sans', sans-serif;
 
   /* ---- reference palette (source of truth) ---- */
   --ink: #223a2c;
@@ -145,7 +155,6 @@
 }
 .storefront-theme .text-caption {
   font-family: var(--font-body);
-  font-style: italic;
   font-size: 0.85rem;
   color: var(--sage);
 }
@@ -186,20 +195,29 @@
   -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--line);
 }
+/* The 1.5rem gap plus a nowrap wordmark plus the three-icon cluster came
+   to more than a 360px screen, so every page scrolled 3px sideways. The
+   gap now scales with the viewport instead of being fixed. */
 .storefront-theme .top-in {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: clamp(0.5rem, 3vw, 1.5rem);
   padding-top: 1rem;
   padding-bottom: 1rem;
+  min-width: 0;
 }
 .storefront-theme .brand {
   font-family: var(--font-display);
-  font-size: 1.35rem;
+  font-size: clamp(1.1rem, 4vw, 1.35rem);
   font-weight: 400;
   color: var(--ink);
   text-decoration: none;
   white-space: nowrap;
+  /* Last resort on a very narrow screen: the wordmark truncates rather
+     than pushing the icon cluster off the edge. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .storefront-theme .brand em {
   color: var(--petal);
@@ -504,15 +522,25 @@
    ~380px+ on a normal desktop width — a medium, standard thumbnail size
    (auto-fill more, smaller columns) reads as a proper catalog instead of
    a few oversized tiles. */
+/* `minmax(min(210px, 100%), 1fr)` rather than `minmax(210px, 1fr)`: the
+   bare 210px floor is wider than the content box on a narrow phone, so
+   the track could not shrink to fit and the grid pushed past the
+   viewport. `min()` lets the track collapse to the available width. */
 .storefront-theme .plates {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(210px, 100%), 1fr));
   gap: clamp(1.25rem, 2.5vw, 2rem);
 }
+/* Grid and flex items default to `min-width: auto`, which floors a track
+   at its content's min-content width. `.plate-meta` puts a long product
+   name next to a `white-space: nowrap` price, so that floor was wider
+   than half a 360px screen and the two-column grid overflowed the page —
+   the horizontal scroll on mobile. `min-width: 0` lets the track win. */
 .storefront-theme .plate {
   text-decoration: none;
   color: var(--ink);
   display: block;
+  min-width: 0;
 }
 .storefront-theme .plate-img {
   position: relative;
@@ -537,7 +565,6 @@
   top: 1rem;
   left: 1rem;
   font-family: var(--font-body);
-  font-style: italic;
   font-size: 0.85rem;
   color: var(--paper);
   text-shadow: 0 1px 8px rgba(0, 0, 0, 0.4);
@@ -570,12 +597,17 @@
   padding-top: 1rem;
   border-top: 1px solid var(--ink);
   margin-top: 1rem;
+  min-width: 0;
 }
 .storefront-theme .plate-nm {
   font-family: var(--font-display);
   font-weight: 360;
   font-size: 1.4rem;
   line-height: 1.05;
+  /* A single long word (a product name with no space) is itself a
+     min-content floor wide enough to overflow a narrow column. */
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .storefront-theme .plate-pr {
   font-family: var(--font-body);
@@ -593,9 +625,28 @@
    scrolling to see the same handful of products a desktop view shows
    at a glance. */
 @media (max-width: 820px) {
+  /* `minmax(0, 1fr)`, not `1fr` — a bare `1fr` is `minmax(auto, 1fr)`,
+     whose `auto` minimum is the item's min-content width. That is what
+     let two columns add up to more than the screen. */
   .storefront-theme .plates {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 1rem;
+  }
+  /* Name beside a nowrap price does not fit in a ~150px column; stacking
+     them is what makes the two-column grid the owner asked for readable
+     at 360px rather than merely non-overflowing. */
+  .storefront-theme .plate-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    padding-top: 0.6rem;
+    margin-top: 0.6rem;
+  }
+  .storefront-theme .plate-nm {
+    font-size: 1.05rem;
+  }
+  .storefront-theme .plate-pr {
+    font-size: 0.95rem;
   }
 }
 
@@ -607,14 +658,12 @@
 }
 .storefront-theme .verse .q {
   font-family: var(--font-display);
-  font-style: italic;
   font-weight: 320;
   font-size: clamp(1.8rem, 4.5vw, 3.2rem);
   line-height: 1.15;
 }
 .storefront-theme .verse .by {
   font-family: var(--font-body);
-  font-style: italic;
   color: var(--sage);
   margin-top: 1.5rem;
   font-size: 1rem;

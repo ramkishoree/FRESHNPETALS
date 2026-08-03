@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   mapProductRow,
   PRODUCT_SELECT_COLUMNS,
+  sortProducts,
   sortToOrderBy,
 } from '@/server/storefront/shop-query';
 
@@ -53,7 +54,7 @@ export default async function ProductsPage({
       .maybeSingle(),
   ]);
 
-  const products = (productsResult.data ?? []).map(mapProductRow);
+  const products = sortProducts((productsResult.data ?? []).map(mapProductRow), sort);
   const categories = categoriesResult.data ?? [];
   const offer = offerResult.data;
 
