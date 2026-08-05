@@ -394,6 +394,19 @@ export async function startCheckout(
         }),
       );
     }
+    // `checkout_start` raises this when the product has no inventory row
+    // at the chosen outlet at all — a different condition from "stocked
+    // but sold out". The pre-flight check above normally catches it, so
+    // reaching here means the row disappeared between that check and the
+    // reservation. It's still the customer's cart being unfulfillable,
+    // not an infrastructure failure, so it must not surface as a 500.
+    if (message.includes('No inventory row')) {
+      return err(
+        new BusinessRuleError('One or more items are no longer stocked. Please review your cart.', {
+          httpStatus: 409,
+        }),
+      );
+    }
     if (message.includes('is fully booked')) {
       return err(
         new BusinessRuleError('That delivery slot just filled up. Please pick another.', {

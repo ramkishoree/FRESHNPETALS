@@ -1,7 +1,8 @@
-import { BusinessRuleError, err, ok } from '@prana/core';
+import { BusinessRuleError, InfrastructureError, err, ok } from '@prana/core';
 import { NextRequest } from 'next/server';
 import { describe, expect, it, vi } from 'vitest';
 import { z } from 'zod';
+import { logger } from '@/server/logger';
 import { createApiRoute } from './route-handler';
 
 vi.mock('@/server/logger', () => ({
@@ -38,6 +39,37 @@ describe('createApiRoute', () => {
     expect(body.success).toBe(false);
     expect(body.error.code).toBe('BUSINESS_RULE_ERROR');
     expect(body.error.message).toBe('duplicate');
+  });
+
+  it('logs the error details server-side so the underlying cause is diagnosable', async () => {
+    // A 500 whose real cause is only in `details` is invisible in
+    // production: that is how a `gen_random_bytes does not exist` error
+    // hid behind "Failed to start checkout." for days. The details never
+    // cross the API boundary — only the log gets them.
+    vi.mocked(logger.error).mockClear();
+    const route = createApiRoute({
+      handler: async () =>
+        Promise.resolve(
+          err(
+            new InfrastructureError('Failed to start checkout.', {
+              cause: 'function gen_random_bytes(integer) does not exist',
+            }),
+          ),
+        ),
+    });
+
+    const response = await route(makeRequest('http://localhost/api/v1/example'));
+    expect(response.status).toBe(500);
+
+    const logged = vi.mocked(logger.error).mock.calls.find(([event]) => event === 'api.error');
+    expect(logged?.[1]).toMatchObject({
+      code: 'INFRASTRUCTURE_ERROR',
+      details: { cause: 'function gen_random_bytes(integer) does not exist' },
+    });
+
+    // ...and still never leaks to the client.
+    const body = await response.json();
+    expect(body.error.details).toBeUndefined();
   });
 
   it('rejects a request that fails Zod validation before the handler runs', async () => {

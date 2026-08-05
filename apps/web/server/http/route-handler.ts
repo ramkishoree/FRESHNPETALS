@@ -82,6 +82,13 @@ export function createApiRoute<TQuery, TResult, TBody = undefined, TParams = und
           status: result.error.httpStatus,
           code: result.error.code,
           message: result.error.message,
+          // `message` is the operator-facing summary; the real diagnosis
+          // — a driver's error string, a failing constraint — lives in
+          // `details`. Dropping it here is how a broken Postgres function
+          // stayed hidden behind "Failed to start checkout." Logs are
+          // server-side only and the logger redacts secret-shaped keys;
+          // `details` still never crosses the API boundary (Ch.11 §12).
+          ...(result.error.details ? { details: result.error.details } : {}),
         });
         return apiError(
           result.error.code,
