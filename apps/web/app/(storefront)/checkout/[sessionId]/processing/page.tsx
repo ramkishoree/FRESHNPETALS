@@ -96,7 +96,7 @@ export default function CheckoutProcessingPage() {
             </p>
             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
               <Link
-                href="/checkout"
+                href={`/checkout?retry=${params.sessionId}`}
                 className="bg-foreground text-background rounded-full px-6 py-3 text-sm font-medium"
               >
                 Try payment again

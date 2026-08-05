@@ -9,7 +9,7 @@ import { getServerEnv } from '@/config/env';
  * webhook, no customer-facing bot number, no signature verification for
  * messages this app never receives anymore.
  */
-const GRAPH_API_VERSION = 'v21.0';
+const GRAPH_API_VERSION = 'v25.0';
 
 export function isWhatsAppConfigured(): boolean {
   const env = getServerEnv();

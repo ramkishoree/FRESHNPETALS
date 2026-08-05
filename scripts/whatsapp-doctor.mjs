@@ -13,7 +13,7 @@
 // `--send` fires a real order alert to META_WHATSAPP_OWNER_WA_ID with dummy
 // values, so you can confirm end to end that a message lands on the phone.
 
-const GRAPH = 'https://graph.facebook.com/v21.0';
+const GRAPH = 'https://graph.facebook.com/v25.0';
 const TEMPLATE_NAME = 'order_placed_alert_v3';
 
 const token = process.env.META_WHATSAPP_ACCESS_TOKEN;

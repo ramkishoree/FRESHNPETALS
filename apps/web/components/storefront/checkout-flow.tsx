@@ -1,7 +1,7 @@
 'use client';
 
 import Script from 'next/script';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { PriceDisplay } from '@/components/commerce/price-display';
@@ -78,6 +78,7 @@ interface PricingBreakdown {
 export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const { items, subtotal, clear } = useCart();
   const router = useRouter();
+  const searchParams = useSearchParams();
 
   const [manualAddress, setManualAddress] = React.useState(EMPTY_ADDRESS);
   const [couponInput, setCouponInput] = React.useState('');
@@ -365,6 +366,95 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   // ---- Payment ---------------------------------------------------------------
 
+  interface RazorpayHandoff {
+    checkoutSessionId: string;
+    razorpayOrderId: string;
+    razorpayKeyId: string;
+    amount: number;
+    currency: string;
+  }
+
+  const openRazorpay = React.useCallback(
+    (handoff: RazorpayHandoff) => {
+      const { checkoutSessionId, razorpayOrderId, razorpayKeyId, amount, currency } = handoff;
+
+      const razorpay = new window.Razorpay({
+        key: razorpayKeyId,
+        order_id: razorpayOrderId,
+        amount,
+        currency,
+        name: 'Fresh & Petals',
+        handler: () => {
+          clear();
+          router.push(`/checkout/${checkoutSessionId}/processing`);
+        },
+        modal: {
+          // Razorpay's own widget can show a failure/retry screen and close
+          // itself (calling this instead of `handler`) even when the charge
+          // actually succeeded on the bank's side — our webhook is the only
+          // source of truth for whether the order went through, never this
+          // client-side callback. Sending the customer to the same polling
+          // page `handler` uses (rather than just resetting the form) means
+          // a real success still resolves to their order confirmation; a
+          // real cancellation still resolves to the cart via the session's
+          // 'cancelled'/'expired' status — either way they see what
+          // actually happened instead of losing all visibility into it.
+          ondismiss: () => {
+            setIsPaying(false);
+            router.push(`/checkout/${checkoutSessionId}/processing`);
+          },
+        },
+      });
+
+      // A failed attempt leaves the session untouched on purpose — the
+      // webhook keeps it open so a retry on the same Razorpay order can
+      // still succeed. That is right for the data and wrong for the
+      // customer: the polling page has no terminal status to wait for,
+      // so it span on "Arranging your order" until it timed out into a
+      // dead end. Flagging the attempt lets that page stop pretending
+      // it is still working. It stays a hint, never a verdict — the
+      // page keeps polling, because Razorpay can report a failure the
+      // bank actually captured.
+      razorpay.on('payment.failed', () => {
+        setIsPaying(false);
+        router.push(`/checkout/${checkoutSessionId}/processing?attempt=failed`);
+      });
+
+      razorpay.open();
+    },
+    [clear, router],
+  );
+
+  // Retrying a failed payment reopens the *same* Razorpay order rather
+  // than building a fresh checkout, so the stock already reserved for
+  // this customer is reused instead of reserved twice — see the payment
+  // params route for why that matters on a low-stock item.
+  const retrySessionId = searchParams.get('retry');
+  const retryStartedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (!retrySessionId || retryStartedRef.current) return;
+    if (!scriptReady || typeof window.Razorpay === 'undefined') return;
+    retryStartedRef.current = true;
+
+    (async () => {
+      setIsPaying(true);
+      try {
+        const response = await fetch(`/api/v1/checkout/${retrySessionId}/payment`);
+        const body = await response.json();
+        if (!response.ok || !body.success) {
+          throw new Error(body.error?.message ?? 'That checkout can no longer be paid.');
+        }
+        openRazorpay(body.data);
+      } catch (cause) {
+        setIsPaying(false);
+        toast.error(cause instanceof Error ? cause.message : 'Could not reopen that payment.');
+        // Drop the stale ?retry= so a refresh starts a clean checkout
+        // instead of retrying a session that is already gone.
+        router.replace('/checkout');
+      }
+    })();
+  }, [retrySessionId, scriptReady, openRazorpay, router]);
+
   async function payNow() {
     const missing = findMissingAddressFields(manualAddress);
     if (missing.length > 0) {
@@ -420,55 +510,11 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         return;
       }
 
-      const { checkoutSessionId, razorpayOrderId, razorpayKeyId, amount, currency } = body.data;
-
       if (!scriptReady || typeof window.Razorpay === 'undefined') {
         throw new Error('Payment provider is still loading. Please try again in a moment.');
       }
 
-      const razorpay = new window.Razorpay({
-        key: razorpayKeyId,
-        order_id: razorpayOrderId,
-        amount,
-        currency,
-        name: 'Fresh & Petals',
-        handler: () => {
-          clear();
-          router.push(`/checkout/${checkoutSessionId}/processing`);
-        },
-        modal: {
-          // Razorpay's own widget can show a failure/retry screen and close
-          // itself (calling this instead of `handler`) even when the charge
-          // actually succeeded on the bank's side — our webhook is the only
-          // source of truth for whether the order went through, never this
-          // client-side callback. Sending the customer to the same polling
-          // page `handler` uses (rather than just resetting the form) means
-          // a real success still resolves to their order confirmation; a
-          // real cancellation still resolves to the cart via the session's
-          // 'cancelled'/'expired' status — either way they see what
-          // actually happened instead of losing all visibility into it.
-          ondismiss: () => {
-            setIsPaying(false);
-            router.push(`/checkout/${checkoutSessionId}/processing`);
-          },
-        },
-      });
-
-      // A failed attempt leaves the session untouched on purpose — the
-      // webhook keeps it open so a retry on the same Razorpay order can
-      // still succeed. That is right for the data and wrong for the
-      // customer: the polling page has no terminal status to wait for,
-      // so it span on "Arranging your order" until it timed out into a
-      // dead end. Flagging the attempt lets that page stop pretending
-      // it is still working. It stays a hint, never a verdict — the
-      // page keeps polling, because Razorpay can report a failure the
-      // bank actually captured.
-      razorpay.on('payment.failed', () => {
-        setIsPaying(false);
-        router.push(`/checkout/${checkoutSessionId}/processing?attempt=failed`);
-      });
-
-      razorpay.open();
+      openRazorpay(body.data);
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Failed to start checkout.');
       setIsPaying(false);
