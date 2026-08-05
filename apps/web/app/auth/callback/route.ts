@@ -14,6 +14,17 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/account';
 
+  // Supabase reports a refused provider (Google not enabled, consent
+  // denied, expired link) by redirecting back here with error params and
+  // no code. Pass its own wording through instead of dropping the user on
+  // a login page that says nothing about what went wrong.
+  const providerError = searchParams.get('error_description') ?? searchParams.get('error');
+  if (providerError && !code) {
+    return NextResponse.redirect(
+      `${origin}/login?error=${encodeURIComponent(providerError.slice(0, 200))}`,
+    );
+  }
+
   if (code) {
     const supabase = await createSupabaseServerClient();
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
@@ -23,5 +34,7 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`);
+  return NextResponse.redirect(
+    `${origin}/login?error=${encodeURIComponent('That sign-in link is invalid or has expired. Try again.')}`,
+  );
 }
