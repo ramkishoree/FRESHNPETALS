@@ -22,11 +22,18 @@ interface SendResult {
 
 /**
  * Meta renders only JPEG and PNG in a template's image header — WebP is
- * accepted for stickers and nothing else. A WebP link doesn't merely
- * drop the picture, it fails the whole send with `(#131053) Media
- * upload error`, so the owner loses the entire order alert. Every photo
- * in this catalogue is served as `.webp`, which is exactly how the
- * alerts were going missing while the confirmation email still arrived.
+ * accepted for stickers and nothing else. Every photo in this catalogue
+ * is served as `.webp`, which is how the owner's order alerts went
+ * missing while the confirmation email still arrived.
+ *
+ * The nasty part, confirmed by sending both variants against the live
+ * Cloud API: a WebP header is **accepted synchronously**, message id and
+ * all (`message_status: "accepted"`). Meta only fetches the image
+ * afterwards, and the delivery failure is reported on the status webhook
+ * this app no longer subscribes to. So the send looks successful, throws
+ * nothing, logs nothing, and the message simply never lands. Nothing
+ * downstream can detect it — which is why the format has to be caught
+ * here, before the send, rather than handled as an error after it.
  */
 const SUPPORTED_HEADER_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
 

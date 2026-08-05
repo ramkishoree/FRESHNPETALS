@@ -78,7 +78,7 @@ describe('notifyOwnerOrderPlaced', () => {
 
   it('retries without the header when a send carrying one fails', async () => {
     sendWhatsAppTemplateMock
-      .mockRejectedValueOnce(new Error('(#131053) Media upload error'))
+      .mockRejectedValueOnce(new Error('(#132012) Template parameter format mismatch'))
       .mockResolvedValueOnce({ messageId: 'wamid.2' });
 
     await notifyOwnerOrderPlaced(makeParams({ firstItemImageUrl: 'https://cdn/rose.jpg' }));

@@ -67,12 +67,19 @@ Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`, `{{8}}` =
    the order has no first-item image on file, `notifyOwnerOrderPlaced`
    omits the header component entirely rather than failing the send.
 
-   **Image format matters.** Meta renders only **JPEG and PNG** in an
-   image header; WebP is sticker-only and a WebP link fails the _entire_
-   send with `(#131053) Media upload error` — the owner loses the whole
-   alert, not just the picture. Every photo in this catalogue is `.webp`,
-   which is exactly how alerts were going missing while the confirmation
-   email still arrived.
+   **Image format matters, and it fails silently.** Meta renders only
+   **JPEG and PNG** in an image header; WebP is sticker-only. Every photo
+   in this catalogue is `.webp`, which is how alerts went missing while
+   the confirmation email still arrived.
+
+   Verified against the live Cloud API by sending both variants: a WebP
+   header is **accepted synchronously** — HTTP 200, a real message id,
+   `"message_status": "accepted"`. Meta fetches the image only afterwards
+   and reports the delivery failure on the status webhook, which this app
+   deliberately no longer subscribes to. The send therefore throws
+   nothing, logs nothing, and the message never arrives. There is no
+   error for the application to react to, so the format must be caught
+   **before** the send.
 
    WebP stays the canonical format the storefront serves — reverting that
    would cost page performance for every visitor to satisfy one outbound

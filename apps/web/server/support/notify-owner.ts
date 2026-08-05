@@ -93,9 +93,13 @@ export async function notifyOwnerOrderPlaced(params: {
   } catch (cause) {
     const message = cause instanceof Error ? cause.message : String(cause);
 
-    // Second chance without the picture: if Meta rejected the media (a
-    // dead link, an image it can't fetch, a header the template doesn't
-    // declare), the text-only alert still gets through.
+    // Second chance without the picture: if Meta rejected the media
+    // outright (a header the template doesn't declare, a link its
+    // fetcher refuses at request time), the text-only alert still gets
+    // through. Note this cannot rescue an unsupported *format* — Meta
+    // accepts those synchronously and fails them later on the status
+    // webhook, so nothing is ever thrown here. That case is prevented up
+    // front by `isSupportedHeaderImageUrl`, not recovered from.
     if (headerImageUrl) {
       logger.warn('support.notify_owner.whatsapp_retrying_without_header', {
         event: 'order_placed',
