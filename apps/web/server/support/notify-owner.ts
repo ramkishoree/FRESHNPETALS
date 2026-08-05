@@ -1,7 +1,11 @@
 import 'server-only';
 import { getServerEnv } from '@/config/env';
 import { logger } from '@/server/logger';
-import { isWhatsAppConfigured, sendWhatsAppTemplate } from '@/server/whatsapp/meta-client';
+import {
+  isSupportedHeaderImageUrl,
+  isWhatsAppConfigured,
+  sendWhatsAppTemplate,
+} from '@/server/whatsapp/meta-client';
 
 /**
  * Owner's explicit call after removing the WhatsApp support bot: every
@@ -31,9 +35,9 @@ export async function notifyOwnerOrderPlaced(params: {
    *  requires a public HTTPS link, so this is skipped when null. */
   firstItemImageUrl: string | null;
 }): Promise<void> {
-  const env = getServerEnv();
+  const ownerWaId = getServerEnv().META_WHATSAPP_OWNER_WA_ID;
 
-  if (!isWhatsAppConfigured() || !env.META_WHATSAPP_OWNER_WA_ID) {
+  if (!isWhatsAppConfigured() || !ownerWaId) {
     logger.warn('support.notify_owner.whatsapp_not_configured', {
       event: 'order_placed',
       orderNumber: params.orderNumber,
@@ -41,28 +45,76 @@ export async function notifyOwnerOrderPlaced(params: {
     return;
   }
 
-  try {
-    await sendWhatsAppTemplate({
-      to: env.META_WHATSAPP_OWNER_WA_ID,
-      templateName: 'order_placed_alert_v3',
-      ...(params.firstItemImageUrl ? { headerImageUrl: params.firstItemImageUrl } : {}),
-      bodyParams: [
-        params.orderNumber,
-        params.itemsSummary,
-        `${params.currency} ${params.grandTotal.toFixed(2)}`,
-        params.customerName,
-        params.customerPhone,
-        params.deliveryAddress,
-        params.paymentMethod,
-        params.deliveryDate,
-        params.deliveryTime,
-      ],
+  const bodyParams = [
+    params.orderNumber,
+    params.itemsSummary,
+    `${params.currency} ${params.grandTotal.toFixed(2)}`,
+    params.customerName,
+    params.customerPhone,
+    params.deliveryAddress,
+    params.paymentMethod,
+    params.deliveryDate,
+    params.deliveryTime,
+  ];
+
+  // The photo is a nice-to-have; the order details are not. Anything
+  // Meta won't render as a header is dropped before the send rather
+  // than allowed to take the whole alert down with it.
+  const headerImageUrl =
+    params.firstItemImageUrl && isSupportedHeaderImageUrl(params.firstItemImageUrl)
+      ? params.firstItemImageUrl
+      : null;
+
+  if (params.firstItemImageUrl && !headerImageUrl) {
+    logger.warn('support.notify_owner.header_image_unsupported', {
+      event: 'order_placed',
+      orderNumber: params.orderNumber,
+      imageUrl: params.firstItemImageUrl,
     });
+  }
+
+  // An arrow bound after the guard above, not a hoisted declaration —
+  // that's what lets TypeScript carry the `ownerWaId` narrowing inside.
+  const send = async (withHeader: boolean): Promise<void> => {
+    await sendWhatsAppTemplate({
+      to: ownerWaId,
+      templateName: 'order_placed_alert_v3',
+      ...(withHeader && headerImageUrl ? { headerImageUrl } : {}),
+      bodyParams,
+    });
+  };
+
+  try {
+    await send(true);
   } catch (cause) {
+    const message = cause instanceof Error ? cause.message : String(cause);
+
+    // Second chance without the picture: if Meta rejected the media (a
+    // dead link, an image it can't fetch, a header the template doesn't
+    // declare), the text-only alert still gets through.
+    if (headerImageUrl) {
+      logger.warn('support.notify_owner.whatsapp_retrying_without_header', {
+        event: 'order_placed',
+        orderNumber: params.orderNumber,
+        message,
+      });
+      try {
+        await send(false);
+        return;
+      } catch (retryCause) {
+        logger.error('support.notify_owner.whatsapp_failed', {
+          event: 'order_placed',
+          orderNumber: params.orderNumber,
+          message: retryCause instanceof Error ? retryCause.message : String(retryCause),
+        });
+        return;
+      }
+    }
+
     logger.error('support.notify_owner.whatsapp_failed', {
       event: 'order_placed',
       orderNumber: params.orderNumber,
-      message: cause instanceof Error ? cause.message : String(cause),
+      message,
     });
   }
 }

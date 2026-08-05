@@ -20,6 +20,29 @@ interface SendResult {
   messageId: string;
 }
 
+/**
+ * Meta renders only JPEG and PNG in a template's image header — WebP is
+ * accepted for stickers and nothing else. A WebP link doesn't merely
+ * drop the picture, it fails the whole send with `(#131053) Media
+ * upload error`, so the owner loses the entire order alert. Every photo
+ * in this catalogue is served as `.webp`, which is exactly how the
+ * alerts were going missing while the confirmation email still arrived.
+ */
+const SUPPORTED_HEADER_IMAGE_EXTENSIONS = ['.jpg', '.jpeg', '.png'];
+
+export function isSupportedHeaderImageUrl(url: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return false;
+  }
+  // Meta fetches the link itself and refuses anything but HTTPS.
+  if (parsed.protocol !== 'https:') return false;
+  const pathname = parsed.pathname.toLowerCase();
+  return SUPPORTED_HEADER_IMAGE_EXTENSIONS.some((extension) => pathname.endsWith(extension));
+}
+
 async function callSendApi(body: Record<string, unknown>): Promise<SendResult> {
   const env = getServerEnv();
   if (!env.META_WHATSAPP_ACCESS_TOKEN || !env.META_WHATSAPP_PHONE_NUMBER_ID) {

@@ -34,4 +34,26 @@ describe('meta-client', () => {
     const { isWhatsAppConfigured } = await loadClient();
     expect(isWhatsAppConfigured()).toBe(true);
   });
+
+  describe('isSupportedHeaderImageUrl', () => {
+    it('accepts the jpeg/png formats Meta actually renders in an image header', async () => {
+      const { isSupportedHeaderImageUrl } = await loadClient();
+      expect(isSupportedHeaderImageUrl('https://cdn.example.com/a/rose.jpg')).toBe(true);
+      expect(isSupportedHeaderImageUrl('https://cdn.example.com/a/rose.jpeg')).toBe(true);
+      expect(isSupportedHeaderImageUrl('https://cdn.example.com/a/rose.PNG')).toBe(true);
+      expect(isSupportedHeaderImageUrl('https://cdn.example.com/a/rose.png?width=800')).toBe(true);
+    });
+
+    it('rejects webp, which Meta only accepts for stickers', async () => {
+      const { isSupportedHeaderImageUrl } = await loadClient();
+      expect(isSupportedHeaderImageUrl('https://cdn.example.com/a/rose.webp')).toBe(false);
+    });
+
+    it('rejects non-https and unparseable urls', async () => {
+      const { isSupportedHeaderImageUrl } = await loadClient();
+      expect(isSupportedHeaderImageUrl('http://cdn.example.com/a/rose.jpg')).toBe(false);
+      expect(isSupportedHeaderImageUrl('/media/rose.jpg')).toBe(false);
+      expect(isSupportedHeaderImageUrl('')).toBe(false);
+    });
+  });
 });

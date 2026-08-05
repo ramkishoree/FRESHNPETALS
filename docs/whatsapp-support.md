@@ -67,10 +67,35 @@ Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`, `{{8}}` =
    the order has no first-item image on file, `notifyOwnerOrderPlaced`
    omits the header component entirely rather than failing the send.
 
+   **Image format matters.** Meta renders only **JPEG and PNG** in an
+   image header; WebP is sticker-only and a WebP link fails the _entire_
+   send with `(#131053) Media upload error` — the owner loses the whole
+   alert, not just the picture. Every photo in this catalogue is `.webp`,
+   which is exactly how alerts were going missing while the confirmation
+   email still arrived. `isSupportedHeaderImageUrl` now drops any
+   non-JPEG/PNG link before the send, and a send that fails while
+   carrying a header is retried once without it, so the text alert
+   always gets through. To get photos back in the alert, upload product
+   images as `.jpg`/`.png`.
+
    Template approval is usually same-day but can take longer. Until
    approved, `sendWhatsAppTemplate` calls fail with a clear error from
    Meta (logged, doesn't crash checkout) rather than silently doing
    nothing.
+
+## Diagnosing a missing alert
+
+```bash
+META_WHATSAPP_ACCESS_TOKEN=... META_WHATSAPP_PHONE_NUMBER_ID=... \
+META_WHATSAPP_BUSINESS_ACCOUNT_ID=... META_WHATSAPP_OWNER_WA_ID=... \
+node scripts/whatsapp-doctor.mjs --send
+```
+
+Checks the token and phone number registration, prints the live status of
+`order_placed_alert_v3` (`APPROVED` / `PENDING` / `REJECTED` / missing)
+along with its declared header format and placeholder count, and with
+`--send` delivers a real test alert. Run this first — the usual cause is
+a template that was never submitted or is still pending review.
 
 ## What's built and verified vs. what needs live Meta infra
 
