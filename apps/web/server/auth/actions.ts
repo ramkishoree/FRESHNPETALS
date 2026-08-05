@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { getPublicEnv } from '@/config/env';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { safeNextPath } from '@/lib/safe-next-path';
 import { ensureCustomerProfile } from '@/server/customer/ensure-customer-profile';
 import { checkLockout, recordLoginAttempt } from './lockout';
 
@@ -206,11 +207,23 @@ export async function confirmPasswordReset(input: { newPassword: string }): Prom
   return { success: true };
 }
 
-export async function getGoogleSignInUrl(): Promise<string | null> {
+/**
+ * `next` is where the customer was headed before being asked to sign in
+ * — usually `/checkout`. Without carrying it through the OAuth round
+ * trip, Google users always landed on `/account`, losing the checkout
+ * they were in the middle of, while email/password users returned
+ * correctly. Sanitised here as well as at the callback: this value ends
+ * up in a URL, so it is never trusted just because it came from our own
+ * form.
+ */
+export async function getGoogleSignInUrl(next?: string): Promise<string | null> {
   const supabase = await createSupabaseServerClient();
+  const callback = new URL('/auth/callback', getPublicEnv().NEXT_PUBLIC_APP_URL);
+  callback.searchParams.set('next', safeNextPath(next));
+
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
-    options: { redirectTo: `${getPublicEnv().NEXT_PUBLIC_APP_URL}/auth/callback` },
+    options: { redirectTo: callback.toString() },
   });
   if (error) return null;
   return data.url;

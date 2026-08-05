@@ -15,7 +15,10 @@ import { useCart } from '@/lib/cart-context';
 
 declare global {
   interface Window {
-    Razorpay: new (options: Record<string, unknown>) => { open: () => void };
+    Razorpay: new (options: Record<string, unknown>) => {
+      open: () => void;
+      on: (event: string, handler: () => void) => void;
+    };
   }
 }
 
@@ -450,6 +453,21 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           },
         },
       });
+
+      // A failed attempt leaves the session untouched on purpose — the
+      // webhook keeps it open so a retry on the same Razorpay order can
+      // still succeed. That is right for the data and wrong for the
+      // customer: the polling page has no terminal status to wait for,
+      // so it span on "Arranging your order" until it timed out into a
+      // dead end. Flagging the attempt lets that page stop pretending
+      // it is still working. It stays a hint, never a verdict — the
+      // page keeps polling, because Razorpay can report a failure the
+      // bank actually captured.
+      razorpay.on('payment.failed', () => {
+        setIsPaying(false);
+        router.push(`/checkout/${checkoutSessionId}/processing?attempt=failed`);
+      });
+
       razorpay.open();
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Failed to start checkout.');

@@ -1,16 +1,18 @@
 import Link from 'next/link';
 import { AuthForm } from '@/components/storefront/auth-form';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { safeNextPath } from '@/lib/safe-next-path';
 
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ error?: string }>;
+  searchParams: Promise<{ error?: string; next?: string }>;
 }) {
   // Set by /auth/callback when an OAuth or email-link round trip comes
   // back refused — otherwise the failure is invisible and the user just
   // lands back on a blank sign-in form.
-  const { error } = await searchParams;
+  const { error, next } = await searchParams;
+  const nextPath = safeNextPath(next);
 
   return (
     <div className="container-brand flex justify-center py-16">
@@ -27,7 +29,10 @@ export default async function LoginPage({
         <AuthForm mode="login" />
         <p className="text-body text-muted-foreground text-center">
           New here?{' '}
-          <Link href="/signup" className="text-primary underline underline-offset-2">
+          <Link
+            href={`/signup?next=${encodeURIComponent(nextPath)}`}
+            className="text-primary underline underline-offset-2"
+          >
             Create an account
           </Link>
         </p>

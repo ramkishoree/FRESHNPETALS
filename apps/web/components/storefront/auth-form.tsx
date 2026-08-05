@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { safeNextPath } from '@/lib/safe-next-path';
 import {
   getGoogleSignInUrl,
   sendMagicLink,
@@ -37,7 +38,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const [timedOut, setTimedOut] = React.useState(false);
   const [isCheckingNow, setIsCheckingNow] = React.useState(false);
 
-  const nextPath = searchParams.get('next') ?? '/account';
+  const nextPath = safeNextPath(searchParams.get('next'));
 
   const attemptSignIn = React.useCallback(async () => {
     if (!password) return false;
@@ -112,7 +113,10 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   }
 
   async function handleGoogle() {
-    const url = await getGoogleSignInUrl();
+    // Carry the pending destination through the OAuth round trip, or a
+    // customer who signs in from checkout comes back to /account with
+    // their checkout gone.
+    const url = await getGoogleSignInUrl(nextPath);
     if (!url) {
       toast.error('Google sign-in is not available right now.');
       return;

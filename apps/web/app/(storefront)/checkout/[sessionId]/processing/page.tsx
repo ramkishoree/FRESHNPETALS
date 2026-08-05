@@ -1,12 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 
 const POLL_INTERVAL_MS = 2000;
 const MAX_POLLS = 30; // 60 seconds
+/**
+ * When Razorpay told the browser the attempt failed, the wait is much
+ * shorter before offering a retry. A failed attempt deliberately leaves
+ * the session open (a later attempt on the same order can still
+ * succeed), so there is no terminal status coming — waiting the full
+ * minute only strands the customer. Polling continues underneath either
+ * way, because a "failure" the bank actually captured still resolves to
+ * the order confirmation.
+ */
+const MAX_POLLS_AFTER_FAILED_ATTEMPT = 5; // 10 seconds
 
 /**
  * Ch.8 §89 Principle 5 + §99 Payment Flow: order creation happens only
@@ -17,9 +27,13 @@ const MAX_POLLS = 30; // 60 seconds
  */
 export default function CheckoutProcessingPage() {
   const params = useParams<{ sessionId: string }>();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const [pollCount, setPollCount] = React.useState(0);
   const [timedOut, setTimedOut] = React.useState(false);
+
+  const attemptFailed = searchParams.get('attempt') === 'failed';
+  const maxPolls = attemptFailed ? MAX_POLLS_AFTER_FAILED_ATTEMPT : MAX_POLLS;
 
   React.useEffect(() => {
     let cancelled = false;
@@ -39,7 +53,7 @@ export default function CheckoutProcessingPage() {
         return;
       }
 
-      if (pollCount >= MAX_POLLS) {
+      if (pollCount >= maxPolls) {
         setTimedOut(true);
         return;
       }
@@ -51,7 +65,7 @@ export default function CheckoutProcessingPage() {
     return () => {
       cancelled = true;
     };
-  }, [pollCount, params.sessionId, router]);
+  }, [pollCount, params.sessionId, router, maxPolls]);
 
   return (
     <div className="container-brand grid min-h-[70vh] place-items-center py-16 text-center">
@@ -71,20 +85,63 @@ export default function CheckoutProcessingPage() {
             </p>
             <BrandDivider className="mt-8" />
           </>
-        ) : (
+        ) : attemptFailed ? (
           <>
-            <p className="eyebrow">Taking a moment longer</p>
-            <h1 className="text-h2 mt-3">Still confirming</h1>
+            <p className="eyebrow">Payment not completed</p>
+            <h1 className="text-h2 mt-3">That payment didn&rsquo;t go through</h1>
             <p className="text-body-lg mt-3">
-              This is taking longer than expected. Check{' '}
+              Your bank declined the payment or it was cancelled, so no order was placed and you
+              haven&rsquo;t been charged. Your basket is exactly as you left it — you can try again
+              with the same or a different payment method.
+            </p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link
+                href="/checkout"
+                className="bg-foreground text-background rounded-full px-6 py-3 text-sm font-medium"
+              >
+                Try payment again
+              </Link>
+              <Link
+                href="/cart"
+                className="text-foreground rounded-full border border-[var(--sf-border)] px-6 py-3 text-sm font-medium"
+              >
+                Back to basket
+              </Link>
+            </div>
+            <p className="text-caption text-muted-foreground mt-6">
+              If your bank did take the money, it will appear in{' '}
               <Link
                 href="/account/orders"
                 className="text-[var(--gold-deep)] underline underline-offset-2"
               >
                 My Orders
               </Link>{' '}
-              in a few minutes — your payment provider may still be finalizing it.
+              shortly — don&rsquo;t pay twice.
             </p>
+            <BrandDivider className="my-8" />
+          </>
+        ) : (
+          <>
+            <p className="eyebrow">Taking a moment longer</p>
+            <h1 className="text-h2 mt-3">Still confirming</h1>
+            <p className="text-body-lg mt-3">
+              This is taking longer than expected. Your payment provider may still be finalizing it
+              — don&rsquo;t pay again until you&rsquo;ve checked.
+            </p>
+            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
+              <Link
+                href="/account/orders"
+                className="bg-foreground text-background rounded-full px-6 py-3 text-sm font-medium"
+              >
+                Check My Orders
+              </Link>
+              <Link
+                href="/cart"
+                className="text-foreground rounded-full border border-[var(--sf-border)] px-6 py-3 text-sm font-medium"
+              >
+                Back to basket
+              </Link>
+            </div>
             <BrandDivider className="my-8" />
           </>
         )}

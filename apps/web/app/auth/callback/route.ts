@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
+import { safeNextPath } from '@/lib/safe-next-path';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ensureCustomerProfile } from '@/server/customer/ensure-customer-profile';
 
@@ -12,7 +13,10 @@ import { ensureCustomerProfile } from '@/server/customer/ensure-customer-profile
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  const next = searchParams.get('next') ?? '/account';
+  // Never interpolated raw: `${origin}${next}` with next="//evil.com"
+  // is an open redirect that hands an attacker a freshly signed-in
+  // session. See safeNextPath.
+  const next = safeNextPath(searchParams.get('next'));
 
   // Supabase reports a refused provider (Google not enabled, consent
   // denied, expired link) by redirecting back here with error params and
