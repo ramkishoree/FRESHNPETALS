@@ -6,7 +6,7 @@ import { recordAuditEvent } from '@/server/audit/record-audit-event';
 import { requireAdmin } from '@/server/auth/session';
 import { apiError, apiSuccess } from '@/server/http/envelope';
 import { logger } from '@/server/logger';
-import { convertImageToWebp } from '@/server/media/convert-to-webp';
+import { convertImageToJpeg, convertImageToWebp } from '@/server/media/convert-to-webp';
 import { convertVideoToWebOptimized } from '@/server/media/convert-video';
 import { runSecurityChain } from '@/server/security/chain';
 
@@ -41,10 +41,11 @@ interface RouteParams {
  * product-gallery variant: every product previously had exactly one
  * `featured_image` text column, so there was nowhere to attach a second
  * photo or any video at all. This uploads raw bytes in almost any common
- * image/video format, converts server-side (sharp → WebP for images,
- * ffmpeg → capped-bitrate H.264 MP4 + WebP poster for videos — never
- * something a client could skip), stores the result in Supabase Storage,
- * and records a `product_media` row.
+ * image/video format, converts server-side (sharp → WebP for images plus
+ * a JPEG sibling for non-browser consumers, ffmpeg → capped-bitrate H.264
+ * MP4 + WebP poster for videos — never something a client could skip),
+ * stores the result in Supabase Storage, and records a `product_media`
+ * row.
  */
 export async function POST(request: NextRequest, context: { params: Promise<RouteParams> }) {
   const blocked = await runSecurityChain(request, { tier: 'admin', requireAdmin: true });
@@ -106,24 +107,40 @@ export async function POST(request: NextRequest, context: { params: Promise<Rout
     let thumbnailUrl: string | null = null;
 
     if (isImage) {
-      const converted = await convertImageToWebp(sourceBytes);
-      const storagePath = `products/${productId}/${randomUUID()}.webp`;
-      const { error: uploadError } = await admin.storage
-        .from(MEDIA_BUCKET)
-        .upload(storagePath, converted.data, { contentType: 'image/webp', upsert: false });
-      if (uploadError) {
-        logger.error('product_media.upload.storage_failed', {
-          correlationId,
-          message: uploadError.message,
-        });
+      // Stored twice under one name: WebP is what the storefront serves,
+      // and the JPEG sibling exists for consumers outside the browser
+      // that can't read WebP — today that's the WhatsApp order alert,
+      // whose template header Meta rejects outright when handed a WebP
+      // link. `jpegSiblingUrl` derives the second URL from the first, so
+      // neither the schema nor any caller needs to track it.
+      const baseId = randomUUID();
+      const webpPath = `products/${productId}/${baseId}.webp`;
+      const jpegPath = `products/${productId}/${baseId}.jpg`;
+
+      const [webp, jpeg] = await Promise.all([
+        convertImageToWebp(sourceBytes),
+        convertImageToJpeg(sourceBytes),
+      ]);
+      const [webpUpload, jpegUpload] = await Promise.all([
+        admin.storage
+          .from(MEDIA_BUCKET)
+          .upload(webpPath, webp.data, { contentType: 'image/webp', upsert: false }),
+        admin.storage
+          .from(MEDIA_BUCKET)
+          .upload(jpegPath, jpeg.data, { contentType: 'image/jpeg', upsert: false }),
+      ]);
+      if (webpUpload.error || jpegUpload.error) {
+        const message =
+          webpUpload.error?.message ?? jpegUpload.error?.message ?? 'unknown storage error';
+        logger.error('product_media.upload.storage_failed', { correlationId, message });
         return apiError(
           'EXTERNAL_SERVICE_ERROR',
-          `Failed to upload: ${uploadError.message}`,
+          `Failed to upload: ${message}`,
           502,
           correlationId,
         );
       }
-      url = admin.storage.from(MEDIA_BUCKET).getPublicUrl(storagePath).data.publicUrl;
+      url = admin.storage.from(MEDIA_BUCKET).getPublicUrl(webpPath).data.publicUrl;
       mediaType = 'image';
     } else {
       const converted = await convertVideoToWebOptimized(sourceBytes);

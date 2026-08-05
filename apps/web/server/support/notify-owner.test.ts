@@ -55,6 +55,18 @@ describe('notifyOwnerOrderPlaced', () => {
     });
   });
 
+  it('points the header at the .jpg sibling when the product photo is a webp', async () => {
+    isSupportedHeaderImageUrlMock.mockImplementation((url: string) => url.endsWith('.jpg'));
+
+    await notifyOwnerOrderPlaced(
+      makeParams({ firstItemImageUrl: 'https://cdn/media/products/a/rose.webp' }),
+    );
+
+    expect(sendWhatsAppTemplateMock.mock.calls[0]?.[0]).toMatchObject({
+      headerImageUrl: 'https://cdn/media/products/a/rose.jpg',
+    });
+  });
+
   it('sends without a header rather than at all when the image format is unsupported', async () => {
     isSupportedHeaderImageUrlMock.mockReturnValue(false);
 

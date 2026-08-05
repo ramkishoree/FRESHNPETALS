@@ -1,6 +1,7 @@
 import 'server-only';
 import { getServerEnv } from '@/config/env';
 import { logger } from '@/server/logger';
+import { jpegSiblingUrl } from '@/server/media/jpeg-sibling';
 import {
   isSupportedHeaderImageUrl,
   isWhatsAppConfigured,
@@ -57,13 +58,16 @@ export async function notifyOwnerOrderPlaced(params: {
     params.deliveryTime,
   ];
 
-  // The photo is a nice-to-have; the order details are not. Anything
-  // Meta won't render as a header is dropped before the send rather
-  // than allowed to take the whole alert down with it.
+  // The photo is a nice-to-have; the order details are not. Product
+  // images are stored as WebP, which Meta refuses, so aim at the JPEG
+  // sibling uploaded next to it — and drop the header entirely if what's
+  // left still isn't something Meta will render, rather than let it take
+  // the whole alert down.
+  const candidateImageUrl = params.firstItemImageUrl
+    ? (jpegSiblingUrl(params.firstItemImageUrl) ?? params.firstItemImageUrl)
+    : null;
   const headerImageUrl =
-    params.firstItemImageUrl && isSupportedHeaderImageUrl(params.firstItemImageUrl)
-      ? params.firstItemImageUrl
-      : null;
+    candidateImageUrl && isSupportedHeaderImageUrl(candidateImageUrl) ? candidateImageUrl : null;
 
   if (params.firstItemImageUrl && !headerImageUrl) {
     logger.warn('support.notify_owner.header_image_unsupported', {

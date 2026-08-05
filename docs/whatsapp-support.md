@@ -72,11 +72,29 @@ Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`, `{{8}}` =
    send with `(#131053) Media upload error` — the owner loses the whole
    alert, not just the picture. Every photo in this catalogue is `.webp`,
    which is exactly how alerts were going missing while the confirmation
-   email still arrived. `isSupportedHeaderImageUrl` now drops any
-   non-JPEG/PNG link before the send, and a send that fails while
-   carrying a header is retried once without it, so the text alert
-   always gets through. To get photos back in the alert, upload product
-   images as `.jpg`/`.png`.
+   email still arrived.
+
+   WebP stays the canonical format the storefront serves — reverting that
+   would cost page performance for every visitor to satisfy one outbound
+   integration. Instead every image is stored **twice under one name**:
+   `<uuid>.webp` for the site and `<uuid>.jpg` for consumers outside the
+   browser. `convertImageToJpeg` produces the sibling in the media upload
+   route, `jpegSiblingUrl` derives its URL from the WebP's (no extra
+   column, no storage lookup), and `notifyOwnerOrderPlaced` aims the
+   header at it. Two independent guards sit behind that:
+   `isSupportedHeaderImageUrl` drops any link Meta won't render, and a
+   send that fails while carrying a header is retried once without it —
+   so a missing sibling costs the photo, never the alert.
+
+   Images uploaded before this change have no sibling. Backfill them:
+
+   ```bash
+   NEXT_PUBLIC_SUPABASE_URL=... SUPABASE_SERVICE_ROLE_KEY=... \
+   node scripts/backfill-jpeg-siblings.mjs [--dry-run]
+   ```
+
+   Safe to re-run — it skips objects whose sibling already exists and
+   never deletes or overwrites anything.
 
    Template approval is usually same-day but can take longer. Until
    approved, `sendWhatsAppTemplate` calls fail with a clear error from

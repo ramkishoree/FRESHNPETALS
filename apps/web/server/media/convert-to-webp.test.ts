@@ -1,6 +1,6 @@
 import sharp from 'sharp';
 import { describe, expect, it } from 'vitest';
-import { convertImageToWebp } from './convert-to-webp';
+import { convertImageToJpeg, convertImageToWebp } from './convert-to-webp';
 
 async function makeTestPng(width: number, height: number): Promise<Buffer> {
   return sharp({
@@ -63,5 +63,49 @@ describe('convertImageToWebp', () => {
 
     const result = await convertImageToWebp(png);
     expect(result.sizeBytes).toBeLessThan(png.length);
+  });
+});
+
+describe('convertImageToJpeg', () => {
+  it('converts a PNG to a valid JPEG buffer with matching dimensions', async () => {
+    const png = await makeTestPng(64, 48);
+    const result = await convertImageToJpeg(png);
+
+    // FFD8FF is the mandatory SOI marker at the start of every JPEG.
+    expect(result.data.subarray(0, 3).toString('hex')).toBe('ffd8ff');
+    expect(result.width).toBe(64);
+    expect(result.height).toBe(48);
+    expect(result.sizeBytes).toBe(result.data.length);
+
+    const metadata = await sharp(result.data).metadata();
+    expect(metadata.format).toBe('jpeg');
+    expect(metadata.width).toBe(64);
+    expect(metadata.height).toBe(48);
+  });
+
+  it('converts a WebP source to JPEG — the case Meta actually needs', async () => {
+    const webp = await sharp({
+      create: { width: 40, height: 20, channels: 3, background: { r: 5, g: 90, b: 180 } },
+    })
+      .webp()
+      .toBuffer();
+
+    const result = await convertImageToJpeg(webp);
+    const metadata = await sharp(result.data).metadata();
+    expect(metadata.format).toBe('jpeg');
+    expect(metadata.width).toBe(40);
+    expect(metadata.height).toBe(20);
+  });
+
+  it('drops EXIF so an uploaded photo cannot leak GPS or camera metadata', async () => {
+    const png = await makeTestPng(20, 20);
+    const withExif = await sharp(png)
+      .withExif({ IFD0: { Copyright: 'test', Software: 'test-suite' } })
+      .jpeg()
+      .toBuffer();
+
+    const result = await convertImageToJpeg(withExif);
+    const metadata = await sharp(result.data).metadata();
+    expect(metadata.exif).toBeUndefined();
   });
 });
