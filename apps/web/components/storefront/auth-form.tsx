@@ -9,22 +9,28 @@ import { Label } from '@/components/ui/label';
 import { safeNextPath } from '@/lib/safe-next-path';
 import {
   getGoogleSignInUrl,
-  sendMagicLink,
+  sendEmailCode,
   signInWithPassword,
+  verifyEmailCode,
   signUpWithPassword,
 } from '@/server/auth/actions';
 
-const POLL_INTERVAL_MS = 4000;
-const POLL_TIMEOUT_MS = 15 * 60 * 1000;
+const RESEND_COOLDOWN_SECONDS = 30;
 
 /**
- * Owner's explicit call: skip signup friction. Email + a magic link is
+ * Owner's explicit call: skip signup friction. Email + a 6-digit code is
  * the default for both logging in and creating an account — Supabase's
  * OTP flow auto-creates the user on first use, so there's no separate
  * "sign up" step to sit through. Google is one tap. Password stays
  * available behind "Use a password instead" for anyone who set one up
- * before this change, or just prefers it — nothing already built is
- * removed, it's just no longer the first thing a new visitor has to do.
+ * before this change, or just prefers it.
+ *
+ * This was a magic link until it kept failing in production: the link
+ * opens in whatever browser the mail app prefers, which is not the one
+ * holding the PKCE verifier, so valid links were reported as expired.
+ * A code is typed back into the tab that asked for it, so there is no
+ * second browser, nothing for a mail scanner to consume by pre-opening,
+ * and no tab left waiting on an event it cannot observe.
  */
 export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const router = useRouter();
@@ -34,82 +40,64 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   const [password, setPassword] = React.useState('');
   const [usePassword, setUsePassword] = React.useState(false);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
-  const [linkSent, setLinkSent] = React.useState(false);
-  const [timedOut, setTimedOut] = React.useState(false);
-  const [isCheckingNow, setIsCheckingNow] = React.useState(false);
+  const [codeSent, setCodeSent] = React.useState(false);
+  const [code, setCode] = React.useState('');
+  const [resendIn, setResendIn] = React.useState(0);
+  const [awaitingEmailConfirm, setAwaitingEmailConfirm] = React.useState(false);
 
   const nextPath = safeNextPath(searchParams.get('next'));
 
-  const attemptSignIn = React.useCallback(async () => {
-    if (!password) return false;
-    const result = await signInWithPassword({ email, password });
-    if (result.success) {
-      toast.success('Signed in.');
-      router.push(nextPath);
-      router.refresh();
-      return true;
+  // Resend cooldown — stops someone hammering the button and tripping
+  // Supabase's own send limits, which would lock them out of the code
+  // they are waiting for.
+  React.useEffect(() => {
+    if (resendIn <= 0) return;
+    const timer = window.setTimeout(() => setResendIn((value) => value - 1), 1000);
+    return () => window.clearTimeout(timer);
+  }, [resendIn]);
+
+  async function sendCode(): Promise<boolean> {
+    const result = await sendEmailCode({ email, ...(fullName ? { fullName } : {}) });
+    if (!result.success) {
+      toast.error(result.error ?? 'Could not send the code.');
+      return false;
     }
-    return false;
-  }, [email, password, router, nextPath]);
+    setResendIn(RESEND_COOLDOWN_SECONDS);
+    return true;
+  }
 
-  /**
-   * The magic-link path used to sit on "check your email" forever. The
-   * old assumption was that the link resolves in this same tab, so
-   * nothing here needed to watch for it — but the link opens wherever
-   * the mail app decides, usually a new tab. This tab shares the
-   * browser's cookies with that one, so once the link is used the
-   * session is right here; it just has to notice.
-   */
-  React.useEffect(() => {
-    if (!linkSent || password) return;
-    const startedAt = Date.now();
-    const interval = window.setInterval(async () => {
-      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-        window.clearInterval(interval);
-        setTimedOut(true);
-        return;
-      }
-      try {
-        const response = await fetch('/api/v1/auth/session-check', { cache: 'no-store' });
-        const body = await response.json();
-        if (body?.signedIn) {
-          window.clearInterval(interval);
-          toast.success('Signed in.');
-          router.push(nextPath);
-          router.refresh();
-        }
-      } catch {
-        // Offline or a blip — keep waiting, the timeout still bounds it.
-      }
-    }, POLL_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [linkSent, password, router, nextPath]);
-
-  // The password-signup path confirms by retrying the credentials.
-  React.useEffect(() => {
-    if (!linkSent || !password) return;
-    const startedAt = Date.now();
-    const interval = window.setInterval(() => {
-      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
-        window.clearInterval(interval);
-        setTimedOut(true);
-        return;
-      }
-      void attemptSignIn();
-    }, POLL_INTERVAL_MS);
-    return () => window.clearInterval(interval);
-  }, [linkSent, password, attemptSignIn]);
-
-  async function handleMagicLink(event: React.FormEvent) {
+  async function handleRequestCode(event: React.FormEvent) {
     event.preventDefault();
     setIsSubmitting(true);
     try {
-      const result = await sendMagicLink({ email, ...(fullName ? { fullName } : {}) });
+      if (await sendCode()) setCodeSent(true);
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function resendCode() {
+    setIsSubmitting(true);
+    try {
+      if (await sendCode()) toast.success('New code sent.');
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  async function handleVerifyCode(event: React.FormEvent) {
+    event.preventDefault();
+    setIsSubmitting(true);
+    try {
+      const result = await verifyEmailCode({ email, token: code });
       if (!result.success) {
-        toast.error(result.error ?? 'Failed to send link.');
+        toast.error(result.error ?? 'That code did not work.');
+        setCode('');
         return;
       }
-      setLinkSent(true);
+      toast.success('Signed in.');
+      router.push(nextPath);
+      router.refresh();
     } finally {
       setIsSubmitting(false);
     }
@@ -129,7 +117,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
           toast.error(result.error ?? 'Sign up failed.');
           return;
         }
-        setLinkSent(true);
+        setAwaitingEmailConfirm(true);
         return;
       }
       const result = await signInWithPassword({ email, password });
@@ -156,55 +144,75 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
     window.location.href = url;
   }
 
-  async function checkNow() {
-    setIsCheckingNow(true);
-    try {
-      // Password path re-tries the credentials; the magic-link path has
-      // none to retry, so it asks the server whether this browser's
-      // cookies now carry a session.
-      if (password) {
-        const confirmed = await attemptSignIn();
-        if (!confirmed) toast.error('Not confirmed yet — check your inbox and spam folder.');
-        return;
-      }
-
-      const response = await fetch('/api/v1/auth/session-check', { cache: 'no-store' });
-      const body = await response.json();
-      if (body?.signedIn) {
-        toast.success('Signed in.');
-        router.push(nextPath);
-        router.refresh();
-        return;
-      }
-      toast.error('Not confirmed yet — check your inbox and spam folder.');
-    } finally {
-      setIsCheckingNow(false);
-    }
+  if (awaitingEmailConfirm) {
+    return (
+      <div className="space-y-2">
+        <p className="text-body text-foreground">
+          Check <strong>{email}</strong> to confirm your account, then sign in.
+        </p>
+        <p className="text-caption text-muted-foreground">
+          Signing up with a password still needs one confirmation email. Everything after that is
+          just email and password.
+        </p>
+      </div>
+    );
   }
 
-  if (linkSent) {
+  if (codeSent) {
     return (
-      <div className="space-y-3">
-        <p className="text-body text-foreground">
-          Check <strong>{email}</strong> for a link to finish{' '}
-          {mode === 'signup' ? 'creating your account' : 'signing in'}.
-        </p>
-        {!timedOut ? (
-          <p className="text-caption text-muted-foreground">
-            Keep this tab open — it signs you in on its own once you&apos;ve opened the link.
+      <form onSubmit={handleVerifyCode} className="space-y-4">
+        <div className="space-y-1">
+          <p className="text-body text-foreground">
+            We sent a 6-digit code to <strong>{email}</strong>.
           </p>
-        ) : (
-          <div className="space-y-2">
-            <p className="text-caption text-muted-foreground">
-              Still waiting. If you opened the link on another device, sign in there — or confirm it
-              here and then:
-            </p>
-            <Button type="button" variant="outline" onClick={checkNow} disabled={isCheckingNow}>
-              {isCheckingNow ? 'Checking...' : "I've confirmed, sign me in"}
-            </Button>
-          </div>
-        )}
-      </div>
+          <p className="text-caption text-muted-foreground">
+            Enter it below to finish {mode === 'signup' ? 'creating your account' : 'signing in'}.
+          </p>
+        </div>
+
+        <div className="grid gap-1.5">
+          <Label htmlFor="code">6-digit code</Label>
+          <Input
+            id="code"
+            // `one-time-code` is what lets iOS and Chrome offer the code
+            // straight from the notification, which is most of why typing
+            // one beats opening a link on a phone.
+            autoComplete="one-time-code"
+            inputMode="numeric"
+            autoFocus
+            maxLength={6}
+            placeholder="000000"
+            className="text-center text-lg tracking-[0.4em]"
+            value={code}
+            onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+          />
+        </div>
+
+        <Button type="submit" className="w-full" disabled={isSubmitting || code.length !== 6}>
+          {isSubmitting ? 'Verifying...' : 'Verify and continue'}
+        </Button>
+
+        <div className="flex items-center justify-between">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => void resendCode()}
+            disabled={resendIn > 0 || isSubmitting}
+          >
+            {resendIn > 0 ? `Resend in ${resendIn}s` : 'Resend code'}
+          </Button>
+          <button
+            type="button"
+            className="text-caption text-muted-foreground underline underline-offset-2"
+            onClick={() => {
+              setCodeSent(false);
+              setCode('');
+            }}
+          >
+            Use a different email
+          </button>
+        </div>
+      </form>
     );
   }
 
@@ -225,7 +233,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
         <span className="bg-border h-px flex-1" />
       </div>
 
-      <form onSubmit={usePassword ? handlePasswordSubmit : handleMagicLink} className="space-y-4">
+      <form onSubmit={usePassword ? handlePasswordSubmit : handleRequestCode} className="space-y-4">
         {mode === 'signup' && (
           <div className="grid gap-1.5">
             <Label htmlFor="fullName">Full name</Label>

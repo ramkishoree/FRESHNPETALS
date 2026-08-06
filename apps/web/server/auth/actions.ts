@@ -102,14 +102,26 @@ export async function signInWithPassword(input: {
 
 /**
  * Owner's explicit call: signing up shouldn't mean inventing and
- * remembering a password — email in, tap the link, done. Supabase's OTP
- * flow auto-creates the user on first use (`shouldCreateUser: true`), so
- * this single action covers both "log in" and "sign up" — there's no
- * separate account-creation step to skip. Same response whether the
- * email is new or returning, same reasoning as `requestPasswordReset`
- * (never leak account existence from response shape/timing).
+ * remembering a password — email in, done. Supabase's OTP flow
+ * auto-creates the user on first use (`shouldCreateUser: true`), so this
+ * single action covers both "log in" and "sign up". Same response
+ * whether the email is new or returning, same reasoning as
+ * `requestPasswordReset` (never leak account existence from response
+ * shape/timing).
+ *
+ * Sends a **code**, not a link. A link has to be opened, and whatever
+ * opens it is rarely the browser that asked for it: PKCE keeps the
+ * `code_verifier` in the requesting browser, so a link opened from
+ * Gmail's in-app browser failed as "invalid or expired" on a perfectly
+ * good link. Links are also single-use, so a mail scanner that pre-opens
+ * one burns it, and the waiting tab had no way to learn the sign-in had
+ * happened elsewhere. A six-digit code typed back into the same tab has
+ * none of those failure modes — there is nothing to open.
+ *
+ * Omitting `emailRedirectTo` is what makes Supabase's template render
+ * `{{ .Token }}`; see docs/auth.md for the template itself.
  */
-export async function sendMagicLink(input: {
+export async function sendEmailCode(input: {
   email: string;
   fullName?: string;
 }): Promise<ActionResult> {
@@ -123,12 +135,53 @@ export async function sendMagicLink(input: {
     email: parsed.data,
     options: {
       shouldCreateUser: true,
-      emailRedirectTo: `${getPublicEnv().NEXT_PUBLIC_APP_URL}/auth/confirm?next=${encodeURIComponent('/account')}`,
       ...(input.fullName ? { data: { full_name: input.fullName } } : {}),
     },
   });
 
   if (error) return { success: false, error: error.message };
+  return { success: true };
+}
+
+/**
+ * Exchanges the emailed code for a session. Guessing a six-digit code is
+ * a credential attack like any other, so it goes through the same
+ * lockout and attempt recording as `signInWithPassword` rather than
+ * relying on Supabase's own limits alone.
+ */
+export async function verifyEmailCode(input: {
+  email: string;
+  token: string;
+}): Promise<ActionResult> {
+  const parsedEmail = emailSchema.safeParse(input.email);
+  const token = input.token.replace(/\D/g, '');
+  if (!parsedEmail.success || token.length !== 6) {
+    return { success: false, error: 'Enter the 6-digit code from your email.' };
+  }
+  const email = parsedEmail.data;
+
+  const lockout = await checkLockout(email);
+  if (lockout.locked) {
+    return { success: false, error: 'Too many failed attempts. Try again in 15 minutes.' };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { data, error } = await supabase.auth.verifyOtp({ email, token, type: 'email' });
+
+  if (error || !data.user || !data.session) {
+    await recordLoginAttempt({
+      identifier: email,
+      userId: data?.user?.id ?? null,
+      success: false,
+      failureReason: error?.message ?? 'invalid_otp',
+    });
+    return { success: false, error: 'That code is wrong or has expired. Request a new one.' };
+  }
+
+  await recordLoginAttempt({ identifier: email, userId: data.user.id, success: true });
+  await ensureCustomerProfile(data.user.id, data.user.email ?? null);
+  await recordSession(data.session);
+
   return { success: true };
 }
 
