@@ -115,11 +115,60 @@ export async function proxy(request: NextRequest) {
     },
   );
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
   const { pathname } = request.nextUrl;
+
+  /**
+   * `getUser()` refreshes the session, and supabase-js *throws* when the
+   * refresh token is stale — `AuthApiError: refresh_token_not_found` —
+   * rather than reporting a signed-out user. Unhandled here that killed
+   * the whole request, on every route, because middleware runs before
+   * anything else: the customer saw a generic failure screen with no
+   * clue which page it belonged to. It surfaced hardest right after
+   * checkout, where the auth cookie churns most and the order is already
+   * committed, so a completed purchase looked like a crash.
+   *
+   * A refresh that fails means exactly one thing — this request isn't
+   * authenticated. The gates below already handle that. So it must never
+   * be fatal.
+   */
+  let user = null;
+  let staleSession = false;
+  try {
+    ({
+      data: { user },
+    } = await supabase.auth.getUser());
+  } catch (cause) {
+    staleSession = true;
+    console.warn(
+      JSON.stringify({
+        level: 'warn',
+        message: 'proxy.session_refresh_failed',
+        pathname,
+        error: cause instanceof Error ? cause.message : String(cause),
+      }),
+    );
+  }
+
+  /**
+   * Clear the credentials that just failed. Without this the browser
+   * keeps presenting the same dead token on every subsequent request, so
+   * the fault repeats until someone clears cookies by hand — the user is
+   * signed out but can't get back in.
+   */
+  const clearStaleAuthCookies = (target: NextResponse) => {
+    if (!staleSession) return target;
+    for (const cookie of request.cookies.getAll()) {
+      if (cookie.name.startsWith('sb-') && cookie.name.includes('auth-token')) {
+        target.cookies.set(cookie.name, '', { maxAge: 0, path: '/' });
+      }
+    }
+    return target;
+  };
+
+  if (staleSession) {
+    response = clearStaleAuthCookies(response);
+  }
+
   const isAccountRoute = pathname.startsWith('/account');
   const isAdminRoute = pathname.startsWith('/admin');
 
@@ -128,7 +177,7 @@ export async function proxy(request: NextRequest) {
     loginUrl.searchParams.set('next', pathname);
     const redirectResponse = NextResponse.redirect(loginUrl);
     redirectResponse.headers.set('Content-Security-Policy', csp);
-    return redirectResponse;
+    return clearStaleAuthCookies(redirectResponse);
   }
 
   if (user && isAdminRoute) {
