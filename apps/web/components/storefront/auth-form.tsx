@@ -16,6 +16,10 @@ import {
 } from '@/server/auth/actions';
 
 const RESEND_COOLDOWN_SECONDS = 30;
+// Supabase issues 8 digits; kept as a max rather than an exact length
+// because it is a project setting, not a constant.
+const CODE_MAX_LENGTH = 8;
+const CODE_MIN_LENGTH = 6;
 
 /**
  * Owner's explicit call: skip signup friction. Email + a 6-digit code is
@@ -163,7 +167,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
       <form onSubmit={handleVerifyCode} className="space-y-4">
         <div className="space-y-1">
           <p className="text-body text-foreground">
-            We sent a 6-digit code to <strong>{email}</strong>.
+            We sent a sign-in code to <strong>{email}</strong>.
           </p>
           <p className="text-caption text-muted-foreground">
             Enter it below to finish {mode === 'signup' ? 'creating your account' : 'signing in'}.
@@ -171,7 +175,7 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
         </div>
 
         <div className="grid gap-1.5">
-          <Label htmlFor="code">6-digit code</Label>
+          <Label htmlFor="code">Sign-in code</Label>
           <Input
             id="code"
             // `one-time-code` is what lets iOS and Chrome offer the code
@@ -180,15 +184,21 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
             autoComplete="one-time-code"
             inputMode="numeric"
             autoFocus
-            maxLength={6}
-            placeholder="000000"
+            maxLength={CODE_MAX_LENGTH}
+            placeholder="00000000"
             className="text-center text-lg tracking-[0.4em]"
             value={code}
-            onChange={(event) => setCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+            onChange={(event) =>
+              setCode(event.target.value.replace(/\D/g, '').slice(0, CODE_MAX_LENGTH))
+            }
           />
         </div>
 
-        <Button type="submit" className="w-full" disabled={isSubmitting || code.length !== 6}>
+        <Button
+          type="submit"
+          className="w-full"
+          disabled={isSubmitting || code.length < CODE_MIN_LENGTH}
+        >
           {isSubmitting ? 'Verifying...' : 'Verify and continue'}
         </Button>
 

@@ -102,13 +102,29 @@ describe('verifyEmailCode', () => {
     expect(verifyOtpMock).not.toHaveBeenCalled();
   });
 
-  it('rejects anything that is not six digits before calling Supabase', async () => {
+  it('rejects an implausible code length before spending a Supabase call', async () => {
+    // Supabase issues 8 digits on this project, so the guard is a sanity
+    // range rather than an exact length — the setting can change, and a
+    // hard 6 is what made the first version reject every real code.
     const { verifyEmailCode } = await load();
 
-    for (const token of ['12345', '1234567', 'abcdef', '']) {
+    for (const token of ['12345', '12345678901', 'abcdef', '']) {
       const result = await verifyEmailCode({ email: 'a@example.com', token });
       expect(result.success).toBe(false);
     }
     expect(verifyOtpMock).not.toHaveBeenCalled();
+  });
+
+  it('accepts the 8-digit code Supabase actually issues', async () => {
+    const { verifyEmailCode } = await load();
+
+    const result = await verifyEmailCode({ email: 'a@example.com', token: '12345678' });
+
+    expect(result.success).toBe(true);
+    expect(verifyOtpMock).toHaveBeenCalledWith({
+      email: 'a@example.com',
+      token: '12345678',
+      type: 'email',
+    });
   });
 });

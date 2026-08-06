@@ -6,7 +6,9 @@ import { getPublicEnv } from '@/config/env';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { safeNextPath } from '@/lib/safe-next-path';
+import { logger } from '@/server/logger';
 import { ensureCustomerProfile } from '@/server/customer/ensure-customer-profile';
+import { sendSignInCode } from './send-sign-in-code';
 import { recordSession } from './record-session';
 import { checkLockout, recordLoginAttempt } from './lockout';
 
@@ -102,12 +104,11 @@ export async function signInWithPassword(input: {
 
 /**
  * Owner's explicit call: signing up shouldn't mean inventing and
- * remembering a password — email in, done. Supabase's OTP flow
- * auto-creates the user on first use (`shouldCreateUser: true`), so this
- * single action covers both "log in" and "sign up". Same response
- * whether the email is new or returning, same reasoning as
- * `requestPasswordReset` (never leak account existence from response
- * shape/timing).
+ * remembering a password — email in, done. The code provisions the user
+ * on first use, so this single action covers both "log in" and "sign
+ * up". Same response whether the email is new or returning, same
+ * reasoning as `requestPasswordReset` (never leak account existence from
+ * response shape/timing).
  *
  * Sends a **code**, not a link. A link has to be opened, and whatever
  * opens it is rarely the browser that asked for it: PKCE keeps the
@@ -115,11 +116,11 @@ export async function signInWithPassword(input: {
  * Gmail's in-app browser failed as "invalid or expired" on a perfectly
  * good link. Links are also single-use, so a mail scanner that pre-opens
  * one burns it, and the waiting tab had no way to learn the sign-in had
- * happened elsewhere. A six-digit code typed back into the same tab has
- * none of those failure modes — there is nothing to open.
+ * happened elsewhere. A code typed back into the same tab has none of
+ * those failure modes — there is nothing to open.
  *
- * Omitting `emailRedirectTo` is what makes Supabase's template render
- * `{{ .Token }}`; see docs/auth.md for the template itself.
+ * The mail is ours, not Supabase's — see `sendSignInCode` for why
+ * leaving delivery to a dashboard template was itself the bug.
  */
 export async function sendEmailCode(input: {
   email: string;
@@ -130,24 +131,23 @@ export async function sendEmailCode(input: {
     return { success: false, error: 'Enter a valid email address.' };
   }
 
-  const supabase = await createSupabaseServerClient();
-  const { error } = await supabase.auth.signInWithOtp({
-    email: parsed.data,
-    options: {
-      shouldCreateUser: true,
-      ...(input.fullName ? { data: { full_name: input.fullName } } : {}),
-    },
-  });
+  try {
+    await sendSignInCode(parsed.data, input.fullName);
+  } catch (cause) {
+    logger.error('auth.send_sign_in_code_failed', {
+      message: cause instanceof Error ? cause.message : String(cause),
+    });
+    return { success: false, error: 'Could not send the code. Please try again.' };
+  }
 
-  if (error) return { success: false, error: error.message };
   return { success: true };
 }
 
 /**
- * Exchanges the emailed code for a session. Guessing a six-digit code is
- * a credential attack like any other, so it goes through the same
- * lockout and attempt recording as `signInWithPassword` rather than
- * relying on Supabase's own limits alone.
+ * Exchanges the emailed code for a session. Guessing a numeric code is a
+ * credential attack like any other, so it goes through the same lockout
+ * and attempt recording as `signInWithPassword` rather than relying on
+ * Supabase's own limits alone.
  */
 export async function verifyEmailCode(input: {
   email: string;
@@ -155,8 +155,11 @@ export async function verifyEmailCode(input: {
 }): Promise<ActionResult> {
   const parsedEmail = emailSchema.safeParse(input.email);
   const token = input.token.replace(/\D/g, '');
-  if (!parsedEmail.success || token.length !== 6) {
-    return { success: false, error: 'Enter the 6-digit code from your email.' };
+  // Supabase issues 8 digits here, not the 6 this first assumed — and
+  // the length is a project setting, so the range stays loose rather
+  // than hard-coding a number that can change under us.
+  if (!parsedEmail.success || token.length < 6 || token.length > 10) {
+    return { success: false, error: 'Enter the code from your email.' };
   }
   const email = parsedEmail.data;
 
