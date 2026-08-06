@@ -39,16 +39,32 @@ export default function CheckoutProcessingPage() {
     let cancelled = false;
 
     async function poll() {
-      const response = await fetch(`/api/v1/checkout/${params.sessionId}/status`);
-      const body = await response.json();
+      let response: Response;
+      let body: { success?: boolean; data?: { status?: string; orderId?: string | null } };
+      try {
+        response = await fetch(`/api/v1/checkout/${params.sessionId}/status`);
+        body = await response.json();
+      } catch {
+        // A dropped request must not end the wait — the order may well
+        // have been created. Keep polling on the same schedule; the
+        // attempt budget below still bounds it.
+        if (!cancelled && pollCount < maxPolls) {
+          setTimeout(() => setPollCount((count) => count + 1), POLL_INTERVAL_MS);
+        } else if (!cancelled) {
+          setTimedOut(true);
+        }
+        return;
+      }
       if (cancelled) return;
 
-      if (response.ok && body.success && body.data.status === 'completed' && body.data.orderId) {
+      const status = response.ok && body.success ? body.data?.status : undefined;
+
+      if (status === 'completed' && body.data?.orderId) {
         router.push(`/account/orders/${body.data.orderId}`);
         return;
       }
 
-      if (response.ok && body.success && ['cancelled', 'expired'].includes(body.data.status)) {
+      if (status && ['cancelled', 'expired'].includes(status)) {
         router.push('/cart');
         return;
       }
