@@ -13,6 +13,7 @@ export function makeProduct(overrides: Partial<Product> = {}): Product {
     slug: 'rose-bouquet',
     name: 'Premium Red Rose Bouquet',
     shortDescription: null,
+    color: null,
     featuredImage: 'https://example.com/rose.jpg',
     images: ['https://example.com/rose.jpg'],
     status: 'draft',

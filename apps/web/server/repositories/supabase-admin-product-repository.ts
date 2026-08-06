@@ -50,6 +50,18 @@ export class SupabaseAdminProductRepository
     });
 
     if (error) throw new Error(error.message);
+
+    // `admin_create_product` has a fixed parameter list, and widening a
+    // stored procedure for one nullable text column is a worse trade
+    // than a follow-up write. Colour is optional, so a failure here
+    // must not fail the product creation that already succeeded.
+    if (input.color) {
+      await this.adminClient
+        .from('products')
+        .update({ color: input.color })
+        .eq('id', productId as string);
+    }
+
     const created = await this.findById(productId as string);
     if (!created) throw new Error('Product created but could not be re-read.');
     return created;
@@ -65,6 +77,7 @@ export class SupabaseAdminProductRepository
     if (productFields.shortDescription !== undefined) {
       productPatch['short_description'] = productFields.shortDescription;
     }
+    if (productFields.color !== undefined) productPatch['color'] = productFields.color;
     if (productFields.description !== undefined)
       productPatch['description'] = productFields.description;
     if (productFields.categoryId !== undefined)

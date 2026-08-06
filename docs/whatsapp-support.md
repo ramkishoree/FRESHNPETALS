@@ -13,9 +13,9 @@ on their order pages instead, which just dials a phone number directly
 Order placed (Razorpay webhook or synchronous COD checkout, both via
 runPostOrderSideEffects) → notifyOwnerOrderPlaced(): WhatsApp template
    to the owner with everything the order detail page itself shows —
-   order id, items (+ the first item's photo as the message's header
-   image), customer name, phone, delivery address, delivery date/time,
-   and payment method.
+   order id, every item with its colour and unit count (+ a collage of
+   all the product photos as the message's header image), customer name,
+   phone, delivery address, delivery date/time, and payment method.
 ```
 
 ## Setup (you do this — needs your Meta Business Manager login)
@@ -61,10 +61,10 @@ Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`, `{{8}}` =
    `20 July 2026`, `{{9}}` = `9 AM - 11 AM`. Header sample image: any
    product photo URL from the `media` Supabase storage bucket.
 
-   The header image is the order's first line item's product photo
-   (`products.featured_image`) — sent as a `link`-type header parameter,
-   not an uploaded file, so it needs no separate media upload step. If
-   the order has no first-item image on file, `notifyOwnerOrderPlaced`
+   The header image is a collage of the order's product photos, built at
+   alert time and uploaded to the `media` bucket — sent as a `link`-type
+   header parameter, not an uploaded file, so it needs no separate media
+   upload step. If no photo can be composed, `notifyOwnerOrderPlaced`
    omits the header component entirely rather than failing the send.
 
    **Image format matters, and it fails silently.** Meta renders only
@@ -108,20 +108,32 @@ Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`, `{{8}}` =
    Meta (logged, doesn't crash checkout) rather than silently doing
    nothing.
 
-## One message per item
+## One message, one collage
 
-Owner's explicit decision: a three-item order sends **three** WhatsApp
-messages, each carrying that item's own photo plus the full order
-context, numbered "item 2 of 3" so it's obvious how many are coming.
+Every order sends **one** WhatsApp alert. A template header holds exactly
+one image and Meta has no multi-image template, so `buildOrderCollage`
+(`apps/web/server/whatsapp/order-collage.ts`) tiles every product photo
+into a single JPEG — 1 fills the frame, 2-4 tile 2×2, 5-9 tile 3×3 — and
+uploads it to `media/order-alerts/<order-number>.jpg`.
 
-A template header holds exactly one image and Meta has no multi-image
-template, so this is the only way to see every product. **It costs one
-Meta message per item** — a five-item order is five charges and five
-phone buzzes. That trade was accepted deliberately. Each send is caught
-independently, so one item failing never silences the rest.
+One message per item was built first and then reverted: it billed per
+item and buzzed the phone once per product for a single order.
 
-No new template is needed: `{{2}}` carries the single item instead of a
-comma-joined summary.
+The body names every product with its **colour** and unit count:
+
+```
+3 products, 9 units — Dozen Red Roses (Red) ×2 · Lily Box (White) ×1 · Orchid Vase (Purple) ×6
+```
+
+Colour comes from `products.color` (migration 0069) because titles alone
+are ambiguous between similar arrangements while packing.
+
+Items are joined with " · " rather than newlines on purpose: **Meta
+rejects template parameters containing newline or tab characters**, so a
+multi-line list inside `{{2}}` fails the send outright.
+
+The collage is best-effort — if it can't be built or uploaded the alert
+still goes out, without a header rather than not at all.
 
 ## Diagnosing a missing alert
 

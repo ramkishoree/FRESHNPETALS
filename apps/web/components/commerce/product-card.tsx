@@ -103,6 +103,12 @@ export function ProductCard({
       <div className="plate-meta">
         <Link href={`/product/${product.slug}`} className="plate-nm hover:text-[var(--gold-deep)]">
           {product.name}
+          {/* Colour sits with the name, not as a separate row: two
+              arrangements can share almost the same title, and the
+              colour is what actually tells them apart at a glance. */}
+          {product.color && (
+            <span className="text-muted-foreground font-normal"> · {product.color}</span>
+          )}
         </Link>
         <span className="plate-pr">
           <PriceDisplay basePrice={product.basePrice} salePrice={product.salePrice} />

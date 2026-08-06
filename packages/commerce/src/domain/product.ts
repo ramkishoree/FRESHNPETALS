@@ -21,6 +21,8 @@ export interface Product {
   slug: string;
   name: string;
   shortDescription: string | null;
+  /** Flower colour, shown beside the name wherever the product appears. */
+  color: string | null;
   featuredImage: string | null;
   /** Every photo for this product, featuredImage first, then product_media
    *  in position order — a listing card hovers through this for a quick
@@ -76,6 +78,9 @@ export const PRODUCT_LIMITS = {
 } as const;
 
 export interface AdminProductInput {
+  /** Flower colour — the fastest way to tell similarly-named
+   *  arrangements apart on the shop and in order alerts (migration 0069). */
+  color?: string;
   sku: string;
   slug: string;
   name: string;

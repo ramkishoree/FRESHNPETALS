@@ -12,6 +12,7 @@ export interface ProductActionsProps {
   name: string;
   slug: string;
   shortDescription: string | null;
+  color: string | null;
   image: string | null;
   basePrice: number;
   salePrice: number | null;
@@ -25,6 +26,7 @@ export function ProductActions({
   name,
   slug,
   shortDescription,
+  color,
   image,
   basePrice,
   salePrice,
@@ -80,6 +82,13 @@ export function ProductActions({
   return (
     <div className="flex flex-col">
       <h1 className="text-h2">{name}</h1>
+      {/* Right under the title, where it answers "which one is this?"
+          before the customer has to read the description. */}
+      {color && (
+        <p className="text-body text-muted-foreground mt-1">
+          Colour: <span className="text-foreground font-medium">{color}</span>
+        </p>
+      )}
 
       {shortDescription && <p className="text-body-lg mt-3 max-w-prose">{shortDescription}</p>}
 

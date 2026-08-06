@@ -10,6 +10,7 @@ function makeProduct(overrides: Partial<Product> = {}): Product {
     slug: 'rose-bouquet',
     name: 'Rose Bouquet',
     shortDescription: null,
+    color: null,
     featuredImage: null,
     images: [],
     status: 'published',

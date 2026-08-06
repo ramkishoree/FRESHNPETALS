@@ -39,6 +39,7 @@ const createBodySchema = z.object({
   slug: z.string().min(1),
   name: z.string().min(3).max(120),
   shortDescription: z.string().optional(),
+  color: z.string().max(60).optional(),
   description: z.string().min(100),
   categoryId: zUuid(),
   collectionId: zUuid().optional(),

@@ -3,7 +3,7 @@ import type { Product, ProductRepository, ProductStatus } from '@prana/commerce'
 import type { SupabaseClient } from '@supabase/supabase-js';
 
 export const SELECT_COLUMNS =
-  'id, sku, slug, name, short_description, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at)), product_media(url, media_type, position)';
+  'id, sku, slug, name, short_description, color, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at)), product_media(url, media_type, position)';
 
 export interface ProductPriceRow {
   base_price: string | number;
@@ -34,6 +34,7 @@ export interface ProductRow {
   slug: string;
   name: string;
   short_description: string | null;
+  color: string | null;
   featured_image: string | null;
   status: ProductStatus;
   created_at: string;
@@ -67,6 +68,7 @@ export function mapRow(row: ProductRow): Product {
     slug: row.slug,
     name: row.name,
     shortDescription: row.short_description,
+    color: row.color,
     featuredImage: row.featured_image,
     images: buildImageList(row.featured_image, row.product_media ?? []),
     status: row.status,

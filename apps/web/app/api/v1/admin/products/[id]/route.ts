@@ -33,6 +33,7 @@ const patchBodySchema = z.object({
   slug: z.string().min(1).optional(),
   name: z.string().min(3).max(120).optional(),
   shortDescription: z.string().optional(),
+  color: z.string().max(60).optional(),
   description: z.string().min(100).optional(),
   categoryId: zUuid().optional(),
   collectionId: zUuid().optional(),

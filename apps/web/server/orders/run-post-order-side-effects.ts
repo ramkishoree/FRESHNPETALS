@@ -6,6 +6,7 @@ import { logger } from '@/server/logger';
 import { sendOrderConfirmationEmails } from '@/server/orders/send-order-confirmation-emails';
 import { SupabaseJobQueue } from '@/server/repositories/supabase-job-queue';
 import { notifyOwnerOrderPlaced } from '@/server/support/notify-owner';
+import { buildOrderCollage } from '@/server/whatsapp/order-collage';
 
 interface CompletedOrder {
   id: string;
@@ -45,20 +46,33 @@ export async function runPostOrderSideEffects(
   const items = snapshot?.checkout?.items ?? [];
   const address = snapshot?.address;
 
-  // Every item's photo, not just the first — the owner alert now sends
-  // one message per item, so each needs its own image. One query for the
-  // whole order rather than one per line.
+  // Every product's photo and colour in one query. The photos become a
+  // single collage for the alert header; the colours disambiguate items
+  // whose titles look alike at a glance.
   const productIds = [...new Set(items.map((item) => item.product_id).filter(Boolean))];
-  const imageByProductId = new Map<string, string | null>();
+  const productById = new Map<string, { image: string | null; color: string | null }>();
   if (productIds.length > 0) {
     const { data: products } = await admin
       .from('products')
-      .select('id, featured_image')
+      .select('id, featured_image, color')
       .in('id', productIds);
     for (const product of products ?? []) {
-      imageByProductId.set(product.id as string, (product.featured_image as string | null) ?? null);
+      productById.set(product.id as string, {
+        image: (product.featured_image as string | null) ?? null,
+        color: (product.color as string | null) ?? null,
+      });
     }
   }
+
+  // Photos are stored as WebP, which Meta won't render — the collage is
+  // re-encoded as JPEG, so it sidesteps that entirely.
+  const collageUrl = await buildOrderCollage({
+    admin,
+    orderNumber: order.order_number,
+    imageUrls: items
+      .map((item) => productById.get(item.product_id)?.image)
+      .filter((url): url is string => Boolean(url)),
+  });
 
   await notifyOwnerOrderPlaced({
     orderNumber: order.order_number,
@@ -68,8 +82,9 @@ export async function runPostOrderSideEffects(
     items: items.map((item) => ({
       name: item.name,
       quantity: item.quantity,
-      imageUrl: imageByProductId.get(item.product_id) ?? null,
+      color: productById.get(item.product_id)?.color ?? null,
     })),
+    headerImageUrl: collageUrl,
     customerName: address?.recipientName ?? 'Unknown customer',
     customerPhone: address?.phone ?? 'No phone on file',
     deliveryAddress:

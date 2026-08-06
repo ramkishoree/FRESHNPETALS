@@ -14,6 +14,7 @@ interface ProductRow {
   sku: string;
   slug: string;
   name: string;
+  color: string | null;
   status: string;
   basePrice: number;
   salePrice: number | null;
@@ -44,6 +45,11 @@ const columns: ColumnDef<ProductRow>[] = [
     ),
   },
   { accessorKey: 'sku', header: 'SKU' },
+  {
+    accessorKey: 'color',
+    header: 'Colour',
+    cell: ({ row }) => (row.original.color as string | null) ?? '—',
+  },
   {
     id: 'price',
     header: 'Price',

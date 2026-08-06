@@ -23,6 +23,7 @@ export interface ProductFormValues {
   slug: string;
   name: string;
   shortDescription: string;
+  color: string;
   description: string;
   categoryId: string;
   basePrice: string;
@@ -35,6 +36,7 @@ const EMPTY_VALUES: ProductFormValues = {
   slug: '',
   name: '',
   shortDescription: '',
+  color: '',
   description: '',
   categoryId: '',
   basePrice: '',
@@ -85,6 +87,7 @@ export function ProductForm({
       slug: values.slug,
       name: values.name,
       shortDescription: values.shortDescription || undefined,
+      color: values.color || undefined,
       description: values.description,
       categoryId: values.categoryId,
       basePrice: Number(values.basePrice),
@@ -163,6 +166,31 @@ export function ProductForm({
             </SelectContent>
           </Select>
         </div>
+      </div>
+
+      <div className="grid gap-1.5">
+        <Label htmlFor="color">Flower colour</Label>
+        <Input
+          id="color"
+          list="flower-colour-suggestions"
+          placeholder="Red, White, Mixed…"
+          value={values.color}
+          onChange={(e) => set('color', e.target.value)}
+        />
+        {/* Suggestions, not a fixed list — florists' colour language
+            ("blush", "two-tone pink") doesn't fit an enum, and this
+            shows up in the order alert where being exact matters. */}
+        <datalist id="flower-colour-suggestions">
+          {['Red', 'White', 'Pink', 'Yellow', 'Orange', 'Purple', 'Mixed', 'Multicolour'].map(
+            (option) => (
+              <option key={option} value={option} />
+            ),
+          )}
+        </datalist>
+        <p className="text-caption text-muted-foreground">
+          Shown on the shop and in every order alert — the quickest way to tell two similar
+          arrangements apart while packing.
+        </p>
       </div>
 
       <div className="grid gap-1.5">

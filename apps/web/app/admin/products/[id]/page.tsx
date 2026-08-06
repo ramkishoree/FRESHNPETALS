@@ -12,6 +12,7 @@ interface ProductDetailRow {
   description: string;
   category_id: string;
   featured_image: string | null;
+  color: string | null;
   seo_title: string | null;
   meta_description: string | null;
   status: string;
@@ -25,7 +26,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const { data } = await admin
     .from('products')
     .select(
-      'id, sku, slug, name, short_description, description, category_id, featured_image, seo_title, meta_description, status, metadata, product_prices(base_price, sale_price)',
+      'id, sku, slug, name, short_description, description, category_id, featured_image, color, seo_title, meta_description, status, metadata, product_prices(base_price, sale_price)',
     )
     .eq('id', id)
     .maybeSingle();
@@ -51,6 +52,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
           slug: product.slug,
           name: product.name,
           shortDescription: product.short_description ?? '',
+          color: product.color ?? '',
           description: product.description,
           categoryId: product.category_id,
           basePrice: price ? String(price.base_price) : '',

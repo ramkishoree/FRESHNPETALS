@@ -51,7 +51,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   let productQuery = supabase
     .from('products')
     .select(
-      'id, sku, slug, name, short_description, description, featured_image, status, categories(name, slug), product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at))',
+      'id, sku, slug, name, short_description, color, description, featured_image, status, categories(name, slug), product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at))',
     )
     .eq('slug', slug);
   if (!isDraft) productQuery = productQuery.eq('status', 'published');
@@ -211,6 +211,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
             name={product.name}
             slug={product.slug}
             shortDescription={product.short_description}
+            color={product.color}
             image={product.featured_image}
             basePrice={priceRow ? Number(priceRow.base_price) : 0}
             salePrice={priceRow?.sale_price != null ? Number(priceRow.sale_price) : null}
