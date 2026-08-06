@@ -4,6 +4,7 @@ import * as React from 'react';
 import { toast } from 'sonner';
 import { loadGoogleMaps } from '@/lib/google-maps';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import {
   Dialog,
   DialogContent,
@@ -43,6 +44,7 @@ export function GooglePlacePickerDialog({
 }) {
   const [open, setOpen] = React.useState(false);
   const [isLinking, setIsLinking] = React.useState(false);
+  const [pendingQuery, setPendingQuery] = React.useState('');
   const [loadError, setLoadError] = React.useState<string | null>(null);
   const [selectedPlace, setSelectedPlace] = React.useState<{
     placeId: string;
@@ -87,6 +89,37 @@ export function GooglePlacePickerDialog({
       }
     })();
   }, []);
+
+  /**
+   * For a listing Google hasn't indexed yet.
+   *
+   * A new shop shows up in Search and Maps days-to-weeks before the
+   * Places API knows about it, so Autocomplete finds nothing and there
+   * is no place_id to pick. This records what to look for; the review
+   * sweep retries it and links the outlet the day Google catches up.
+   */
+  async function savePending() {
+    const query = pendingQuery.trim();
+    if (!query) return;
+    setIsLinking(true);
+    try {
+      const response = await fetch(`/api/v1/admin/outlets/${outletId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ google_place_query: query }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) throw new Error(body.error?.message ?? 'Failed to save.');
+      toast.success('Saved. It will link itself once Google lists this shop.');
+      setOpen(false);
+      setPendingQuery('');
+      onLinked();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Failed to save.');
+    } finally {
+      setIsLinking(false);
+    }
+  }
 
   async function link() {
     if (!selectedPlace) return;
@@ -138,6 +171,27 @@ export function GooglePlacePickerDialog({
           {selectedPlace && (
             <p className="text-caption text-muted-foreground">Selected: {selectedPlace.name}</p>
           )}
+
+          <div className="border-border space-y-2 border-t pt-4">
+            <p className="text-caption text-muted-foreground">
+              Can&apos;t find it? A brand-new shop appears on Google Maps well before Google&apos;s
+              API can search it. Paste the Maps link or type the business name and it will link
+              itself once Google lists it.
+            </p>
+            <Input
+              placeholder="Fresh N Petals Flowers & Gifts, Arjunganj"
+              value={pendingQuery}
+              onChange={(event) => setPendingQuery(event.target.value)}
+            />
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={savePending}
+              disabled={!pendingQuery.trim() || isLinking}
+            >
+              Save and retry automatically
+            </Button>
+          </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel

@@ -60,6 +60,35 @@ async function resolvePhotoUrl(photoReference: string, apiKey: string): Promise<
 }
 
 /**
+ * Resolves a business name or Maps URL to a `place_id`.
+ *
+ * A Google Business listing appears in Search and Maps days-to-weeks
+ * before the Places API indexes it, so a brand-new outlet simply cannot
+ * be found by the Autocomplete picker — there is no `place_id` to pick
+ * yet. The owner records what they're looking for, and the review sweep
+ * calls this until Google catches up.
+ *
+ * Returns null rather than throwing when nothing matches: "not indexed
+ * yet" is the expected state for a new shop, not an error to alarm
+ * anyone with.
+ */
+export async function searchGooglePlace(query: string): Promise<string | null> {
+  const apiKey = resolveApiKey();
+  if (!apiKey) return null;
+
+  const response = await fetch(
+    `https://maps.googleapis.com/maps/api/place/findplacefromtext/json?input=${encodeURIComponent(query)}&inputtype=textquery&fields=place_id&key=${apiKey}`,
+  );
+  const body = (await response.json()) as {
+    status: string;
+    candidates?: { place_id: string }[];
+  };
+
+  if (body.status !== 'OK') return null;
+  return body.candidates?.[0]?.place_id ?? null;
+}
+
+/**
  * Ch.6 Outlet Google Business Profile linkage. Capped at 5 reviews —
  * that's the Places API's own hard limit (Place Details never returns
  * more, regardless of how many reviews the business actually has), not a

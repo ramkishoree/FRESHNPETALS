@@ -50,16 +50,34 @@ export async function runPostOrderSideEffects(
   // single collage for the alert header; the colours disambiguate items
   // whose titles look alike at a glance.
   const productIds = [...new Set(items.map((item) => item.product_id).filter(Boolean))];
-  const productById = new Map<string, { image: string | null; color: string | null }>();
+  const productById = new Map<
+    string,
+    {
+      image: string | null;
+      color: string | null;
+      flowerType: string | null;
+      sizeLabel: string | null;
+      packaging: string | null;
+      ownerNote: string | null;
+    }
+  >();
   if (productIds.length > 0) {
     const { data: products } = await admin
       .from('products')
-      .select('id, featured_image, color')
+      // The packing columns are selected *here and in the admin editor
+      // only* — they are owner-only and must never reach a storefront
+      // query, which is why they are absent from PRODUCT_SELECT_COLUMNS
+      // and from the Product domain type.
+      .select('id, featured_image, color, flower_type, size_label, packaging, owner_note')
       .in('id', productIds);
     for (const product of products ?? []) {
       productById.set(product.id as string, {
         image: (product.featured_image as string | null) ?? null,
         color: (product.color as string | null) ?? null,
+        flowerType: (product.flower_type as string | null) ?? null,
+        sizeLabel: (product.size_label as string | null) ?? null,
+        packaging: (product.packaging as string | null) ?? null,
+        ownerNote: (product.owner_note as string | null) ?? null,
       });
     }
   }
@@ -79,11 +97,18 @@ export async function runPostOrderSideEffects(
     grandTotal: Number(order.grand_total),
     currency: order.currency,
     paymentMethod: order.payment_method === 'cod' ? 'Cash on delivery' : 'Paid online',
-    items: items.map((item) => ({
-      name: item.name,
-      quantity: item.quantity,
-      color: productById.get(item.product_id)?.color ?? null,
-    })),
+    items: items.map((item) => {
+      const product = productById.get(item.product_id);
+      return {
+        name: item.name,
+        quantity: item.quantity,
+        color: product?.color ?? null,
+        flowerType: product?.flowerType ?? null,
+        sizeLabel: product?.sizeLabel ?? null,
+        packaging: product?.packaging ?? null,
+        ownerNote: product?.ownerNote ?? null,
+      };
+    }),
     headerImageUrl: collageUrl,
     customerName: address?.recipientName ?? 'Unknown customer',
     customerPhone: address?.phone ?? 'No phone on file',

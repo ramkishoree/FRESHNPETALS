@@ -81,6 +81,12 @@ export interface AdminProductInput {
   /** Flower colour — the fastest way to tell similarly-named
    *  arrangements apart on the shop and in order alerts (migration 0069). */
   color?: string;
+  /** Owner-only packing details (migration 0070). Deliberately absent
+   *  from `Product` itself: they must never reach a storefront query. */
+  flowerType?: string;
+  sizeLabel?: string;
+  packaging?: string;
+  ownerNote?: string;
   sku: string;
   slug: string;
   name: string;

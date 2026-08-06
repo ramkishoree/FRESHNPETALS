@@ -24,6 +24,10 @@ export interface ProductFormValues {
   name: string;
   shortDescription: string;
   color: string;
+  flowerType: string;
+  sizeLabel: string;
+  packaging: string;
+  ownerNote: string;
   description: string;
   categoryId: string;
   basePrice: string;
@@ -37,6 +41,10 @@ const EMPTY_VALUES: ProductFormValues = {
   name: '',
   shortDescription: '',
   color: '',
+  flowerType: '',
+  sizeLabel: '',
+  packaging: '',
+  ownerNote: '',
   description: '',
   categoryId: '',
   basePrice: '',
@@ -88,6 +96,10 @@ export function ProductForm({
       name: values.name,
       shortDescription: values.shortDescription || undefined,
       color: values.color || undefined,
+      flowerType: values.flowerType || undefined,
+      sizeLabel: values.sizeLabel || undefined,
+      packaging: values.packaging || undefined,
+      ownerNote: values.ownerNote || undefined,
       description: values.description,
       categoryId: values.categoryId,
       basePrice: Number(values.basePrice),
@@ -192,6 +204,72 @@ export function ProductForm({
           arrangements apart while packing.
         </p>
       </div>
+
+      {/* Owner-only. These four never appear on the storefront — they
+          exist so the WhatsApp order alert says which arrangement to
+          make, which the product title alone did not. */}
+      <fieldset className="border-border rounded-card grid gap-4 border p-4">
+        <legend className="text-body text-foreground px-1 font-medium">
+          Packing details — only you see these
+        </legend>
+        <p className="text-caption text-muted-foreground -mt-2">
+          Shown in your WhatsApp order alert to identify the arrangement. Never shown to customers.
+        </p>
+
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <Label htmlFor="flowerType">Flower type</Label>
+            <Input
+              id="flowerType"
+              list="flower-type-suggestions"
+              placeholder="Rose, Lily, Orchid…"
+              value={values.flowerType}
+              onChange={(e) => set('flowerType', e.target.value)}
+            />
+            <datalist id="flower-type-suggestions">
+              {['Rose', 'Lily', 'Orchid', 'Carnation', 'Gerbera', 'Tulip', 'Mixed'].map((o) => (
+                <option key={o} value={o} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="sizeLabel">Size / stem count</Label>
+            <Input
+              id="sizeLabel"
+              placeholder="12 stems, Large, 18in…"
+              value={values.sizeLabel}
+              onChange={(e) => set('sizeLabel', e.target.value)}
+            />
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="packaging">Packaging</Label>
+            <Input
+              id="packaging"
+              list="packaging-suggestions"
+              placeholder="Hand-tie, Box, Vase…"
+              value={values.packaging}
+              onChange={(e) => set('packaging', e.target.value)}
+            />
+            <datalist id="packaging-suggestions">
+              {['Hand-tie', 'Box', 'Hat box', 'Basket', 'Vase', 'Wrapped'].map((o) => (
+                <option key={o} value={o} />
+              ))}
+            </datalist>
+          </div>
+
+          <div className="grid gap-1.5">
+            <Label htmlFor="ownerNote">Note to yourself</Label>
+            <Input
+              id="ownerNote"
+              placeholder="Use the tall glass vase, gold ribbon"
+              value={values.ownerNote}
+              onChange={(e) => set('ownerNote', e.target.value)}
+            />
+          </div>
+        </div>
+      </fieldset>
 
       <div className="grid gap-1.5">
         <Label htmlFor="shortDescription">Short description</Label>

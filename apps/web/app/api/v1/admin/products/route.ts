@@ -40,6 +40,11 @@ const createBodySchema = z.object({
   name: z.string().min(3).max(120),
   shortDescription: z.string().optional(),
   color: z.string().max(60).optional(),
+  // Owner-only packing details — never returned by a storefront query.
+  flowerType: z.string().max(60).optional(),
+  sizeLabel: z.string().max(60).optional(),
+  packaging: z.string().max(60).optional(),
+  ownerNote: z.string().max(500).optional(),
   description: z.string().min(100),
   categoryId: zUuid(),
   collectionId: zUuid().optional(),

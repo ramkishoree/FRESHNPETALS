@@ -18,6 +18,7 @@ interface OutletGoogleStatus {
   id: string;
   name: string;
   google_business_name: string | null;
+  google_place_query: string | null;
   google_rating: number | null;
   google_rating_count: number | null;
 }
@@ -77,6 +78,14 @@ function GoogleBusinessSection({ reloadKey }: { reloadKey: number }) {
                 Linked to &quot;{outlet.google_business_name}&quot;
                 {outlet.google_rating != null &&
                   ` — ${outlet.google_rating}★ (${outlet.google_rating_count ?? 0} reviews)`}
+              </p>
+            ) : outlet.google_place_query ? (
+              // Saved but not resolvable yet — a new listing takes
+              // days-to-weeks to reach Google's Places API. Saying so
+              // stops this reading as a failure.
+              <p className="text-caption text-muted-foreground">
+                Waiting for Google to list “{outlet.google_place_query}” — it links itself
+                automatically.
               </p>
             ) : (
               <p className="text-caption text-muted-foreground">Not linked yet</p>

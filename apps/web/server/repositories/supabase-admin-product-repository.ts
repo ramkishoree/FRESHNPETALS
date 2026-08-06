@@ -8,6 +8,7 @@ import type {
 import type { PagedResult, Pagination } from '@prana/core';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { sanitizeForPostgrestFilter } from '@/lib/postgrest-filter';
+import { stripUndefined } from '@/lib/strip-undefined';
 import {
   mapRow,
   SELECT_COLUMNS,
@@ -55,10 +56,17 @@ export class SupabaseAdminProductRepository
     // stored procedure for one nullable text column is a worse trade
     // than a follow-up write. Colour is optional, so a failure here
     // must not fail the product creation that already succeeded.
-    if (input.color) {
+    const postCreateFields = stripUndefined({
+      color: input.color,
+      flower_type: input.flowerType,
+      size_label: input.sizeLabel,
+      packaging: input.packaging,
+      owner_note: input.ownerNote,
+    });
+    if (Object.keys(postCreateFields).length > 0) {
       await this.adminClient
         .from('products')
-        .update({ color: input.color })
+        .update(postCreateFields)
         .eq('id', productId as string);
     }
 
@@ -78,6 +86,11 @@ export class SupabaseAdminProductRepository
       productPatch['short_description'] = productFields.shortDescription;
     }
     if (productFields.color !== undefined) productPatch['color'] = productFields.color;
+    if (productFields.flowerType !== undefined)
+      productPatch['flower_type'] = productFields.flowerType;
+    if (productFields.sizeLabel !== undefined) productPatch['size_label'] = productFields.sizeLabel;
+    if (productFields.packaging !== undefined) productPatch['packaging'] = productFields.packaging;
+    if (productFields.ownerNote !== undefined) productPatch['owner_note'] = productFields.ownerNote;
     if (productFields.description !== undefined)
       productPatch['description'] = productFields.description;
     if (productFields.categoryId !== undefined)

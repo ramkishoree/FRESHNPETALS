@@ -77,10 +77,13 @@ describe('notifyOwnerOrderPlaced', () => {
       }),
     );
 
+    // Formatting itself is covered by order-item-label.test.ts; what
+    // matters here is that every item reaches the parameter with its
+    // colour and count intact.
     const summary = sendWhatsAppTemplateMock.mock.calls[0]?.[0].bodyParams[1];
-    expect(summary).toContain('Dozen Red Roses (Red) ×2');
-    expect(summary).toContain('Lily Box (White) ×1');
-    expect(summary).toContain('Orchid Vase (Purple) ×6');
+    expect(summary).toContain('Dozen Red Roses — Red ×2');
+    expect(summary).toContain('Lily Box — White ×1');
+    expect(summary).toContain('Orchid Vase — Purple ×6');
     expect(summary).toContain('3 products, 9 units');
   });
 

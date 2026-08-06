@@ -1,19 +1,12 @@
 import 'server-only';
 import { getServerEnv } from '@/config/env';
 import { logger } from '@/server/logger';
+import { buildOrderItemsSummary, type OrderAlertItem } from '@/server/support/order-item-label';
 import {
   isSupportedHeaderImageUrl,
   isWhatsAppConfigured,
   sendWhatsAppTemplate,
 } from '@/server/whatsapp/meta-client';
-
-export interface OrderAlertItem {
-  name: string;
-  quantity: number;
-  /** Flower colour. The fastest way to tell two similarly-named
-   *  arrangements apart while packing — see migration 0069. */
-  color?: string | null;
-}
 
 /**
  * Owner's explicit call: every order gets one WhatsApp alert carrying
@@ -27,9 +20,9 @@ export interface OrderAlertItem {
  * per product. `buildOrderCollage` tiles every photo into a single
  * header instead, so a three-product order is still one message.
  *
- * Item lines are joined with " · " rather than newlines: Meta rejects
- * template parameters containing newline or tab characters, so a
- * multi-line list inside `{{2}}` would fail the send outright.
+ * The item list itself is assembled by `buildOrderItemsSummary`, which
+ * owns the two Meta constraints that bite here: no newlines in a
+ * template parameter, and a 1024-character cap per parameter.
  *
  * Never blocks or fails the webhook that triggered it.
  */
@@ -57,20 +50,7 @@ export async function notifyOwnerOrderPlaced(params: {
     return;
   }
 
-  const totalUnits = params.items.reduce((sum, item) => sum + item.quantity, 0);
-
-  // "Dozen Red Roses (Red) ×2" — colour in brackets because the title
-  // alone is ambiguous between similarly-named arrangements, which is
-  // exactly the problem this is here to solve.
-  const itemLines = params.items.map((item) => {
-    const color = item.color?.trim();
-    return `${item.name}${color ? ` (${color})` : ''} ×${item.quantity}`;
-  });
-
-  const itemsSummary =
-    itemLines.length > 0
-      ? `${params.items.length} product${params.items.length === 1 ? '' : 's'}, ${totalUnits} unit${totalUnits === 1 ? '' : 's'} — ${itemLines.join(' · ')}`
-      : 'No items on file';
+  const itemsSummary = buildOrderItemsSummary(params.items);
 
   const bodyParams = [
     params.orderNumber,

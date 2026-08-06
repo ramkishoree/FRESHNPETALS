@@ -25,6 +25,9 @@ const schema = z.object({
   email: z.string().email().optional(),
   is_active: z.boolean().optional(),
   google_cover_photo_url: z.string().optional(),
+  // Set when the shop is too new for the Places API to find; the review
+  // sweep retries it and clears it once a place_id resolves.
+  google_place_query: z.string().max(300).optional(),
 });
 
 export const { GET, POST } = createAdminCrudCollectionRoute({
