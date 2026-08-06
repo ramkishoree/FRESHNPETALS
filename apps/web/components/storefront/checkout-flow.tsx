@@ -368,6 +368,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   interface RazorpayHandoff {
     checkoutSessionId: string;
+    /** Present only for a guest checkout — see start-checkout.ts. */
+    guestToken?: string;
     razorpayOrderId: string;
     razorpayKeyId: string;
     amount: number;
@@ -377,6 +379,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const openRazorpay = React.useCallback(
     (handoff: RazorpayHandoff) => {
       const { checkoutSessionId, razorpayOrderId, razorpayKeyId, amount, currency } = handoff;
+      // A guest has no account to look the order up from afterwards, so
+      // the token rides along to the polling page and on to their
+      // confirmation.
+      const guestSuffix = handoff.guestToken ? `?t=${encodeURIComponent(handoff.guestToken)}` : '';
 
       const razorpay = new window.Razorpay({
         key: razorpayKeyId,
@@ -386,7 +392,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         name: 'Fresh & Petals',
         handler: () => {
           clear();
-          router.push(`/checkout/${checkoutSessionId}/processing`);
+          router.push(`/checkout/${checkoutSessionId}/processing${guestSuffix}`);
         },
         modal: {
           // Razorpay's own widget can show a failure/retry screen and close
@@ -401,7 +407,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           // actually happened instead of losing all visibility into it.
           ondismiss: () => {
             setIsPaying(false);
-            router.push(`/checkout/${checkoutSessionId}/processing`);
+            router.push(`/checkout/${checkoutSessionId}/processing${guestSuffix}`);
           },
         },
       });
@@ -417,7 +423,9 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       // bank actually captured.
       razorpay.on('payment.failed', () => {
         setIsPaying(false);
-        router.push(`/checkout/${checkoutSessionId}/processing?attempt=failed`);
+        router.push(
+          `/checkout/${checkoutSessionId}/processing${guestSuffix ? `${guestSuffix}&` : '?'}attempt=failed`,
+        );
       });
 
       razorpay.open();
@@ -506,7 +514,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
       if (body.data.paymentMethod === 'cod') {
         clear();
-        router.push(`/checkout/${body.data.checkoutSessionId}/processing`);
+        const codGuestSuffix = body.data.guestToken
+          ? `?t=${encodeURIComponent(body.data.guestToken)}`
+          : '';
+        router.push(`/checkout/${body.data.checkoutSessionId}/processing${codGuestSuffix}`);
         return;
       }
 

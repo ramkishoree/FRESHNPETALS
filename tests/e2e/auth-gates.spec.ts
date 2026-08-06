@@ -45,8 +45,13 @@ test.describe('Login and signup forms render', () => {
 });
 
 test.describe('Guest redirect gates', () => {
-  test('checkout redirects an unauthenticated visitor to login', async ({ page }) => {
+  test('checkout is open to a guest — buying must never require an account', async ({ page }) => {
     await page.goto('/checkout');
+    await expect(page).toHaveURL(/\/checkout/);
+  });
+
+  test('retrying a payment still requires the session that owns it', async ({ page }) => {
+    await page.goto('/checkout?retry=00000000-0000-0000-0000-000000000000');
     await expect(page).toHaveURL(/\/login/);
   });
 

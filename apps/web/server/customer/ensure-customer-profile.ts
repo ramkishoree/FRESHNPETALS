@@ -26,5 +26,26 @@ export async function ensureCustomerProfile(userId: string, email: string | null
     .maybeSingle();
   if (existing) return;
 
+  // Adopt the guest row this person already has, rather than opening a
+  // second one. Someone who bought as a guest and registers afterwards
+  // expects to find that order in their history — and two customer rows
+  // for one human also splits lifetime_value and total_orders. Only
+  // unclaimed rows (`user_id is null`) are eligible, so registering can
+  // never take over an account that already belongs to someone.
+  if (email) {
+    const { data: guestRow } = await admin
+      .from('customers')
+      .select('id')
+      .eq('email', email.trim().toLowerCase())
+      .is('user_id', null)
+      .is('deleted_at', null)
+      .maybeSingle();
+
+    if (guestRow) {
+      await admin.from('customers').update({ user_id: userId }).eq('id', guestRow.id);
+      return;
+    }
+  }
+
   await admin.from('customers').insert({ user_id: userId, email });
 }

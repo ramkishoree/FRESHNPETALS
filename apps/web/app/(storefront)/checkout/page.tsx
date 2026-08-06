@@ -17,15 +17,15 @@ export default async function CheckoutPage({
   searchParams: Promise<{ retry?: string }>;
 }) {
   const { retry } = await searchParams;
-  const user = await getCurrentUser();
-  if (!user) {
-    // Carry `?retry=` through the sign-in round trip. Without it a
-    // customer whose session lapsed between the failed payment and the
-    // retry click comes back to an empty checkout and starts over,
-    // reserving the stock a second time — the exact thing reusing the
-    // open session avoids.
-    const destination = retry ? `/checkout?retry=${encodeURIComponent(retry)}` : '/checkout';
-    redirect(`/login?next=${encodeURIComponent(destination)}`);
+  // Guests buy without an account (Ch.8: never force registration) — a
+  // `customers` row is created from the address they fill in. Only the
+  // retry path still needs a session, because it reopens a payment
+  // against an existing checkout that was scoped to someone.
+  if (retry) {
+    const user = await getCurrentUser();
+    if (!user) {
+      redirect(`/login?next=${encodeURIComponent(`/checkout?retry=${encodeURIComponent(retry)}`)}`);
+    }
   }
   const nonce = (await headers()).get('x-nonce') ?? undefined;
 

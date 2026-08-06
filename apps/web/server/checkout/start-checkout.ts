@@ -28,6 +28,10 @@ import { createRazorpayOrder, isRazorpayConfigured } from '@/server/payments/raz
 
 export interface StartCheckoutInput {
   customerId: string;
+  /** No account behind this order. A guest can't be sent to
+   *  /account/orders afterwards, so the response carries a token that
+   *  lets them see the one order they just placed and nothing else. */
+  isGuest?: boolean;
   lines: CartLineInput[];
   address: CheckoutAddressInput;
   couponCode?: string;
@@ -52,12 +56,16 @@ export type StartCheckoutResult =
       razorpayKeyId: string;
       amount: number;
       currency: string;
+      /** Guest checkout only — the capability that stands in for a login
+       *  on the polling and confirmation pages. */
+      guestToken?: string;
     }
   | {
       paymentMethod: 'cod';
       checkoutSessionId: string;
       orderId: string;
       orderNumber: string;
+      guestToken?: string;
     };
 
 /**
@@ -426,6 +434,24 @@ export async function startCheckout(
 
   const session = sessionRow as { id: string };
 
+  /**
+   * A guest has no account to look their order up from, and order rows
+   * are service-role-only, so the backend hands them a capability
+   * instead: a random token stored on the session, required by the guest
+   * order page and by the status/payment endpoints they poll.
+   *
+   * Stored on the *session* rather than the order because the order does
+   * not exist yet on the Razorpay path — the webhook creates it minutes
+   * later — and this way one token covers both payment methods.
+   *
+   * A random token beats signing here: nothing to key, and it can be
+   * revoked per order by clearing the field.
+   */
+  const guestToken = input.isGuest ? crypto.randomUUID() : null;
+  if (guestToken) {
+    await admin.from('checkout_sessions').update({ metadata: { guestToken } }).eq('id', session.id);
+  }
+
   if (input.paymentMethod === 'cod') {
     const { data: order, error: completeError } = await admin.rpc('checkout_complete', {
       p_checkout_session_id: session.id,
@@ -451,6 +477,7 @@ export async function startCheckout(
       checkoutSessionId: session.id,
       orderId: order.id,
       orderNumber: order.order_number,
+      ...(guestToken ? { guestToken } : {}),
     });
   }
 
@@ -469,7 +496,12 @@ export async function startCheckout(
     // recorded here, at the one point both ids are known together.
     await admin
       .from('checkout_sessions')
-      .update({ status: 'payment_pending', metadata: { razorpayOrderId: razorpayOrder.id } })
+      .update({
+        status: 'payment_pending',
+        // Merged, not replaced — a plain overwrite would drop the guest
+        // token written above and lock the guest out of their own order.
+        metadata: { ...(guestToken ? { guestToken } : {}), razorpayOrderId: razorpayOrder.id },
+      })
       .eq('id', session.id);
 
     return ok({
@@ -479,6 +511,7 @@ export async function startCheckout(
       razorpayKeyId: process.env['RAZORPAY_KEY_ID'] ?? '',
       amount: razorpayOrder.amount,
       currency: razorpayOrder.currency,
+      ...(guestToken ? { guestToken } : {}),
     });
   } catch (cause) {
     await admin.rpc('checkout_cancel', {

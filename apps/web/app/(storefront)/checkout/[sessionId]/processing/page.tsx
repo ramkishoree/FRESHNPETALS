@@ -33,6 +33,7 @@ export default function CheckoutProcessingPage() {
   const [timedOut, setTimedOut] = React.useState(false);
 
   const attemptFailed = searchParams.get('attempt') === 'failed';
+  const guestToken = searchParams.get('t');
   const maxPolls = attemptFailed ? MAX_POLLS_AFTER_FAILED_ATTEMPT : MAX_POLLS;
 
   React.useEffect(() => {
@@ -42,7 +43,11 @@ export default function CheckoutProcessingPage() {
       let response: Response;
       let body: { success?: boolean; data?: { status?: string; orderId?: string | null } };
       try {
-        response = await fetch(`/api/v1/checkout/${params.sessionId}/status`);
+        // A guest has no session to be scoped by, so the token issued at
+        // checkout travels with the poll and, afterwards, to their order.
+        response = await fetch(
+          `/api/v1/checkout/${params.sessionId}/status${guestToken ? `?t=${encodeURIComponent(guestToken)}` : ''}`,
+        );
         body = await response.json();
       } catch {
         // A dropped request must not end the wait — the order may well
@@ -60,7 +65,13 @@ export default function CheckoutProcessingPage() {
       const status = response.ok && body.success ? body.data?.status : undefined;
 
       if (status === 'completed' && body.data?.orderId) {
-        router.push(`/account/orders/${body.data.orderId}`);
+        // Guests can't see /account/orders — send them to the token-gated
+        // confirmation instead of a page that would bounce them to login.
+        router.push(
+          guestToken
+            ? `/order/${params.sessionId}?t=${encodeURIComponent(guestToken)}`
+            : `/account/orders/${body.data.orderId}`,
+        );
         return;
       }
 
@@ -81,7 +92,7 @@ export default function CheckoutProcessingPage() {
     return () => {
       cancelled = true;
     };
-  }, [pollCount, params.sessionId, router, maxPolls]);
+  }, [pollCount, params.sessionId, router, maxPolls, guestToken]);
 
   return (
     <div className="container-brand grid min-h-[70vh] place-items-center py-16 text-center">

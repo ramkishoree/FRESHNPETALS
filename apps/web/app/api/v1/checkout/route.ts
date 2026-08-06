@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { zUuid } from '@/lib/uuid';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { stripUndefined } from '@/lib/strip-undefined';
-import { getCurrentCustomer } from '@/server/customer/current-customer';
+import { resolveCheckoutCustomer } from '@/server/customer/resolve-checkout-customer';
 import { createApiRoute } from '@/server/http/route-handler';
 import { runSecurityChain } from '@/server/security/chain';
 import { startCheckout } from '@/server/checkout/start-checkout';
@@ -35,12 +35,19 @@ const checkout = createApiRoute({
   bodySchema,
   handler: async ({ body }) => {
     const supabase = await createSupabaseServerClient();
-    const customer = await getCurrentCustomer(supabase);
-    if (!customer)
-      return err(new BusinessRuleError('No customer profile found.', { httpStatus: 404 }));
+    // Guests buy without an account (Ch.8: never force registration).
+    // `resolveCheckoutCustomer` returns the signed-in customer when there
+    // is one and otherwise finds or creates a guest row from the address
+    // the customer just filled in — no extra fields asked for.
+    const { customerId, isGuest } = await resolveCheckoutCustomer(supabase, {
+      email: body.address.email,
+      phone: body.address.phone,
+      recipientName: body.address.recipientName,
+    });
 
     return startCheckout({
-      customerId: customer.id,
+      customerId,
+      isGuest,
       lines: body.lines,
       address: stripUndefined(body.address),
       ...(body.couponCode ? { couponCode: body.couponCode } : {}),
@@ -53,7 +60,7 @@ const checkout = createApiRoute({
 });
 
 export async function POST(request: NextRequest) {
-  const blocked = await runSecurityChain(request, { tier: 'checkout', requireAuth: true });
+  const blocked = await runSecurityChain(request, { tier: 'checkout' });
   if (blocked) return blocked;
   return checkout(request);
 }
