@@ -40,7 +40,7 @@ const columns: ColumnDef<OutletRow>[] = [
   },
 ];
 
-function GoogleBusinessSection() {
+function GoogleBusinessSection({ reloadKey }: { reloadKey: number }) {
   const [outlets, setOutlets] = React.useState<OutletGoogleStatus[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -52,10 +52,14 @@ function GoogleBusinessSection() {
     setIsLoading(false);
   }, []);
 
+  // `reloadKey` changes whenever the outlets table below is mutated.
+  // Without it this list was fetched once on mount and only refetched
+  // after a link, so an outlet added in the table never appeared here —
+  // reported as "only Gomti Nagar can be linked".
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
-  }, [load]);
+  }, [load, reloadKey]);
 
   if (isLoading || outlets.length === 0) return null;
 
@@ -86,19 +90,19 @@ function GoogleBusinessSection() {
 }
 
 /**
- * Owner's explicit call: fold Outlets management into the Products tab
- * instead of a separate nav item — collapsed by default since store
- * locations rarely change, unlike the product table above it which is
- * the everyday view.
+ * Rendered by /admin/outlets. This used to be a collapsed `<details>`
+ * at the bottom of the Products page, on the reasoning that store
+ * locations rarely change — but "rarely edited" turned out to mean
+ * "impossible to find when you do": adding a second outlet and trying
+ * to rename or link it was the point at which that bit.
  */
 export function OutletManagementPanel() {
+  const [reloadKey, setReloadKey] = React.useState(0);
+
   return (
-    <details className="border-border rounded-card border">
-      <summary className="text-body text-foreground cursor-pointer p-4 font-medium select-none">
-        Outlets (store locations)
-      </summary>
-      <div className="space-y-6 border-t p-4">
-        <GoogleBusinessSection />
+    <div className="border-border rounded-card border">
+      <div className="space-y-6 p-4">
+        <GoogleBusinessSection reloadKey={reloadKey} />
         <AdminResourcePage
           title="Outlets"
           singularLabel="Outlet"
@@ -123,8 +127,9 @@ export function OutletManagementPanel() {
               helperText: 'Shown in the "Our outlets" section on the homepage.',
             },
           ]}
+          onMutated={() => setReloadKey((key) => key + 1)}
         />
       </div>
-    </details>
+    </div>
   );
 }

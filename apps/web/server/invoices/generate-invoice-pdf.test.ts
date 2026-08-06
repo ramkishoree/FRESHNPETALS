@@ -58,4 +58,33 @@ describe('generateInvoicePdf', () => {
     );
     expect(Buffer.from(bytes.slice(0, 4)).toString('ascii')).toBe('%PDF');
   });
+
+  it('draws a row per line item, so a multi-item invoice is not silently truncated', async () => {
+    // pdf-lib has no text extraction, so the observable signal is the
+    // page's content stream: more line items must mean more drawing
+    // operations. This is what would catch the invoice rendering only
+    // the first product of a multi-item order.
+    const oneItem = await generateInvoicePdf(
+      makeInput({
+        items: [
+          { name: 'Rose Bouquet', sku: 'ROSE-01', quantity: 1, unitPrice: 999, lineTotal: 999 },
+        ],
+        subtotal: 999,
+        grandTotal: 1098.95,
+      }),
+    );
+    const threeItems = await generateInvoicePdf(
+      makeInput({
+        items: [
+          { name: 'Rose Bouquet', sku: 'ROSE-01', quantity: 1, unitPrice: 999, lineTotal: 999 },
+          { name: 'Lily Box', sku: 'LILY-01', quantity: 1, unitPrice: 750, lineTotal: 750 },
+          { name: 'Orchid Vase', sku: 'ORCH-01', quantity: 1, unitPrice: 500, lineTotal: 500 },
+        ],
+        subtotal: 2249,
+        grandTotal: 2411.45,
+      }),
+    );
+
+    expect(threeItems.byteLength).toBeGreaterThan(oneItem.byteLength);
+  });
 });

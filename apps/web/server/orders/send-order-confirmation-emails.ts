@@ -4,6 +4,7 @@ import { getPublicEnv, getServerEnv } from '@/config/env';
 import { isEmailConfigured, sendEmail } from '@/server/email/resend-client';
 import { buildOrderConfirmationEmailHtml } from '@/server/email/order-confirmation-email';
 import { generateInvoicePdf } from '@/server/invoices/generate-invoice-pdf';
+import { jpegSiblingUrl } from '@/server/media/jpeg-sibling';
 import { logger } from '@/server/logger';
 
 interface OrderAddressSnapshot {
@@ -101,13 +102,21 @@ export async function sendOrderConfirmationEmails(
       ? (settings.get('business_phone') as string)
       : null;
 
-  const items = orderRow.order_items.map((item) => ({
-    name: item.product_name,
-    quantity: item.quantity,
-    unitPrice: Number(item.unit_price),
-    lineTotal: Number(item.line_total),
-    imageUrl: imageByProductId.get(item.product_id) ?? null,
-  }));
+  const items = orderRow.order_items.map((item) => {
+    // Product photos are stored as WebP, which Outlook's rendering
+    // engine and several Android mail clients cannot decode — every
+    // item then collapsed to the *same* broken-image icon, which is
+    // exactly how "all the photos are one placeholder" was reported.
+    // The JPEG sibling uploaded alongside each image renders anywhere.
+    const original = imageByProductId.get(item.product_id) ?? null;
+    return {
+      name: item.product_name,
+      quantity: item.quantity,
+      unitPrice: Number(item.unit_price),
+      lineTotal: Number(item.line_total),
+      imageUrl: original ? (jpegSiblingUrl(original) ?? original) : null,
+    };
+  });
 
   let pdfAttachment: { filename: string; content: Buffer } | undefined;
   try {

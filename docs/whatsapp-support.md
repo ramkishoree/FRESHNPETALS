@@ -108,6 +108,21 @@ Khand, Gomti Nagar, Lucknow`, `{{7}}` = `Cash on delivery`, `{{8}}` =
    Meta (logged, doesn't crash checkout) rather than silently doing
    nothing.
 
+## One message per item
+
+Owner's explicit decision: a three-item order sends **three** WhatsApp
+messages, each carrying that item's own photo plus the full order
+context, numbered "item 2 of 3" so it's obvious how many are coming.
+
+A template header holds exactly one image and Meta has no multi-image
+template, so this is the only way to see every product. **It costs one
+Meta message per item** — a five-item order is five charges and five
+phone buzzes. That trade was accepted deliberately. Each send is caught
+independently, so one item failing never silences the rest.
+
+No new template is needed: `{{2}}` carries the single item instead of a
+comma-joined summary.
+
 ## Diagnosing a missing alert
 
 ```bash

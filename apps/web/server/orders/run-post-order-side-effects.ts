@@ -45,15 +45,19 @@ export async function runPostOrderSideEffects(
   const items = snapshot?.checkout?.items ?? [];
   const address = snapshot?.address;
 
-  let firstItemImageUrl: string | null = null;
-  const firstItemProductId = items[0]?.product_id;
-  if (firstItemProductId) {
-    const { data: product } = await admin
+  // Every item's photo, not just the first — the owner alert now sends
+  // one message per item, so each needs its own image. One query for the
+  // whole order rather than one per line.
+  const productIds = [...new Set(items.map((item) => item.product_id).filter(Boolean))];
+  const imageByProductId = new Map<string, string | null>();
+  if (productIds.length > 0) {
+    const { data: products } = await admin
       .from('products')
-      .select('featured_image')
-      .eq('id', firstItemProductId)
-      .maybeSingle();
-    firstItemImageUrl = product?.featured_image ?? null;
+      .select('id, featured_image')
+      .in('id', productIds);
+    for (const product of products ?? []) {
+      imageByProductId.set(product.id as string, (product.featured_image as string | null) ?? null);
+    }
   }
 
   await notifyOwnerOrderPlaced({
@@ -61,8 +65,11 @@ export async function runPostOrderSideEffects(
     grandTotal: Number(order.grand_total),
     currency: order.currency,
     paymentMethod: order.payment_method === 'cod' ? 'Cash on delivery' : 'Paid online',
-    itemsSummary:
-      items.map((item) => `${item.name} ×${item.quantity}`).join(', ') || 'No items on file',
+    items: items.map((item) => ({
+      name: item.name,
+      quantity: item.quantity,
+      imageUrl: imageByProductId.get(item.product_id) ?? null,
+    })),
     customerName: address?.recipientName ?? 'Unknown customer',
     customerPhone: address?.phone ?? 'No phone on file',
     deliveryAddress:
@@ -70,7 +77,6 @@ export async function runPostOrderSideEffects(
       'No address on file',
     deliveryDate: snapshot?.delivery?.date ?? 'Not yet scheduled',
     deliveryTime: snapshot?.delivery?.slotLabel ?? 'Not yet scheduled',
-    firstItemImageUrl,
   });
 
   // Queued (not just called directly) so a transient PDF/storage failure

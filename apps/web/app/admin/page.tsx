@@ -1,181 +1,47 @@
-import { AlertTriangle, Package, ShoppingCart, TrendingUp, Users } from 'lucide-react';
 import Link from 'next/link';
-import { StatTile } from '@/components/dashboard/stat-tile';
-import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { formatDateTime } from '@/lib/format-date';
-
-function formatInr(amount: number): string {
-  return new Intl.NumberFormat('en-IN', {
-    style: 'currency',
-    currency: 'INR',
-    maximumFractionDigits: 0,
-  }).format(amount);
-}
+import { ADMIN_DASHBOARD_TILES } from '@/components/admin/admin-nav-config';
 
 /**
- * Ch.12 §44 Dashboard Homepage. Reads straight from Supabase (Server
- * Component) rather than round-tripping through /api/v1/admin/dashboard
- * — that HTTP endpoint exists for external/future consumers (Telegram
- * assistant, mobile app), not for this page to call itself over the
- * network. "AI Recommendations"/"Pending AI Tasks" aren't rendered: no
- * agent exists yet to produce them (Phase 11).
+ * Ch.12 §44 Dashboard Homepage — owner's explicit call: tiles only.
+ *
+ * It previously opened on revenue, traffic, recent activity and
+ * inventory alerts. None of that is what the dashboard is used for
+ * day to day; it was four scroll-lengths between landing here and
+ * reaching Orders. Every metric moved to the page it belongs to
+ * (traffic to /admin/traffic, stock to Products), leaving one job:
+ * get to the right section in a single tap.
+ *
+ * Tiles come from the same list as the sidebar, so a section can never
+ * exist in one and not the other.
  */
-export default async function AdminDashboardPage() {
-  const admin = createSupabaseAdminClient();
-  const todayStart = new Date();
-  todayStart.setHours(0, 0, 0, 0);
-
-  const [ordersToday, activeCustomers, pendingDeliveries, lowStock, recentEvents, trafficDaily] =
-    await Promise.all([
-      admin
-        .from('orders')
-        .select('grand_total', { count: 'exact' })
-        .gte('created_at', todayStart.toISOString()),
-      admin.from('customers').select('id', { count: 'exact', head: true }),
-      admin
-        .from('orders')
-        .select('id', { count: 'exact', head: true })
-        .in('status', ['confirmed', 'preparing', 'ready', 'out_for_delivery']),
-      admin
-        .from('inventory')
-        .select('id', { count: 'exact', head: true })
-        .lte('available_quantity', 10),
-      admin
-        .from('event_store')
-        .select('id, event_type, aggregate_type, severity, created_at')
-        .order('created_at', { ascending: false })
-        .limit(8),
-      admin
-        .from('site_traffic_daily')
-        .select('date, page_views')
-        .order('date', { ascending: false })
-        .limit(7),
-    ]);
-
-  const todaysRevenue = (ordersToday.data ?? []).reduce(
-    (sum, row) => sum + Number(row.grand_total),
-    0,
-  );
-
-  const trafficDays = [...(trafficDaily.data ?? [])].reverse();
-  const todaysPageViews = trafficDays.at(-1)?.page_views ?? 0;
-  const weekPageViews = trafficDays.reduce((sum, row) => sum + row.page_views, 0);
-  const maxDayViews = Math.max(1, ...trafficDays.map((row) => row.page_views));
-
+export default function AdminDashboardPage() {
   return (
     <div className="space-y-6">
-      <h1 className="text-h2 text-foreground font-bold">Dashboard</h1>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatTile label="Today's revenue" value={formatInr(todaysRevenue)} />
-        <StatTile label="Today's orders" value={String(ordersToday.count ?? 0)} />
-        <StatTile label="Active customers" value={String(activeCustomers.count ?? 0)} />
-        <StatTile label="Pending deliveries" value={String(pendingDeliveries.count ?? 0)} />
+      <div>
+        <h1 className="text-h2 text-foreground font-bold">Dashboard</h1>
+        <p className="text-body text-muted-foreground mt-1">Where would you like to go?</p>
       </div>
 
-      <Card className="rounded-card">
-        <CardHeader className="flex flex-row items-center gap-2">
-          <TrendingUp className="text-muted-foreground size-4" aria-hidden="true" />
-          <h2 className="text-h4 text-foreground font-semibold">Traffic</h2>
-        </CardHeader>
-        <CardContent>
-          <div className="flex items-baseline gap-6">
-            <div>
-              <p className="text-hero text-foreground font-bold">{todaysPageViews}</p>
-              <p className="text-caption text-muted-foreground">Page views today</p>
-            </div>
-            <div>
-              <p className="text-h3 text-foreground font-semibold">{weekPageViews}</p>
-              <p className="text-caption text-muted-foreground">Last 7 days</p>
-            </div>
-          </div>
-          {trafficDays.length > 0 && (
-            <div className="mt-4 flex items-end gap-2" style={{ height: 64 }}>
-              {trafficDays.map((row) => (
-                <div key={row.date} className="flex flex-1 flex-col items-center gap-1">
-                  <div
-                    className="bg-primary/70 w-full rounded-sm"
-                    style={{ height: `${Math.max(4, (row.page_views / maxDayViews) * 56)}px` }}
-                    title={`${row.date}: ${row.page_views} views`}
-                  />
-                  <span className="text-muted-foreground text-[10px]">
-                    {new Date(row.date).toLocaleDateString('en-IN', { weekday: 'narrow' })}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          {trafficDays.length === 0 && (
-            <p className="text-caption text-muted-foreground mt-3">
-              No traffic recorded yet — data appears after the first storefront visit.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <div className="grid gap-4 lg:grid-cols-3">
-        <Card className="rounded-card lg:col-span-2">
-          <CardHeader>
-            <h2 className="text-h4 text-foreground font-semibold">Recent activity</h2>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {(recentEvents.data ?? []).length === 0 && (
-              <p className="text-body text-muted-foreground">No activity recorded yet.</p>
-            )}
-            {(recentEvents.data ?? []).map((event) => (
-              <div
-                key={event.id as string}
-                className="text-body flex items-center justify-between gap-2"
-              >
-                <span className="text-foreground">{event.event_type as string}</span>
-                <span className="text-caption text-muted-foreground">
-                  {formatDateTime(event.created_at as string)}
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        <Card className="rounded-card">
-          <CardHeader className="flex flex-row items-center gap-2">
-            <AlertTriangle className="text-warning size-4" aria-hidden="true" />
-            <h2 className="text-h4 text-foreground font-semibold">Inventory alerts</h2>
-          </CardHeader>
-          <CardContent>
-            <p className="text-hero text-foreground font-bold">{lowStock.count ?? 0}</p>
-            <p className="text-caption text-muted-foreground">
-              Items at or below 10 units available
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <QuickAction href="/admin/products" icon={Package} label="Add product" />
-        <QuickAction href="/admin/orders" icon={ShoppingCart} label="View orders" />
-        <QuickAction href="/admin/customers" icon={Users} label="View customers" />
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {ADMIN_DASHBOARD_TILES.map((tile) => {
+          const Icon = tile.icon;
+          return (
+            <Link
+              key={tile.href}
+              href={tile.href}
+              className="rounded-card border-border hover:border-primary hover:bg-muted/40 focus-visible:ring-ring flex items-start gap-4 border p-5 transition-colors focus-visible:ring-2 focus-visible:outline-none"
+            >
+              <span className="bg-muted text-foreground rounded-button grid size-11 shrink-0 place-items-center">
+                <Icon className="size-5" aria-hidden="true" />
+              </span>
+              <span className="min-w-0">
+                <span className="text-h4 text-foreground block font-semibold">{tile.label}</span>
+                <span className="text-caption text-muted-foreground block">{tile.description}</span>
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </div>
-  );
-}
-
-function QuickAction({
-  href,
-  icon: Icon,
-  label,
-}: {
-  href: string;
-  icon: typeof Package;
-  label: string;
-}) {
-  return (
-    <Link
-      href={href}
-      className="rounded-card border-border text-body text-foreground hover:bg-muted flex items-center gap-3 border p-4 font-medium transition-colors"
-    >
-      <Icon className="text-muted-foreground size-4" aria-hidden="true" />
-      {label}
-    </Link>
   );
 }

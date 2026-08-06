@@ -36,7 +36,7 @@ export function AdminCommandPalette({ open, onOpenChange }: AdminCommandPaletteP
       <CommandList>
         <CommandEmpty>No results.</CommandEmpty>
         <CommandGroup heading="Pages">
-          {ADMIN_NAV.flatMap((item) => [item, ...(item.children ?? [])]).map((item) => (
+          {ADMIN_NAV.map((item) => (
             <CommandItem key={item.href} value={item.label} onSelect={() => go(item.href)}>
               {item.label}
             </CommandItem>

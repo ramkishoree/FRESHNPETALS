@@ -24,14 +24,13 @@ function makeParams(overrides: Record<string, unknown> = {}) {
     orderNumber: 'FNP-2026-000001',
     grandTotal: 999,
     currency: 'INR',
-    itemsSummary: 'Dozen Red Roses ×1',
+    items: [{ name: 'Dozen Red Roses', quantity: 1, imageUrl: 'https://cdn/a/rose.jpg' }],
     customerName: 'Anaya Sharma',
     customerPhone: '+911234567890',
     deliveryAddress: '4/122 Vipul Khand, Gomti Nagar, Lucknow',
     paymentMethod: 'Cash on delivery',
     deliveryDate: '20 July 2026',
     deliveryTime: '9 AM - 11 AM',
-    firstItemImageUrl: null as string | null,
     ...overrides,
   };
 }
@@ -44,22 +43,84 @@ describe('notifyOwnerOrderPlaced', () => {
     isSupportedHeaderImageUrlMock.mockReturnValue(true);
   });
 
-  it('attaches the header image when Meta supports its format', async () => {
-    await notifyOwnerOrderPlaced(makeParams({ firstItemImageUrl: 'https://cdn/rose.jpg' }));
+  it('sends one message per item, each carrying that item’s own photo', async () => {
+    // A template header holds exactly one image, so the only way to show
+    // every product is one message each — the owner's explicit call.
+    await notifyOwnerOrderPlaced(
+      makeParams({
+        items: [
+          { name: 'Dozen Red Roses', quantity: 2, imageUrl: 'https://cdn/a/rose.jpg' },
+          { name: 'Lily Box', quantity: 1, imageUrl: 'https://cdn/a/lily.jpg' },
+          { name: 'Orchid Vase', quantity: 1, imageUrl: 'https://cdn/a/orchid.jpg' },
+        ],
+      }),
+    );
 
-    expect(sendWhatsAppTemplateMock).toHaveBeenCalledTimes(1);
-    expect(sendWhatsAppTemplateMock.mock.calls[0]?.[0]).toMatchObject({
-      headerImageUrl: 'https://cdn/rose.jpg',
-      templateName: 'order_placed_alert_v3',
-      to: '911234567890',
-    });
+    expect(sendWhatsAppTemplateMock).toHaveBeenCalledTimes(3);
+    expect(sendWhatsAppTemplateMock.mock.calls[0]?.[0].headerImageUrl).toBe(
+      'https://cdn/a/rose.jpg',
+    );
+    expect(sendWhatsAppTemplateMock.mock.calls[1]?.[0].headerImageUrl).toBe(
+      'https://cdn/a/lily.jpg',
+    );
+    expect(sendWhatsAppTemplateMock.mock.calls[2]?.[0].headerImageUrl).toBe(
+      'https://cdn/a/orchid.jpg',
+    );
   });
 
-  it('points the header at the .jpg sibling when the product photo is a webp', async () => {
+  it('numbers each message so the owner knows how many are coming', async () => {
+    await notifyOwnerOrderPlaced(
+      makeParams({
+        items: [
+          { name: 'Dozen Red Roses', quantity: 2, imageUrl: null },
+          { name: 'Lily Box', quantity: 1, imageUrl: null },
+        ],
+      }),
+    );
+
+    const [first, second] = sendWhatsAppTemplateMock.mock.calls.map(
+      (call) => call[0].bodyParams[1],
+    );
+    expect(first).toContain('Dozen Red Roses ×2');
+    expect(first).toContain('item 1 of 2');
+    expect(first).toContain('3 units total');
+    expect(second).toContain('item 2 of 2');
+  });
+
+  it('keeps the label plain for a single-item order', async () => {
+    await notifyOwnerOrderPlaced(makeParams());
+
+    expect(sendWhatsAppTemplateMock.mock.calls[0]?.[0].bodyParams[1]).toBe('Dozen Red Roses ×1');
+  });
+
+  it('one failing item does not silence the rest of the order', async () => {
+    sendWhatsAppTemplateMock
+      .mockRejectedValueOnce(new Error('(#132012) Template parameter format mismatch'))
+      .mockRejectedValueOnce(new Error('retry without header also failed'))
+      .mockResolvedValue({ messageId: 'wamid.2' });
+
+    await notifyOwnerOrderPlaced(
+      makeParams({
+        items: [
+          { name: 'Broken', quantity: 1, imageUrl: 'https://cdn/a/broken.jpg' },
+          { name: 'Fine', quantity: 1, imageUrl: 'https://cdn/a/fine.jpg' },
+        ],
+      }),
+    );
+
+    // 2 attempts for the first item (with header, then without), then the
+    // second item still gets its message.
+    expect(sendWhatsAppTemplateMock).toHaveBeenCalledTimes(3);
+    expect(sendWhatsAppTemplateMock.mock.calls[2]?.[0].bodyParams[1]).toContain('Fine');
+  });
+
+  it('points the header at the .jpg sibling when the photo is a webp', async () => {
     isSupportedHeaderImageUrlMock.mockImplementation((url: string) => url.endsWith('.jpg'));
 
     await notifyOwnerOrderPlaced(
-      makeParams({ firstItemImageUrl: 'https://cdn/media/products/a/rose.webp' }),
+      makeParams({
+        items: [{ name: 'Rose', quantity: 1, imageUrl: 'https://cdn/media/products/a/rose.webp' }],
+      }),
     );
 
     expect(sendWhatsAppTemplateMock.mock.calls[0]?.[0]).toMatchObject({
@@ -67,35 +128,25 @@ describe('notifyOwnerOrderPlaced', () => {
     });
   });
 
-  it('sends without a header rather than at all when the image format is unsupported', async () => {
+  it('sends without a header rather than not at all when the format is unusable', async () => {
     isSupportedHeaderImageUrlMock.mockReturnValue(false);
 
-    await notifyOwnerOrderPlaced(makeParams({ firstItemImageUrl: 'https://cdn/rose.webp' }));
+    await notifyOwnerOrderPlaced(
+      makeParams({ items: [{ name: 'Rose', quantity: 1, imageUrl: 'https://cdn/a/rose.tiff' }] }),
+    );
 
     expect(sendWhatsAppTemplateMock).toHaveBeenCalledTimes(1);
     expect(sendWhatsAppTemplateMock.mock.calls[0]?.[0]).not.toHaveProperty('headerImageUrl');
   });
 
-  it('retries without the header when a send carrying one fails', async () => {
-    sendWhatsAppTemplateMock
-      .mockRejectedValueOnce(new Error('(#132012) Template parameter format mismatch'))
-      .mockResolvedValueOnce({ messageId: 'wamid.2' });
-
-    await notifyOwnerOrderPlaced(makeParams({ firstItemImageUrl: 'https://cdn/rose.jpg' }));
-
-    expect(sendWhatsAppTemplateMock).toHaveBeenCalledTimes(2);
-    expect(sendWhatsAppTemplateMock.mock.calls[1]?.[0]).not.toHaveProperty('headerImageUrl');
-  });
-
-  it('does not retry a header-less send that failed on its own', async () => {
-    sendWhatsAppTemplateMock.mockRejectedValue(new Error('Template name does not exist'));
-
-    await notifyOwnerOrderPlaced(makeParams());
+  it('still alerts the owner when the order has no items on file', async () => {
+    await notifyOwnerOrderPlaced(makeParams({ items: [] }));
 
     expect(sendWhatsAppTemplateMock).toHaveBeenCalledTimes(1);
+    expect(sendWhatsAppTemplateMock.mock.calls[0]?.[0].bodyParams[1]).toContain('No items on file');
   });
 
-  it('never throws when the send fails outright', async () => {
+  it('never throws when a send fails outright', async () => {
     sendWhatsAppTemplateMock.mockRejectedValue(new Error('boom'));
 
     await expect(notifyOwnerOrderPlaced(makeParams())).resolves.toBeUndefined();

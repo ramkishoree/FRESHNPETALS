@@ -5,7 +5,6 @@ import Link from 'next/link';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table/data-table';
-import { OutletManagementPanel } from '@/components/admin/outlet-management-panel';
 import { LoadingState } from '@/components/states/loading-state';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -105,8 +104,6 @@ export default function ProductsPage() {
           <Link href="/admin/products/new">Add product</Link>
         </Button>
       </div>
-
-      <OutletManagementPanel />
 
       {isLoading ? (
         <LoadingState variant="table-rows" count={6} />

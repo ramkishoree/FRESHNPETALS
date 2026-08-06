@@ -69,6 +69,16 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
     adminOrderUrl,
   } = params;
 
+  // Distinct products and total units are different numbers, and a
+  // multi-item order was only ever implying either. Two roses and one
+  // lily reads "2 products · 3 items", so nothing has to be counted by
+  // eye against the packing list.
+  const totalUnits = items.reduce((sum, item) => sum + item.quantity, 0);
+  const itemCountLabel =
+    items.length === totalUnits
+      ? `${items.length} ${items.length === 1 ? 'item' : 'items'}`
+      : `${items.length} products · ${totalUnits} items`;
+
   const itemsHtml = items
     .map(
       (item) => `
@@ -77,7 +87,7 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
           <table role="presentation" cellpadding="0" cellspacing="0"><tr>
             ${
               item.imageUrl
-                ? `<td style="padding-right:12px;"><img src="${escapeHtml(item.imageUrl)}" alt="" width="56" height="56" style="border-radius:8px;object-fit:cover;display:block;" /></td>`
+                ? `<td style="padding-right:12px;"><img src="${escapeHtml(item.imageUrl)}" alt="${escapeHtml(item.name)}" width="56" height="56" style="border-radius:8px;object-fit:cover;display:block;" /></td>`
                 : ''
             }
             <td>
@@ -140,6 +150,7 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
                 <div style="margin-bottom:16px;"></div>
                 ${deliveryCommitment}
 
+                <p style="color:#777;font-size:13px;margin:0 0 4px;font-weight:600;">${itemCountLabel}</p>
                 <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
                   ${itemsHtml}
                 </table>

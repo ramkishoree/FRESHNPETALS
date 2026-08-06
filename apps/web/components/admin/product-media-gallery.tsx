@@ -135,7 +135,7 @@ export function ProductMediaGallery({ productId }: { productId: string | undefin
                 className="aspect-square w-full object-cover"
               />
               {item.media_type === 'video' && (
-                <span className="absolute left-1 top-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
+                <span className="absolute top-1 left-1 rounded bg-black/60 px-1.5 py-0.5 text-[10px] font-medium text-white">
                   Video
                 </span>
               )}

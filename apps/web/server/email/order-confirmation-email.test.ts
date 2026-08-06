@@ -79,3 +79,67 @@ describe('buildOrderConfirmationEmailHtml', () => {
     expect(html).not.toContain('Discount');
   });
 });
+
+describe('multi-item orders', () => {
+  const threeItems = [
+    {
+      name: 'Rose Bouquet',
+      quantity: 2,
+      unitPrice: 999,
+      lineTotal: 1998,
+      imageUrl: 'https://cdn/rose.jpg',
+    },
+    {
+      name: 'Lily Box',
+      quantity: 1,
+      unitPrice: 750,
+      lineTotal: 750,
+      imageUrl: 'https://cdn/lily.jpg',
+    },
+    { name: 'Orchid Vase', quantity: 3, unitPrice: 500, lineTotal: 1500, imageUrl: null },
+  ];
+
+  it('renders every line, not just the first', () => {
+    const html = buildOrderConfirmationEmailHtml(makeParams({ items: threeItems }));
+
+    for (const item of threeItems) {
+      expect(html).toContain(item.name);
+    }
+  });
+
+  it('gives each item its own photo rather than reusing one', () => {
+    const html = buildOrderConfirmationEmailHtml(makeParams({ items: threeItems }));
+
+    expect(html).toContain('https://cdn/rose.jpg');
+    expect(html).toContain('https://cdn/lily.jpg');
+    // The third has no photo — it must simply render no <img>, not a
+    // broken one, and certainly not another item's picture.
+    expect(html.match(/<img/g) ?? []).toHaveLength(2);
+  });
+
+  it('labels each photo with its product, so a client that blocks images still reads', () => {
+    // alt="" was the old value: with images blocked (Outlook's default)
+    // the order became a list of empty boxes.
+    const html = buildOrderConfirmationEmailHtml(makeParams({ items: threeItems }));
+
+    expect(html).toContain('alt="Rose Bouquet"');
+    expect(html).toContain('alt="Lily Box"');
+  });
+
+  it('states the item count, distinguishing products from units', () => {
+    const html = buildOrderConfirmationEmailHtml(makeParams({ items: threeItems }));
+
+    expect(html).toContain('3 products · 6 items');
+  });
+
+  it('says plain "items" when every product is a single unit', () => {
+    const html = buildOrderConfirmationEmailHtml(
+      makeParams({
+        items: threeItems.map((item) => ({ ...item, quantity: 1 })),
+      }),
+    );
+
+    expect(html).toContain('3 items');
+    expect(html).not.toContain('products ·');
+  });
+});

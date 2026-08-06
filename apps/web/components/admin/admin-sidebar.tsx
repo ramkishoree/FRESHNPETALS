@@ -23,42 +23,19 @@ export function AdminSidebar({ onNavigate = () => {} }: { onNavigate?: () => voi
         const active = isActive(pathname, item.href);
         const Icon = item.icon;
         return (
-          <div key={item.href}>
-            <Link
-              href={item.href}
-              onClick={onNavigate}
-              className={cn(
-                'rounded-button text-body flex items-center gap-2 px-2 py-2 transition-colors',
-                active ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted',
-              )}
-              aria-current={active ? 'page' : undefined}
-            >
-              <Icon className="size-4 shrink-0" aria-hidden="true" />
-              {item.label}
-            </Link>
-            {item.children && (
-              <div className="border-border ml-6 mt-1 flex flex-col gap-1 border-l pl-3">
-                {item.children.map((child) => {
-                  const childActive = pathname === child.href;
-                  return (
-                    <Link
-                      key={child.href}
-                      href={child.href}
-                      onClick={onNavigate}
-                      className={cn(
-                        'rounded-button text-small px-2 py-1.5 transition-colors',
-                        childActive
-                          ? 'text-foreground font-medium'
-                          : 'text-muted-foreground hover:text-foreground',
-                      )}
-                    >
-                      {child.label}
-                    </Link>
-                  );
-                })}
-              </div>
+          <Link
+            key={item.href}
+            href={item.href}
+            onClick={onNavigate}
+            className={cn(
+              'rounded-button text-body flex items-center gap-2 px-2 py-2 transition-colors',
+              active ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-muted',
             )}
-          </div>
+            aria-current={active ? 'page' : undefined}
+          >
+            <Icon className="size-4 shrink-0" aria-hidden="true" />
+            {item.label}
+          </Link>
         );
       })}
     </nav>

@@ -41,6 +41,12 @@ export interface AdminResourcePageProps<TRow extends ResourceRow> {
   searchPlaceholder?: string;
   /** When provided, adds a "Preview" action per row (opens the real storefront page in Draft Mode). Return null to hide it for that row. */
   getPreviewHref?: (row: TRow) => string | null;
+  /** Fires after a successful create/edit/delete, so sibling views of
+   *  the same data can refetch. Without it a panel rendered alongside
+   *  this table keeps showing a list from page load — which is how a
+   *  newly added outlet stayed invisible to the Google Business linker
+   *  until a full reload. */
+  onMutated?: () => void;
 }
 
 /**
@@ -60,6 +66,7 @@ export function AdminResourcePage<TRow extends ResourceRow>({
   fields,
   searchPlaceholder,
   getPreviewHref,
+  onMutated,
 }: AdminResourcePageProps<TRow>) {
   const [rows, setRows] = React.useState<TRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -123,6 +130,7 @@ export function AdminResourcePage<TRow extends ResourceRow>({
         throw new Error(body.error?.message ?? 'Failed to delete.');
       toast.success('Deleted.');
       await load();
+      onMutated?.();
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Failed to delete.');
     }
@@ -144,6 +152,7 @@ export function AdminResourcePage<TRow extends ResourceRow>({
       toast.success(editing ? 'Updated.' : 'Created.');
       setDialogOpen(false);
       await load();
+      onMutated?.();
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Failed to save.');
     } finally {
