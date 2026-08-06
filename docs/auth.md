@@ -88,6 +88,41 @@ _authenticated_ sessions; the guest-checkout path (an unauthenticated
 `customers` row created at checkout time — see `docs/database-schema.md`)
 is deliberately untouched here and is Phase 10's concern.
 
+## Email links verify with `token_hash`, not the PKCE `code`
+
+`@supabase/ssr` signs in over PKCE, and `sendMagicLink` runs as a server
+action — so the `code_verifier` is a cookie in the browser that
+_requested_ the link. Mail clients don't open links there: Gmail uses its
+own in-app browser, phones use whatever is default. With no verifier,
+`exchangeCodeForSession` fails and the customer is told their link is
+invalid or expired when it is neither.
+
+`/auth/confirm` verifies a `token_hash` with `verifyOtp` instead, which
+has no such requirement — whichever browser opens the link is the one
+signed in. `/auth/callback` stays for OAuth, which genuinely is
+same-browser, and for password-reset links.
+
+**This needs the Supabase email template to match.** Dashboard →
+Authentication → Email Templates → **Magic Link**, replace
+`{{ .ConfirmationURL }}` with:
+
+```html
+<a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email&next=%2Faccount">
+  Sign in to Fresh &amp; Petals
+</a>
+```
+
+Until that is changed the old template still points at `/auth/callback`
+and still fails cross-browser. Site URL must be `https://freshnpetals.in`
+(Authentication → URL Configuration).
+
+Two things this does _not_ fix, both inherent to single-use links: a mail
+scanner that pre-opens the link consumes it, and a link opened on a
+different device signs that device in rather than the waiting one. The
+waiting tab polls `/api/v1/auth/session-check` (a boolean, nothing else)
+and resolves on its own in the same browser; across devices it falls back
+to a manual "I've confirmed" button after the timeout.
+
 ## Discovered mid-build: Next.js 16 deprecated `middleware.ts`
 
 `next build` warned mid-phase that the `middleware` file convention is
