@@ -298,74 +298,14 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedOutletId, deliveryPin, items.length]);
 
-  // ---- Guard (empty cart) ----------------------------------------------------
-
-  if (items.length === 0) {
-    return (
-      <div className="container-brand py-14 text-center">
-        <p className="text-body-lg">Add something to your cart before checking out.</p>
-      </div>
-    );
-  }
-
-  // ---- Address validation ------------------------------------------------------
-  // Owner's explicit call: the map pin is mandatory and is the delivery
-  // location itself — flatNo is the only optional extra detail on top of
-  // name/phone/email, no separately-typed street/city/postal fields.
-
-  function findMissingAddressFields(address: typeof EMPTY_ADDRESS): string[] {
-    const rules: Partial<Record<keyof typeof EMPTY_ADDRESS, { label: string; min?: number }>> = {
-      recipientName: { label: 'name' },
-      phone: { label: 'phone number', min: 6 },
-      email: { label: 'email' },
-    };
-    return (Object.keys(rules) as (keyof typeof EMPTY_ADDRESS)[])
-      .filter((key) => {
-        const val = address[key].trim();
-        const rule = rules[key]!;
-        return val.length === 0 || (rule.min !== undefined && val.length < rule.min);
-      })
-      .map((key) => rules[key]!.label);
-  }
-
-  // ---- Coupon ----------------------------------------------------------------
-
-  async function applyCoupon() {
-    const code = couponInput.trim().toUpperCase();
-    if (!code) {
-      setAppliedCoupon(null);
-      setCouponMessage(null);
-      await loadPricing(null);
-      return;
-    }
-    setIsApplyingCoupon(true);
-    setCouponMessage(null);
-    try {
-      const result = await loadPricing(code);
-      if (result) {
-        setAppliedCoupon(code);
-        setCouponMessage(`"${code}" applied — discount reflected above.`);
-      } else {
-        setAppliedCoupon(null);
-        setCouponMessage('Coupon could not be applied. Check the code or try another.');
-      }
-    } catch {
-      setAppliedCoupon(null);
-      setCouponMessage('Could not apply that coupon. Please try again.');
-    } finally {
-      setIsApplyingCoupon(false);
-    }
-  }
-
-  function removeCoupon() {
-    setCouponInput('');
-    setAppliedCoupon(null);
-    setCouponMessage(null);
-    void loadPricing(null);
-  }
-
-  // ---- Payment ---------------------------------------------------------------
-
+  /**
+   * Declared above the empty-cart guard below, not beside the rest of the
+   * payment code. React counts hooks per render: the cart hydrates from
+   * localStorage, so the first render is empty and returns early, and the
+   * next one has items and would have run two extra hooks — "rendered
+   * more hooks than during the previous render" (React #310), which took
+   * checkout down for anyone who actually had something in their basket.
+   */
   interface RazorpayHandoff {
     checkoutSessionId: string;
     /** Present only for a guest checkout — see start-checkout.ts. */
@@ -462,6 +402,74 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       }
     })();
   }, [retrySessionId, scriptReady, openRazorpay, router]);
+
+  // ---- Guard (empty cart) ----------------------------------------------------
+
+  if (items.length === 0) {
+    return (
+      <div className="container-brand py-14 text-center">
+        <p className="text-body-lg">Add something to your cart before checking out.</p>
+      </div>
+    );
+  }
+
+  // ---- Address validation ------------------------------------------------------
+  // Owner's explicit call: the map pin is mandatory and is the delivery
+  // location itself — flatNo is the only optional extra detail on top of
+  // name/phone/email, no separately-typed street/city/postal fields.
+
+  function findMissingAddressFields(address: typeof EMPTY_ADDRESS): string[] {
+    const rules: Partial<Record<keyof typeof EMPTY_ADDRESS, { label: string; min?: number }>> = {
+      recipientName: { label: 'name' },
+      phone: { label: 'phone number', min: 6 },
+      email: { label: 'email' },
+    };
+    return (Object.keys(rules) as (keyof typeof EMPTY_ADDRESS)[])
+      .filter((key) => {
+        const val = address[key].trim();
+        const rule = rules[key]!;
+        return val.length === 0 || (rule.min !== undefined && val.length < rule.min);
+      })
+      .map((key) => rules[key]!.label);
+  }
+
+  // ---- Coupon ----------------------------------------------------------------
+
+  async function applyCoupon() {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) {
+      setAppliedCoupon(null);
+      setCouponMessage(null);
+      await loadPricing(null);
+      return;
+    }
+    setIsApplyingCoupon(true);
+    setCouponMessage(null);
+    try {
+      const result = await loadPricing(code);
+      if (result) {
+        setAppliedCoupon(code);
+        setCouponMessage(`"${code}" applied — discount reflected above.`);
+      } else {
+        setAppliedCoupon(null);
+        setCouponMessage('Coupon could not be applied. Check the code or try another.');
+      }
+    } catch {
+      setAppliedCoupon(null);
+      setCouponMessage('Could not apply that coupon. Please try again.');
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  }
+
+  function removeCoupon() {
+    setCouponInput('');
+    setAppliedCoupon(null);
+    setCouponMessage(null);
+    void loadPricing(null);
+  }
+
+  // ---- Payment ---------------------------------------------------------------
 
   async function payNow() {
     const missing = findMissingAddressFields(manualAddress);
