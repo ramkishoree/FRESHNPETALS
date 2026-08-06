@@ -123,7 +123,7 @@ export async function sendMagicLink(input: {
     email: parsed.data,
     options: {
       shouldCreateUser: true,
-      emailRedirectTo: `${getPublicEnv().NEXT_PUBLIC_APP_URL}/auth/callback?next=${encodeURIComponent('/account')}`,
+      emailRedirectTo: `${getPublicEnv().NEXT_PUBLIC_APP_URL}/auth/confirm?next=${encodeURIComponent('/account')}`,
       ...(input.fullName ? { data: { full_name: input.fullName } } : {}),
     },
   });

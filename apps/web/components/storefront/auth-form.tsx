@@ -52,8 +52,40 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
     return false;
   }, [email, password, router, nextPath]);
 
-  // Only relevant to the password-signup path — a magic link resolves via
-  // /auth/callback directly, no polling needed.
+  /**
+   * The magic-link path used to sit on "check your email" forever. The
+   * old assumption was that the link resolves in this same tab, so
+   * nothing here needed to watch for it — but the link opens wherever
+   * the mail app decides, usually a new tab. This tab shares the
+   * browser's cookies with that one, so once the link is used the
+   * session is right here; it just has to notice.
+   */
+  React.useEffect(() => {
+    if (!linkSent || password) return;
+    const startedAt = Date.now();
+    const interval = window.setInterval(async () => {
+      if (Date.now() - startedAt > POLL_TIMEOUT_MS) {
+        window.clearInterval(interval);
+        setTimedOut(true);
+        return;
+      }
+      try {
+        const response = await fetch('/api/v1/auth/session-check', { cache: 'no-store' });
+        const body = await response.json();
+        if (body?.signedIn) {
+          window.clearInterval(interval);
+          toast.success('Signed in.');
+          router.push(nextPath);
+          router.refresh();
+        }
+      } catch {
+        // Offline or a blip — keep waiting, the timeout still bounds it.
+      }
+    }, POLL_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [linkSent, password, router, nextPath]);
+
+  // The password-signup path confirms by retrying the credentials.
   React.useEffect(() => {
     if (!linkSent || !password) return;
     const startedAt = Date.now();
@@ -127,8 +159,24 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
   async function checkNow() {
     setIsCheckingNow(true);
     try {
-      const confirmed = await attemptSignIn();
-      if (!confirmed) toast.error('Not confirmed yet — check your inbox and spam folder.');
+      // Password path re-tries the credentials; the magic-link path has
+      // none to retry, so it asks the server whether this browser's
+      // cookies now carry a session.
+      if (password) {
+        const confirmed = await attemptSignIn();
+        if (!confirmed) toast.error('Not confirmed yet — check your inbox and spam folder.');
+        return;
+      }
+
+      const response = await fetch('/api/v1/auth/session-check', { cache: 'no-store' });
+      const body = await response.json();
+      if (body?.signedIn) {
+        toast.success('Signed in.');
+        router.push(nextPath);
+        router.refresh();
+        return;
+      }
+      toast.error('Not confirmed yet — check your inbox and spam folder.');
     } finally {
       setIsCheckingNow(false);
     }
@@ -141,20 +189,21 @@ export function AuthForm({ mode }: { mode: 'login' | 'signup' }) {
           Check <strong>{email}</strong> for a link to finish{' '}
           {mode === 'signup' ? 'creating your account' : 'signing in'}.
         </p>
-        {usePassword && !timedOut ? (
+        {!timedOut ? (
           <p className="text-caption text-muted-foreground">
-            Confirm on any device — this page signs you in automatically once it&apos;s done.
+            Keep this tab open — it signs you in on its own once you&apos;ve opened the link.
           </p>
-        ) : usePassword ? (
+        ) : (
           <div className="space-y-2">
             <p className="text-caption text-muted-foreground">
-              Still waiting? Confirm the email, then:
+              Still waiting. If you opened the link on another device, sign in there — or confirm it
+              here and then:
             </p>
             <Button type="button" variant="outline" onClick={checkNow} disabled={isCheckingNow}>
               {isCheckingNow ? 'Checking...' : "I've confirmed, sign me in"}
             </Button>
           </div>
-        ) : null}
+        )}
       </div>
     );
   }
