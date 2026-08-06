@@ -1,14 +1,13 @@
 'use server';
 
-import { createHash } from 'node:crypto';
 import { validatePassword } from '@prana/identity';
-import { headers } from 'next/headers';
 import { z } from 'zod';
 import { getPublicEnv } from '@/config/env';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { safeNextPath } from '@/lib/safe-next-path';
 import { ensureCustomerProfile } from '@/server/customer/ensure-customer-profile';
+import { recordSession } from './record-session';
 import { checkLockout, recordLoginAttempt } from './lockout';
 
 export interface ActionResult {
@@ -28,23 +27,6 @@ const signInSchema = z.object({
   email: emailSchema,
   password: z.string().min(1),
 });
-
-function hashToken(token: string): string {
-  return createHash('sha256').update(token).digest('hex');
-}
-
-async function getRequestMetadata() {
-  const headerList = await headers();
-  return {
-    userAgent: headerList.get('user-agent'),
-    // Ch.10 §71: hashed, never the raw IP. Real client IP resolution
-    // (x-forwarded-for chain trust) is a Phase 13 edge/proxy concern —
-    // this hashes whatever header is present today.
-    ipHash: headerList.get('x-forwarded-for')
-      ? hashToken(headerList.get('x-forwarded-for')!)
-      : null,
-  };
-}
 
 export async function signUpWithPassword(input: {
   email: string;
@@ -113,15 +95,7 @@ export async function signInWithPassword(input: {
   await recordLoginAttempt({ identifier: email, userId: data.user.id, success: true });
   await ensureCustomerProfile(data.user.id, data.user.email ?? null);
 
-  const { userAgent, ipHash } = await getRequestMetadata();
-  const admin = createSupabaseAdminClient();
-  await admin.from('sessions').insert({
-    user_id: data.user.id,
-    refresh_token_hash: hashToken(data.session.refresh_token),
-    user_agent: userAgent,
-    ip_address_hash: ipHash,
-    expires_at: new Date(data.session.expires_at! * 1000).toISOString(),
-  });
+  await recordSession(data.session);
 
   return { success: true };
 }

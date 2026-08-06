@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { safeNextPath } from '@/lib/safe-next-path';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { recordSession } from '@/server/auth/record-session';
 import { ensureCustomerProfile } from '@/server/customer/ensure-customer-profile';
 
 /**
@@ -34,6 +35,11 @@ export async function GET(request: NextRequest) {
     const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
       if (data.user) await ensureCustomerProfile(data.user.id, data.user.email ?? null);
+      // Every sign-in route must leave a session row behind, not just the
+      // password one — `proxy.ts` reads the newest unrevoked row to age
+      // admin sessions and treats a missing row as infinitely old, which
+      // locked Google and email-link users out of /admin entirely.
+      if (data.session) await recordSession(data.session);
       return NextResponse.redirect(`${origin}${next}`);
     }
   }
