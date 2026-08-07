@@ -349,12 +349,25 @@ export async function startCheckout(
     }
   }
 
+  // The slot's own start time decides the night charge — read from the
+  // database, never from the request, since it changes what is charged.
+  let deliverySlotStartTime: string | null = null;
+  if (input.deliverySlotId) {
+    const { data: slot } = await admin
+      .from('delivery_slots')
+      .select('start_time')
+      .eq('id', input.deliverySlotId)
+      .maybeSingle();
+    deliverySlotStartTime = (slot?.start_time as string | null) ?? null;
+  }
+
   const pricing = computePricing({
     lines: validatedLines,
     couponDiscount,
     offerDiscount,
     freeDeliveryFromOffer,
     deliveryDistanceKm: deliveryDistanceKm ?? null,
+    deliverySlotStartTime,
     rates: await getRateConfig(admin),
   });
 

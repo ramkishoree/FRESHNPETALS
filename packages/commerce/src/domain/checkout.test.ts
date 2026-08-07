@@ -4,6 +4,8 @@ import {
   calculateOfferDiscount,
   computeDeliveryFee,
   computePricing,
+  isNightSlot,
+  DEFAULT_RATE_CONFIG,
   type CouponRecord,
   isOfferEligible,
   type OfferRecord,
@@ -465,5 +467,107 @@ describe('computePricing with an offer applied', () => {
   it('zeroes the delivery fee when freeDeliveryFromOffer is true, ignoring distance', () => {
     const result = computePricing({ lines, deliveryDistanceKm: 20, freeDeliveryFromOffer: true });
     expect(result.deliveryFee).toBe(0);
+  });
+});
+
+describe('night delivery charge', () => {
+  const NIGHT_RATES = {
+    ...DEFAULT_RATE_CONFIG,
+    nightChargeFee: 100,
+    nightChargeAfterTime: '20:00',
+  };
+  const line = { productId: 'p1', sku: 'S1', name: 'A', quantity: 1, unitPrice: 500 };
+
+  it('is not charged by default — a surcharge must never appear unasked', () => {
+    // DEFAULT_RATE_CONFIG ships with the fee at 0, so an install that
+    // never configures one can't silently overcharge.
+    const pricing = computePricing({ lines: [line], deliverySlotStartTime: '22:00' });
+    expect(pricing.nightCharge).toBe(0);
+  });
+
+  it('applies to a slot starting after the cutoff', () => {
+    const pricing = computePricing({
+      lines: [line],
+      deliverySlotStartTime: '21:00',
+      rates: NIGHT_RATES,
+    });
+    expect(pricing.nightCharge).toBe(100);
+  });
+
+  it('applies to a slot starting exactly at the cutoff', () => {
+    // "from 8 PM" has to include the 8 PM slot, or the boundary slot is
+    // free and the one after it costs extra.
+    const pricing = computePricing({
+      lines: [line],
+      deliverySlotStartTime: '20:00',
+      rates: NIGHT_RATES,
+    });
+    expect(pricing.nightCharge).toBe(100);
+  });
+
+  it('does not apply to a slot before the cutoff', () => {
+    const pricing = computePricing({
+      lines: [line],
+      deliverySlotStartTime: '19:59',
+      rates: NIGHT_RATES,
+    });
+    expect(pricing.nightCharge).toBe(0);
+  });
+
+  it('does not apply when no slot has been picked yet', () => {
+    const pricing = computePricing({ lines: [line], rates: NIGHT_RATES });
+    expect(pricing.nightCharge).toBe(0);
+  });
+
+  it('lands in the grand total exactly once', () => {
+    const withoutNight = computePricing({
+      lines: [line],
+      deliverySlotStartTime: '10:00',
+      rates: NIGHT_RATES,
+    });
+    const withNight = computePricing({
+      lines: [line],
+      deliverySlotStartTime: '21:00',
+      rates: NIGHT_RATES,
+    });
+    expect(withNight.grandTotal - withoutNight.grandTotal).toBe(100);
+  });
+
+  it('does not change the tax, which is on the goods', () => {
+    const withoutNight = computePricing({
+      lines: [line],
+      deliverySlotStartTime: '10:00',
+      rates: NIGHT_RATES,
+    });
+    const withNight = computePricing({
+      lines: [line],
+      deliverySlotStartTime: '21:00',
+      rates: NIGHT_RATES,
+    });
+    expect(withNight.taxTotal).toBe(withoutNight.taxTotal);
+  });
+
+  it('still applies when an offer made delivery free', () => {
+    // Free delivery covers the fee, not the cost of going out at night.
+    const pricing = computePricing({
+      lines: [line],
+      deliverySlotStartTime: '21:00',
+      freeDeliveryFromOffer: true,
+      rates: NIGHT_RATES,
+    });
+    expect(pricing.deliveryFee).toBe(0);
+    expect(pricing.nightCharge).toBe(100);
+  });
+
+  it('refuses to charge on an unparseable slot time', () => {
+    // Failing to charge is recoverable; charging unexpectedly is not.
+    for (const bad of ['', 'evening', '25:00', '20-00']) {
+      expect(isNightSlot(bad, '20:00')).toBe(false);
+    }
+  });
+
+  it('handles a single-digit hour, which "9:00" from a slot label is', () => {
+    expect(isNightSlot('9:00', '20:00')).toBe(false);
+    expect(isNightSlot('21:00', '9:00')).toBe(true);
   });
 });

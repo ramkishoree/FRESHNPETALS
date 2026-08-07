@@ -58,6 +58,7 @@ interface PricingBreakdown {
   offerDiscount: number;
   deliveryFee: number;
   deliveryDistanceKm: number | null;
+  nightCharge: number;
   taxTotal: number;
   grandTotal: number;
 }
@@ -147,6 +148,9 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           ...(couponCode ? { couponCode } : {}),
           ...(coords ? { addressLatitude: coords.lat, addressLongitude: coords.lng } : {}),
           ...(selectedOutletId ? { selectedOutletId } : {}),
+          // Without this the summary shows a total that jumps at the
+          // final step when a late slot adds the night charge.
+          ...(selectedSlotId ? { deliverySlotId: selectedSlotId } : {}),
         }),
       });
       const body = await response.json();
@@ -912,6 +916,15 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                 )}
               </span>
             </div>
+            {pricing != null && pricing.nightCharge > 0 && (
+              // Its own line, not folded into the delivery fee — a
+              // customer who picks a late slot should see exactly what
+              // changed and why.
+              <div className="flex items-center justify-between text-sm">
+                <span className="text-[var(--sf-ink-muted)]">Night delivery charge</span>
+                <span>₹{pricing.nightCharge}</span>
+              </div>
+            )}
             <div className="flex items-center justify-between border-t border-[var(--sf-border)] pt-3">
               <span className="font-display text-base">Grand total</span>
               <span className="font-display text-2xl text-[var(--sf-ink)]">

@@ -21,6 +21,8 @@ describe('getRateConfig', () => {
       { key: 'delivery_base_fee_inr', value: 60 },
       { key: 'delivery_base_km', value: 4 },
       { key: 'delivery_per_km_fee_inr', value: 6 },
+      { key: 'night_charge_inr', value: 120 },
+      { key: 'night_charge_after_time', value: '21:00' },
     ]);
 
     const rates = await getRateConfig(admin);
@@ -30,6 +32,8 @@ describe('getRateConfig', () => {
       standardDeliveryKm: 4,
       standardDeliveryFee: 60,
       perKmFee: 6,
+      nightChargeFee: 120,
+      nightChargeAfterTime: '21:00',
     });
   });
 
@@ -54,5 +58,16 @@ describe('getRateConfig', () => {
     expect(rates.standardDeliveryFee).toBe(50);
     expect(rates.standardDeliveryKm).toBe(5);
     expect(rates.perKmFee).toBe(5);
+  });
+
+  it('never invents a night charge from a malformed cutoff', () => {
+    // A bad settings row must fall back to "no surcharge", not to some
+    // arbitrary time that starts charging people.
+    return (async () => {
+      const admin = makeAdmin([{ key: 'night_charge_after_time', value: 'evening' }]);
+      const rates = await getRateConfig(admin);
+      expect(rates.nightChargeFee).toBe(0);
+      expect(rates.nightChargeAfterTime).toBe('20:00');
+    })();
   });
 });

@@ -32,7 +32,7 @@ export function PromptDiffViewer({
           <div
             key={index}
             className={cn(
-              'whitespace-pre px-2',
+              'px-2 whitespace-pre',
               line.type === 'added' && 'bg-success/10 text-success-text',
               line.type === 'removed' && 'bg-destructive/10 text-destructive line-through',
             )}

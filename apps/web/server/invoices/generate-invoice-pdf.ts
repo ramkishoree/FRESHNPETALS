@@ -27,6 +27,9 @@ export interface InvoicePdfInput {
   subtotal: number;
   discountTotal: number;
   deliveryFee: number;
+  /** Flat surcharge for a late delivery slot. Its own line, so the
+   *  invoice explains the total rather than burying it in delivery. */
+  nightCharge?: number;
   taxTotal: number;
   grandTotal: number;
   gstin?: string;
@@ -151,6 +154,9 @@ export async function generateInvoicePdf(input: InvoicePdfInput): Promise<Uint8A
       ? ([['Discount', -input.discountTotal, false]] as [string, number, boolean][])
       : []),
     ['Delivery fee', input.deliveryFee, false],
+    ...((input.nightCharge ?? 0) > 0
+      ? ([['Night delivery charge', input.nightCharge ?? 0, false]] as [string, number, boolean][])
+      : []),
     ['GST (5%)', input.taxTotal, false],
     ['Grand total', input.grandTotal, true],
   ];

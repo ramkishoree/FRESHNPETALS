@@ -16,6 +16,9 @@ const bodySchema = z.object({
   addressLongitude: z.number().min(-180).max(180).optional(),
   /** When the customer has picked a specific outlet, use it for distance calculation. */
   selectedOutletId: zUuid().optional(),
+  /** Chosen slot, so the live summary shows the night charge before the
+   *  customer commits rather than surprising them at the final total. */
+  deliverySlotId: zUuid().optional(),
 });
 
 const couponPreview = createApiRoute({
@@ -35,6 +38,7 @@ const couponPreview = createApiRoute({
         ? { addressLatitude: body.addressLatitude, addressLongitude: body.addressLongitude }
         : {}),
       ...(body.selectedOutletId ? { selectedOutletId: body.selectedOutletId } : {}),
+      ...(body.deliverySlotId ? { deliverySlotId: body.deliverySlotId } : {}),
     });
   },
 });

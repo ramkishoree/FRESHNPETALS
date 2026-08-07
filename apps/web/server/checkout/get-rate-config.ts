@@ -8,6 +8,8 @@ const SETTINGS_KEYS = [
   'delivery_base_fee_inr',
   'delivery_base_km',
   'delivery_per_km_fee_inr',
+  'night_charge_inr',
+  'night_charge_after_time',
 ] as const;
 
 /**
@@ -39,10 +41,20 @@ export async function getRateConfig(admin: SupabaseClient): Promise<RateConfig> 
     return typeof raw === 'number' && Number.isFinite(raw) ? raw : fallback;
   };
 
+  const rawCutoff = values.get('night_charge_after_time');
+  const nightChargeAfterTime =
+    typeof rawCutoff === 'string' && /^\d{1,2}:\d{2}$/.test(rawCutoff.trim())
+      ? rawCutoff.trim()
+      : DEFAULT_RATE_CONFIG.nightChargeAfterTime;
+
   return {
     taxRate: num('tax_rate_percent', DEFAULT_RATE_CONFIG.taxRate * 100) / 100,
     standardDeliveryKm: num('delivery_base_km', DEFAULT_RATE_CONFIG.standardDeliveryKm),
     standardDeliveryFee: num('delivery_base_fee_inr', DEFAULT_RATE_CONFIG.standardDeliveryFee),
     perKmFee: num('delivery_per_km_fee_inr', DEFAULT_RATE_CONFIG.perKmFee),
+    // Defaults to 0 — a surcharge must never appear because a settings
+    // row is missing or malformed.
+    nightChargeFee: num('night_charge_inr', DEFAULT_RATE_CONFIG.nightChargeFee),
+    nightChargeAfterTime,
   };
 }

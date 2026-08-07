@@ -40,6 +40,10 @@ export interface PricingBreakdown {
   offerDiscount: number;
   deliveryFee: number;
   deliveryDistanceKm: number | null;
+  /** Flat surcharge for a late delivery slot. Its own line rather than
+   *  folded into deliveryFee, so a customer can see why the total moved
+   *  and it appears as a separate line on the invoice. */
+  nightCharge: number;
   taxTotal: number;
   grandTotal: number;
 }
@@ -66,6 +70,12 @@ export interface RateConfig {
   standardDeliveryKm: number;
   standardDeliveryFee: number;
   perKmFee: number;
+  /** Flat rupee surcharge when the chosen delivery slot starts at or
+   *  after `nightChargeAfterTime`. Zero disables it entirely. */
+  nightChargeFee: number;
+  /** 24-hour "HH:MM". A slot starting at or after this is a night
+   *  delivery. */
+  nightChargeAfterTime: string;
 }
 
 export const DEFAULT_RATE_CONFIG: RateConfig = {
@@ -73,7 +83,39 @@ export const DEFAULT_RATE_CONFIG: RateConfig = {
   standardDeliveryKm: STANDARD_DELIVERY_KM,
   standardDeliveryFee: STANDARD_DELIVERY_FEE,
   perKmFee: PER_KM_FEE,
+  // Off unless the owner sets a fee. A surcharge that appeared by
+  // default would silently overcharge every late order.
+  nightChargeFee: 0,
+  nightChargeAfterTime: '20:00',
 };
+
+/**
+ * Whether a delivery slot counts as a night delivery.
+ *
+ * Compares "HH:MM" strings directly — zero-padded 24-hour times sort
+ * lexicographically, so "21:00" >= "20:00" without any date parsing, and
+ * there is no timezone to get wrong because both sides are wall-clock
+ * times in the shop's own day.
+ *
+ * Anything unparseable returns false: failing to charge a surcharge is
+ * recoverable, charging one nobody expected is not.
+ */
+export function isNightSlot(slotStartTime: string | null | undefined, afterTime: string): boolean {
+  if (!slotStartTime) return false;
+  const normalise = (value: string): string | null => {
+    const match = /^(\d{1,2}):(\d{2})/.exec(value.trim());
+    if (!match) return null;
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    if (!Number.isFinite(hours) || hours > 23 || minutes > 59) return null;
+    return `${String(hours).padStart(2, '0')}:${match[2]}`;
+  };
+
+  const slot = normalise(slotStartTime);
+  const cutoff = normalise(afterTime);
+  if (!slot || !cutoff) return false;
+  return slot >= cutoff;
+}
 
 /** Ch.8 §93 Cart Validation, the parts checkable without a database round trip (existence/published/inventory checks happen against real repository data in the caller). */
 export function validateCartIsNotEmpty(lines: CartLineInput[]): string[] {
@@ -108,6 +150,9 @@ export function computePricing(params: {
   /** True when the best-priority applicable offer is a free_delivery type. */
   freeDeliveryFromOffer?: boolean;
   deliveryDistanceKm?: number | null;
+  /** Start time of the chosen delivery slot, "HH:MM". Drives the night
+   *  charge; omitted means no slot picked yet, so no surcharge. */
+  deliverySlotStartTime?: string | null;
   rates?: RateConfig;
 }): PricingBreakdown {
   const rates = params.rates ?? DEFAULT_RATE_CONFIG;
@@ -123,8 +168,20 @@ export function computePricing(params: {
   const deliveryFee = params.freeDeliveryFromOffer
     ? 0
     : computeDeliveryFee(deliveryDistanceKm, rates);
+  // A late slot costs a flat surcharge. Free delivery from an offer
+  // covers the delivery *fee*, not the cost of going out at night, so
+  // this is charged independently of `freeDeliveryFromOffer`.
+  const nightCharge =
+    rates.nightChargeFee > 0 &&
+    isNightSlot(params.deliverySlotStartTime, rates.nightChargeAfterTime)
+      ? rates.nightChargeFee
+      : 0;
+
+  // Tax is on the goods, as before. The surcharge is a delivery charge
+  // like the fee beside it, so it sits outside the taxable base for the
+  // same reason `deliveryFee` does.
   const taxTotal = Math.round(afterDiscount * rates.taxRate * 100) / 100;
-  const grandTotal = afterDiscount + deliveryFee + taxTotal;
+  const grandTotal = afterDiscount + deliveryFee + nightCharge + taxTotal;
 
   return {
     subtotal,
@@ -134,6 +191,7 @@ export function computePricing(params: {
     deliveryFee,
     deliveryDistanceKm:
       deliveryDistanceKm != null ? Math.round(deliveryDistanceKm * 10) / 10 : null,
+    nightCharge,
     taxTotal,
     grandTotal,
   };

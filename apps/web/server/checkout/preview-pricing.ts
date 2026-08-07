@@ -35,6 +35,8 @@ export interface PreviewPricingInput {
   /** When the customer has manually selected an outlet, use it instead of
    *  the nearest auto-detect. */
   selectedOutletId?: string;
+  /** Chosen delivery slot — decides whether the night charge applies. */
+  deliverySlotId?: string;
 }
 
 export interface PreviewPricingResult {
@@ -217,12 +219,24 @@ export async function previewCheckoutPricing(
     }
   }
 
+  // Read from the database, not the request — this decides money.
+  let deliverySlotStartTime: string | null = null;
+  if (input.deliverySlotId) {
+    const { data: slot } = await admin
+      .from('delivery_slots')
+      .select('start_time')
+      .eq('id', input.deliverySlotId)
+      .maybeSingle();
+    deliverySlotStartTime = (slot?.start_time as string | null) ?? null;
+  }
+
   const pricing = computePricing({
     lines: validatedLines,
     couponDiscount,
     offerDiscount,
     freeDeliveryFromOffer,
     deliveryDistanceKm: deliveryDistanceKm ?? null,
+    deliverySlotStartTime,
     rates: await getRateConfig(admin),
   });
   return ok({ pricing, appliedCouponCode, bonusItem: bonusItemDisplay });

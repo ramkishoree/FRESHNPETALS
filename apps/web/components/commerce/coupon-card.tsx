@@ -35,7 +35,7 @@ export function CouponCard({
           aria-hidden="true"
         />
         <div>
-          <p className="text-body font-mono font-semibold uppercase tracking-wide">{code}</p>
+          <p className="text-body font-mono font-semibold tracking-wide uppercase">{code}</p>
           <p className="text-caption text-muted-foreground">{description}</p>
         </div>
       </div>

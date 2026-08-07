@@ -19,6 +19,7 @@ export interface OrderConfirmationEmailParams {
   items: OrderConfirmationItem[];
   subtotal: number;
   deliveryFee: number;
+  nightCharge?: number;
   taxTotal: number;
   discountTotal: number;
   grandTotal: number;
@@ -61,6 +62,7 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
     items,
     subtotal,
     deliveryFee,
+    nightCharge,
     taxTotal,
     discountTotal,
     grandTotal,
@@ -159,6 +161,11 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
                   <tr><td style="padding:4px 0;color:#555;">Subtotal</td><td style="padding:4px 0;text-align:right;color:#555;">${formatInr(subtotal)}</td></tr>
                   ${discountTotal > 0 ? `<tr><td style="padding:4px 0;color:#555;">Discount</td><td style="padding:4px 0;text-align:right;color:#555;">-${formatInr(discountTotal)}</td></tr>` : ''}
                   <tr><td style="padding:4px 0;color:#555;">Delivery fee</td><td style="padding:4px 0;text-align:right;color:#555;">${formatInr(deliveryFee)}</td></tr>
+                  ${
+                    (nightCharge ?? 0) > 0
+                      ? `<tr><td style="padding:4px 0;color:#555;">Night delivery charge</td><td style="padding:4px 0;text-align:right;color:#555;">${formatInr(nightCharge ?? 0)}</td></tr>`
+                      : ''
+                  }
                   <tr><td style="padding:4px 0;color:#555;">Tax</td><td style="padding:4px 0;text-align:right;color:#555;">${formatInr(taxTotal)}</td></tr>
                   <tr><td style="padding:10px 0 0;font-weight:700;font-size:16px;border-top:1px solid #eee;">Total</td><td style="padding:10px 0 0;text-align:right;font-weight:700;font-size:16px;border-top:1px solid #eee;">${formatInr(grandTotal)}</td></tr>
                 </table>

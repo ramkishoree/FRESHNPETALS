@@ -24,7 +24,14 @@ interface OrderRow {
   id: string;
   order_number: string;
   created_at: string;
-  order_snapshot: { address?: OrderAddressSnapshot; delivery?: OrderDeliverySnapshot } | null;
+  order_snapshot: {
+    address?: OrderAddressSnapshot;
+    delivery?: OrderDeliverySnapshot;
+    /** The full breakdown computed at checkout. `orders` has no
+     *  night_charge column — the snapshot is where the surcharge that
+     *  was actually charged is recorded. */
+    pricing?: { nightCharge?: number };
+  } | null;
   subtotal: number;
   discount_total: number;
   delivery_fee: number;
@@ -78,6 +85,7 @@ export async function sendOrderConfirmationEmails(
   const orderRow = order as unknown as OrderRow;
   const address = orderRow.order_snapshot?.address ?? {};
   const delivery = orderRow.order_snapshot?.delivery ?? {};
+  const nightCharge = Number(orderRow.order_snapshot?.pricing?.nightCharge ?? 0);
 
   const productIds = [...new Set(orderRow.order_items.map((item) => item.product_id))];
   const { data: products } = await admin
@@ -141,6 +149,7 @@ export async function sendOrderConfirmationEmails(
       subtotal: Number(orderRow.subtotal),
       discountTotal: Number(orderRow.discount_total),
       deliveryFee: Number(orderRow.delivery_fee),
+      ...(nightCharge > 0 ? { nightCharge } : {}),
       taxTotal: Number(orderRow.tax_total),
       grandTotal: Number(orderRow.grand_total),
     });
@@ -161,6 +170,7 @@ export async function sendOrderConfirmationEmails(
     items,
     subtotal: Number(orderRow.subtotal),
     deliveryFee: Number(orderRow.delivery_fee),
+    ...(nightCharge > 0 ? { nightCharge } : {}),
     taxTotal: Number(orderRow.tax_total),
     discountTotal: Number(orderRow.discount_total),
     grandTotal: Number(orderRow.grand_total),

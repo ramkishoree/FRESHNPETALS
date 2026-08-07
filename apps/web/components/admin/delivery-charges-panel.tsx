@@ -34,10 +34,16 @@ const FIELDS = [
     label: 'Per km beyond that (₹)',
     hint: 'Added for each kilometre past the included distance.',
   },
+  {
+    key: 'night_charge_inr',
+    label: 'Night delivery charge (₹)',
+    hint: 'Flat amount added when a late slot is chosen. Set 0 to switch it off.',
+  },
 ] as const;
 
 export function DeliveryChargesPanel() {
   const [values, setValues] = React.useState<Record<string, string>>({});
+  const [nightAfter, setNightAfter] = React.useState('20:00');
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
 
@@ -50,6 +56,9 @@ export function DeliveryChargesPanel() {
       const next: Record<string, string> = {};
       for (const row of body.data.items as { key: string; value: unknown }[]) {
         if (FIELDS.some((field) => field.key === row.key)) next[row.key] = String(row.value ?? '');
+        if (row.key === 'night_charge_after_time' && typeof row.value === 'string') {
+          setNightAfter(row.value);
+        }
       }
       setValues(next);
     } catch (cause) {
@@ -84,6 +93,17 @@ export function DeliveryChargesPanel() {
           throw new Error(body.error?.message ?? `Failed to save ${field.label}.`);
         }
       }
+      // The cutoff is a time, not a number, so it saves separately.
+      const cutoffResponse = await fetch('/api/v1/admin/settings/night_charge_after_time', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: nightAfter }),
+      });
+      const cutoffBody = await cutoffResponse.json();
+      if (!cutoffResponse.ok || !cutoffBody.success) {
+        throw new Error(cutoffBody.error?.message ?? 'Failed to save the night cutoff.');
+      }
+
       toast.success('Delivery charges updated. Checkout uses them straight away.');
       await load();
     } catch (cause) {
@@ -119,6 +139,20 @@ export function DeliveryChargesPanel() {
             <p className="text-caption text-muted-foreground">{field.hint}</p>
           </div>
         ))}
+      </div>
+
+      <div className="grid gap-1.5 sm:max-w-xs">
+        <Label htmlFor="night_charge_after_time">Night charge applies from</Label>
+        <Input
+          id="night_charge_after_time"
+          type="time"
+          value={nightAfter}
+          onChange={(event) => setNightAfter(event.target.value)}
+        />
+        <p className="text-caption text-muted-foreground">
+          Any delivery slot starting at or after this time counts as a night delivery. The charge is
+          on the slot the customer picks, not when they order.
+        </p>
       </div>
 
       <Button onClick={save} disabled={isSaving}>
