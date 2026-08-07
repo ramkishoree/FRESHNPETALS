@@ -5,12 +5,9 @@ export interface OrderAlertItem {
   quantity: number;
   /** Customer-facing (migration 0069). */
   color?: string | null;
-  /** Owner-only packing details (migration 0070) — never rendered to a
-   *  customer, only in the owner's order alert. */
-  flowerType?: string | null;
-  sizeLabel?: string | null;
-  packaging?: string | null;
-  ownerNote?: string | null;
+  /** Owner-only free text describing the arrangement (migration 0073).
+   *  Never rendered to a customer, only in the owner's order alert. */
+  ownerDescription?: string | null;
 }
 
 /**
@@ -35,25 +32,21 @@ function clean(value: string | null | undefined): string | null {
 /**
  * One item as it appears in the owner's WhatsApp alert:
  *
- *   Dozen Red Roses — Red · Rose · 12 stems · Hand-tie ×2 (note: gold ribbon)
+ *   Dozen Red Roses — Red ×2 (note: tall glass vase, gold ribbon)
  *
- * Every descriptor is optional and absent ones simply vanish, so a
- * product with nothing filled in still reads `Dozen Red Roses ×2`
- * exactly as before these fields existed.
+ * Both the colour and the note are optional and absent ones simply
+ * vanish, so a product with neither still reads `Dozen Red Roses ×2`.
  *
- * The descriptors exist because the product title alone was ambiguous
- * when an alert arrived — two similarly-named arrangements are hard to
- * tell apart, but the flower, colour and size are not.
+ * These exist because the product title alone was ambiguous when an
+ * alert arrived — two similarly-named arrangements are hard to tell
+ * apart. This started as four structured fields and became one free-text
+ * note: a florist describes an arrangement in a sentence, not by filling
+ * in categories.
  */
 export function buildOrderItemLabel(item: OrderAlertItem): string {
-  const descriptors = [
-    clean(item.color),
-    clean(item.flowerType),
-    clean(item.sizeLabel),
-    clean(item.packaging),
-  ].filter((value): value is string => value !== null);
+  const descriptors = [clean(item.color)].filter((value): value is string => value !== null);
 
-  const note = clean(item.ownerNote);
+  const note = clean(item.ownerDescription);
 
   return [
     clean(item.name) ?? item.name,

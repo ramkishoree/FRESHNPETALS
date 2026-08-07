@@ -1,5 +1,6 @@
 import { BusinessRuleError, err, InfrastructureError, ok } from '@prana/core';
 import type { NextRequest } from 'next/server';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { createApiRoute } from '@/server/http/route-handler';
@@ -27,24 +28,34 @@ interface RouteParams {
  * different price than the one the reservation was made at.
  */
 const getPaymentParams = createApiRoute<undefined, unknown, undefined, RouteParams>({
-  handler: async ({ params }) => {
+  handler: async ({ params, request }) => {
     const supabase = await createSupabaseServerClient();
     const customer = await getCurrentCustomer(supabase);
-    if (!customer)
+    const guestToken = new URL(request.url).searchParams.get('t');
+
+    if (!customer && !guestToken)
       return err(new BusinessRuleError('No customer profile found.', { httpStatus: 404 }));
 
-    const { data: session, error } = await supabase
+    const client = customer ? supabase : createSupabaseAdminClient();
+    let query = client
       .from('checkout_sessions')
       .select('id, status, pricing_snapshot, metadata, reservation_expires_at')
-      .eq('id', params.sessionId)
-      .eq('customer_id', customer.id)
-      .maybeSingle();
+      .eq('id', params.sessionId);
+    if (customer) query = query.eq('customer_id', customer.id);
+
+    const { data: session, error } = await query.maybeSingle();
     if (error)
       return err(
         new InfrastructureError('Failed to load checkout session.', { cause: error.message }),
       );
     if (!session)
       return err(new BusinessRuleError('Checkout session not found.', { httpStatus: 404 }));
+
+    if (!customer) {
+      const expected = (session.metadata as { guestToken?: string } | null)?.guestToken;
+      if (!expected || expected !== guestToken)
+        return err(new BusinessRuleError('Checkout session not found.', { httpStatus: 404 }));
+    }
 
     if (session.status !== 'payment_pending') {
       // 'completed' means the webhook already made the order — retrying
@@ -100,7 +111,10 @@ const getPaymentParams = createApiRoute<undefined, unknown, undefined, RoutePara
 });
 
 export async function GET(request: NextRequest, context: { params: Promise<RouteParams> }) {
-  const blocked = await runSecurityChain(request, { tier: 'authenticated', requireAuth: true });
+  // A guest retrying a failed payment has no session — they present the
+  // token issued at checkout instead, checked against this exact session
+  // in the handler.
+  const blocked = await runSecurityChain(request, { tier: 'authenticated' });
   if (blocked) return blocked;
   return getPaymentParams(request, await context.params);
 }

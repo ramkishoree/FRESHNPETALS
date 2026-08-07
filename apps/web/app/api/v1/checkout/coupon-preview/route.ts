@@ -44,7 +44,7 @@ const couponPreview = createApiRoute({
 });
 
 export async function POST(request: NextRequest) {
-  const blocked = await runSecurityChain(request, { tier: 'checkout', requireAuth: true });
+  const blocked = await runSecurityChain(request, { tier: 'checkout' });
   if (blocked) return blocked;
   return couponPreview(request);
 }

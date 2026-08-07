@@ -97,7 +97,13 @@ const route = createApiRoute({
 });
 
 export async function GET(request: NextRequest) {
-  const blocked = await runSecurityChain(request, { tier: 'authenticated', requireAuth: true });
+  // No auth: guests buy without an account, and this is the step where
+  // they pick which shop fulfils the order. Requiring a session here
+  // silently returned 401, so a signed-out customer saw no "Select
+  // outlet" step at all — the whole section is conditional on this
+  // response. Outlets and their stock are already public on the
+  // storefront, so nothing is exposed that wasn't.
+  const blocked = await runSecurityChain(request, { tier: 'authenticated' });
   if (blocked) return blocked;
   return route(request);
 }

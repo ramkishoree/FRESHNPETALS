@@ -97,16 +97,21 @@ export function OutletSelector({
             key={outlet.id}
             type="button"
             onClick={() => onSelect(outlet.id)}
-            className={`w-full rounded-[var(--r-lg)] border p-4 text-left transition-colors ${
+            aria-pressed={isSelected}
+            // The chosen outlet decides which shop makes the order, so
+            // "which one is selected" has to be obvious at a glance
+            // rather than a one-pixel border change: it lifts, thickens,
+            // and carries a gold glow.
+            className={`w-full rounded-[var(--r-lg)] text-left transition-all duration-200 ${
               isSelected
-                ? 'border-[var(--gold)] bg-[var(--gold)]/5'
-                : 'border-[var(--sf-border)] bg-[var(--sf-surface)] hover:border-[var(--sf-border-strong)]'
+                ? 'scale-[1.02] border-2 border-[var(--gold)] bg-[var(--gold)]/10 p-5 shadow-[0_0_0_4px_rgba(200,162,93,0.18),0_8px_24px_-8px_rgba(200,162,93,0.55)]'
+                : 'border border-[var(--sf-border)] bg-[var(--sf-surface)] p-4 hover:border-[var(--sf-border-strong)] hover:bg-[var(--sf-surface)]'
             }`}
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">
+                  <span className={`text-sm ${isSelected ? 'font-semibold' : 'font-medium'}`}>
                     {outlet.googleBusinessName ?? outlet.name}
                   </span>
                   {!canFulfill && (
@@ -162,7 +167,7 @@ export function OutletSelector({
             </div>
 
             {isSelected && (
-              <div className="mt-2 border-t border-[var(--sf-border)] pt-2 text-xs text-[var(--gold)]">
+              <div className="mt-2 border-t border-[var(--gold)]/30 pt-2 text-xs font-medium text-[var(--gold-deep)]">
                 ✓ Selected — delivery fee calculated from this outlet
               </div>
             )}

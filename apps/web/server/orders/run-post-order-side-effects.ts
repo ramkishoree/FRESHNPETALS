@@ -55,10 +55,7 @@ export async function runPostOrderSideEffects(
     {
       image: string | null;
       color: string | null;
-      flowerType: string | null;
-      sizeLabel: string | null;
-      packaging: string | null;
-      ownerNote: string | null;
+      ownerDescription: string | null;
     }
   >();
   if (productIds.length > 0) {
@@ -68,16 +65,13 @@ export async function runPostOrderSideEffects(
       // only* — they are owner-only and must never reach a storefront
       // query, which is why they are absent from PRODUCT_SELECT_COLUMNS
       // and from the Product domain type.
-      .select('id, featured_image, color, flower_type, size_label, packaging, owner_note')
+      .select('id, featured_image, color, owner_description')
       .in('id', productIds);
     for (const product of products ?? []) {
       productById.set(product.id as string, {
         image: (product.featured_image as string | null) ?? null,
         color: (product.color as string | null) ?? null,
-        flowerType: (product.flower_type as string | null) ?? null,
-        sizeLabel: (product.size_label as string | null) ?? null,
-        packaging: (product.packaging as string | null) ?? null,
-        ownerNote: (product.owner_note as string | null) ?? null,
+        ownerDescription: (product.owner_description as string | null) ?? null,
       });
     }
   }
@@ -103,10 +97,7 @@ export async function runPostOrderSideEffects(
         name: item.name,
         quantity: item.quantity,
         color: product?.color ?? null,
-        flowerType: product?.flowerType ?? null,
-        sizeLabel: product?.sizeLabel ?? null,
-        packaging: product?.packaging ?? null,
-        ownerNote: product?.ownerNote ?? null,
+        ownerDescription: product?.ownerDescription ?? null,
       };
     }),
     headerImageUrl: collageUrl,

@@ -10,30 +10,15 @@ describe('buildOrderItemLabel', () => {
     );
   });
 
-  it('lists every descriptor that is present', () => {
-    expect(
-      buildOrderItemLabel({
-        name: 'Anniversary Deluxe',
-        quantity: 6,
-        color: 'Red',
-        flowerType: 'Rose',
-        sizeLabel: '12 stems',
-        packaging: 'Hat box',
-      }),
-    ).toBe('Anniversary Deluxe — Red · Rose · 12 stems · Hat box ×6');
-  });
-
-  it('skips the ones that are missing rather than leaving gaps', () => {
-    expect(
-      buildOrderItemLabel({ name: 'Lily Box', quantity: 1, flowerType: 'Lily', packaging: 'Box' }),
-    ).toBe('Lily Box — Lily · Box ×1');
+  it('shows the colour when it is set', () => {
+    expect(buildOrderItemLabel({ name: 'Anniversary Deluxe', quantity: 6, color: 'Red' })).toBe(
+      'Anniversary Deluxe — Red ×6',
+    );
   });
 
   it('treats whitespace-only values as absent', () => {
     // Admin text inputs produce these constantly.
-    expect(buildOrderItemLabel({ name: 'Rose', quantity: 1, color: '   ', flowerType: '' })).toBe(
-      'Rose ×1',
-    );
+    expect(buildOrderItemLabel({ name: 'Rose', quantity: 1, color: '   ' })).toBe('Rose ×1');
   });
 
   it('appends the owner note last, where it reads as an instruction', () => {
@@ -42,7 +27,7 @@ describe('buildOrderItemLabel', () => {
         name: 'Orchid Vase',
         quantity: 1,
         color: 'Purple',
-        ownerNote: 'use the tall glass vase',
+        ownerDescription: 'use the tall glass vase',
       }),
     ).toBe('Orchid Vase — Purple ×1 (note: use the tall glass vase)');
   });
@@ -65,7 +50,7 @@ describe('buildOrderItemsSummary', () => {
 
   it('never emits a newline or tab, which Meta rejects outright', () => {
     const summary = buildOrderItemsSummary([
-      { name: 'A', quantity: 1, ownerNote: 'line one\nline two\ttabbed' },
+      { name: 'A', quantity: 1, ownerDescription: 'line one\nline two\ttabbed' },
       { name: 'B', quantity: 1 },
     ]);
 
@@ -79,10 +64,8 @@ describe('buildOrderItemsSummary', () => {
       name: `Very Long Product Name Number ${index + 1}`,
       quantity: 3,
       color: 'Multicolour',
-      flowerType: 'Mixed',
-      sizeLabel: '24 stems',
-      packaging: 'Presentation hat box',
-      ownerNote: 'handle with care and use the gold ribbon',
+      ownerDescription:
+        'handle with care, use the gold ribbon and the tall presentation hat box for this one',
     }));
 
     const summary = buildOrderItemsSummary(items);
@@ -97,8 +80,7 @@ describe('buildOrderItemsSummary', () => {
     const items = Array.from({ length: 40 }, () => ({
       name: 'A Fairly Long Product Name Indeed',
       quantity: 2,
-      packaging: 'Presentation hat box',
-      ownerNote: 'a reasonably long note about ribbons and vases',
+      ownerDescription: 'a reasonably long note about ribbons and vases and hat boxes',
     }));
 
     expect(buildOrderItemsSummary(items).startsWith('40 products, 80 units — ')).toBe(true);
