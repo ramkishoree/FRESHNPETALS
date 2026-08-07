@@ -48,6 +48,11 @@
      (4.73 on --paper-2 through 5.44 on --card) at the same hue. */
   --sage: #5b6a54;
   --line: #ded3ba;
+  /* Offer surfaces: the owner asked for a green background with white
+     text for the banner, badge and poster. --ink is the brand's own deep
+     green, so this reuses it rather than introducing a second green. */
+  --fp-green: #223a2c;
+  --fp-ivory: #f4efe2;
   --card: #fbf8ef;
 
   /* ---- legacy var names, mapped so existing components repaint ---- */

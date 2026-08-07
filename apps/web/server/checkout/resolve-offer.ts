@@ -42,6 +42,9 @@ export async function resolveActiveOffer(
     .from('offers')
     .select('id, offer_type, priority, conditions, reward')
     .eq('active', true)
+    // Promos written in the simplified admin form advertise a coupon
+    // code; they must never quietly change what a customer is charged.
+    .eq('display_only', false)
     .is('deleted_at', null)
     .or(`starts_at.is.null,starts_at.lte.${nowIso}`)
     .or(`ends_at.is.null,ends_at.gte.${nowIso}`);

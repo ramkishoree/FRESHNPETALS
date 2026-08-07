@@ -3,10 +3,7 @@ import { AnnouncementBannerClient } from './announcement-banner-client';
 
 interface AnnouncementRow {
   id: string;
-  title: string | null;
   message: string;
-  image_url: string | null;
-  offers: { name: string } | { name: string }[] | null;
 }
 
 /**
@@ -23,7 +20,7 @@ export async function AnnouncementBanner() {
 
   const { data } = await supabase
     .from('announcements')
-    .select('id, title, message, image_url, offers(name)')
+    .select('id, message')
     .eq('enabled', true)
     .is('deleted_at', null)
     .or(`start_date.is.null,start_date.lte.${nowIso}`)
@@ -35,15 +32,6 @@ export async function AnnouncementBanner() {
   if (!data) return null;
 
   const row = data as unknown as AnnouncementRow;
-  const offer = Array.isArray(row.offers) ? row.offers[0] : row.offers;
 
-  return (
-    <AnnouncementBannerClient
-      id={row.id}
-      title={row.title}
-      message={row.message}
-      imageUrl={row.image_url}
-      offerName={offer?.name ?? null}
-    />
-  );
+  return <AnnouncementBannerClient id={row.id} message={row.message} />;
 }

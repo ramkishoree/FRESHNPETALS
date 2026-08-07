@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
-import { OfferPopup } from '@/components/storefront/offer-popup';
+import { OfferBadge } from '@/components/storefront/offer-badge';
 import { ShopSortControl } from '@/components/storefront/shop-sort-control';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
@@ -47,9 +47,13 @@ export default async function ProductsPage({
       .order('sort_order', { ascending: true }),
     supabase
       .from('offers')
-      .select('id, name, description')
+      .select('id, name, tagline, banner_heading, coupon_code, conditions_text, ends_at')
       .eq('active', true)
       .is('deleted_at', null)
+      // Only offers still running — an expired promo advertising a dead
+      // coupon code is worse than showing nothing.
+      .or(`ends_at.is.null,ends_at.gte.${new Date().toISOString()}`)
+      .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
   ]);
@@ -61,7 +65,18 @@ export default async function ProductsPage({
   return (
     <div className="container-brand py-6 pb-20">
       {offer && (
-        <OfferPopup offerId={offer.id} title={offer.name} description={offer.description ?? ''} />
+        <OfferBadge
+          offer={{
+            id: offer.id as string,
+            // Falls back to the internal name so an offer saved without a
+            // tagline still shows something meaningful rather than blank.
+            tagline: (offer.tagline as string | null) ?? (offer.name as string),
+            bannerHeading: (offer.banner_heading as string | null) ?? null,
+            couponCode: (offer.coupon_code as string | null) ?? null,
+            conditionsText: (offer.conditions_text as string | null) ?? null,
+            endsAt: (offer.ends_at as string | null) ?? null,
+          }}
+        />
       )}
 
       <FloatingCategoryBar categories={categories} />
@@ -78,8 +93,8 @@ export default async function ProductsPage({
       {offer && (
         <section className="pt-16">
           <OfferBanner
-            title={offer.name}
-            description={offer.description ?? ''}
+            title={(offer.tagline as string | null) ?? (offer.name as string)}
+            description={(offer.conditions_text as string | null) ?? ''}
             ctaLabel="Shop the offer"
             ctaHref="/"
           />

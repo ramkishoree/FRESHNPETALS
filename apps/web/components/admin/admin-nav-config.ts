@@ -1,20 +1,15 @@
 import type { LucideIcon } from 'lucide-react';
 import {
-  BarChart3,
-  ClipboardList,
   LayoutDashboard,
   Megaphone,
-  MessageSquare,
   Package,
   Percent,
   Settings,
   ShoppingCart,
-  Star,
   Store,
   Tags,
   Ticket,
   Truck,
-  Users,
 } from 'lucide-react';
 
 export interface AdminNavItem {
@@ -28,6 +23,12 @@ export interface AdminNavItem {
 /**
  * Ch.12 §43 Sidebar, and the dashboard tiles — one list, so the two can
  * never disagree about what exists.
+ *
+ * Trimmed hard at the owner's request: Customers, Reviews, Collections,
+ * Marketing, Traffic and Audit log are gone. Each was a tab that had to
+ * be scrolled past to reach the handful of things actually used daily.
+ * Their data and routes still exist where removing them would break
+ * something — reviews now auto-approve rather than piling up unseen.
  *
  * Owner's explicit call: flat, not grouped. The old "Shop / Sales /
  * Marketing / Admin" parents meant everyday destinations like Orders
@@ -59,16 +60,19 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     icon: Store,
     description: 'Stores, radius, Google Business',
   },
-  { label: 'Customers', href: '/admin/customers', icon: Users, description: 'Who buys from you' },
   {
     label: 'Delivery slots',
     href: '/admin/delivery-slots',
     icon: Truck,
-    description: 'Times you deliver',
+    description: 'Times and delivery charges',
   },
   { label: 'Coupons', href: '/admin/coupons', icon: Ticket, description: 'Discount codes' },
-  { label: 'Offers', href: '/admin/offers', icon: Percent, description: 'Automatic promotions' },
-  { label: 'Reviews', href: '/admin/reviews', icon: Star, description: 'Approve what shows' },
+  {
+    label: 'Offers',
+    href: '/admin/offers',
+    icon: Percent,
+    description: 'Banner, poster and badge',
+  },
   {
     label: 'Announcements',
     href: '/admin/announcements',
@@ -76,29 +80,10 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     description: 'Banner across the site',
   },
   {
-    label: 'Collections',
-    href: '/admin/collections',
-    icon: ClipboardList,
-    description: 'Curated groupings',
-  },
-  {
-    label: 'Marketing',
-    href: '/admin/marketing',
-    icon: MessageSquare,
-    description: 'Campaigns',
-  },
-  { label: 'Traffic', href: '/admin/traffic', icon: BarChart3, description: 'Visitors and views' },
-  {
     label: 'Settings',
     href: '/admin/settings',
     icon: Settings,
-    description: 'Business details',
-  },
-  {
-    label: 'Audit log',
-    href: '/admin/audit',
-    icon: ClipboardList,
-    description: 'Who changed what',
+    description: 'Business name, phone, GST',
   },
 ] as const;
 

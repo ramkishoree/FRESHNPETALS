@@ -1,24 +1,24 @@
 'use client';
 
-import Image from 'next/image';
-import Link from 'next/link';
+import { X } from 'lucide-react';
 import * as React from 'react';
 
 const DISMISSED_KEY_PREFIX = 'fp-announcement-dismissed-';
 
-export function AnnouncementBannerClient({
-  id,
-  title,
-  message,
-  imageUrl,
-  offerName,
-}: {
-  id: string;
-  title: string | null;
-  message: string;
-  imageUrl: string | null;
-  offerName: string | null;
-}) {
+/**
+ * A sentence on a green strip. That is the whole feature.
+ *
+ * It used to carry a title, an image, an offer button and a dismiss
+ * button. The owner's call was blunt and correct: "no need for button
+ * and all, no image and all, only green background white text". Colour
+ * and layout are fixed here rather than configured in the admin, so
+ * there is nothing to set up wrong — the admin asks for the sentence and
+ * nothing else.
+ *
+ * The dismiss control stays. A banner you cannot get rid of follows you
+ * down every page of the site.
+ */
+export function AnnouncementBannerClient({ id, message }: { id: string; message: string }) {
   const [dismissed, setDismissed] = React.useState(true);
 
   React.useEffect(() => {
@@ -39,29 +39,16 @@ export function AnnouncementBannerClient({
   if (dismissed) return null;
 
   return (
-    <div className="border-border bg-muted/40 flex items-center gap-4 border-b px-4 py-3">
-      {imageUrl && (
-        <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-full">
-          <Image src={imageUrl} alt="" fill className="object-cover" />
-        </div>
-      )}
-      <div className="min-w-0 flex-1">
-        {title && <p className="text-body text-foreground font-semibold">{title}</p>}
-        <p className="text-caption text-muted-foreground truncate">{message}</p>
-      </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <Link
-          href="/"
-          className="rounded-button bg-primary text-primary-foreground px-3 py-1.5 text-sm font-medium"
-        >
-          {offerName ? `Shop ${offerName}` : 'Shop now'}
-        </Link>
+    <div className="bg-[var(--fp-green)] text-white">
+      <div className="container-brand flex items-center justify-center gap-3 py-2.5">
+        <p className="text-center text-sm font-medium">{message}</p>
         <button
           type="button"
           onClick={dismiss}
-          className="text-muted-foreground hover:text-foreground px-2 py-1.5 text-sm"
+          aria-label="Dismiss announcement"
+          className="shrink-0 rounded-full p-1 text-white/80 transition-colors hover:bg-white/15 hover:text-white"
         >
-          No thanks
+          <X className="size-4" aria-hidden="true" />
         </button>
       </div>
     </div>

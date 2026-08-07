@@ -99,7 +99,7 @@ export function OutletSelector({
             onClick={() => onSelect(outlet.id)}
             className={`w-full rounded-[var(--r-lg)] border p-4 text-left transition-colors ${
               isSelected
-                ? 'bg-[var(--gold)]/5 border-[var(--gold)]'
+                ? 'border-[var(--gold)] bg-[var(--gold)]/5'
                 : 'border-[var(--sf-border)] bg-[var(--sf-surface)] hover:border-[var(--sf-border-strong)]'
             }`}
           >
@@ -110,7 +110,7 @@ export function OutletSelector({
                     {outlet.googleBusinessName ?? outlet.name}
                   </span>
                   {!canFulfill && (
-                    <span className="bg-[var(--sale)]/10 rounded-full px-2 py-0.5 text-[10px] font-medium text-[var(--sale)]">
+                    <span className="rounded-full bg-[var(--sale)]/10 px-2 py-0.5 text-[10px] font-medium text-[var(--sale)]">
                       Low stock
                     </span>
                   )}

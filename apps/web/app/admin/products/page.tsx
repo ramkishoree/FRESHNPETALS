@@ -31,71 +31,118 @@ const STATUS_CLASS: Record<string, string> = {
   archived: 'text-muted-foreground',
 };
 
-const columns: ColumnDef<ProductRow>[] = [
-  {
-    accessorKey: 'name',
-    header: 'Name',
-    cell: ({ row }) => (
-      <Link
-        href={`/admin/products/${row.original.id}`}
-        className="text-foreground font-medium hover:underline"
-      >
-        {row.original.name}
-      </Link>
-    ),
-  },
-  { accessorKey: 'sku', header: 'SKU' },
-  {
-    accessorKey: 'color',
-    header: 'Colour',
-    cell: ({ row }) => (row.original.color as string | null) ?? '—',
-  },
-  {
-    id: 'price',
-    header: 'Price',
-    cell: ({ row }) =>
-      row.original.salePrice != null ? (
-        <span>
-          <span className="text-muted-foreground line-through">₹{row.original.basePrice}</span>{' '}
-          <span className="text-foreground font-medium">₹{row.original.salePrice}</span>
-        </span>
-      ) : (
-        <span>₹{row.original.basePrice}</span>
+function buildColumns(onRemove: (row: ProductRow) => void): ColumnDef<ProductRow>[] {
+  return [
+    {
+      accessorKey: 'name',
+      header: 'Name',
+      cell: ({ row }) => (
+        <Link
+          href={`/admin/products/${row.original.id}`}
+          className="text-foreground font-medium hover:underline"
+        >
+          {row.original.name}
+        </Link>
       ),
-  },
-  {
-    accessorKey: 'status',
-    header: 'Status',
-    cell: ({ row }) => (
-      <Badge variant="outline" className={STATUS_CLASS[row.original.status] ?? ''}>
-        {row.original.status.replace(/_/g, ' ')}
-      </Badge>
-    ),
-  },
-];
+    },
+    { accessorKey: 'sku', header: 'SKU' },
+    {
+      accessorKey: 'color',
+      header: 'Colour',
+      cell: ({ row }) => (row.original.color as string | null) ?? '—',
+    },
+    {
+      id: 'price',
+      header: 'Price',
+      cell: ({ row }) =>
+        row.original.salePrice != null ? (
+          <span>
+            <span className="text-muted-foreground line-through">₹{row.original.basePrice}</span>{' '}
+            <span className="text-foreground font-medium">₹{row.original.salePrice}</span>
+          </span>
+        ) : (
+          <span>₹{row.original.basePrice}</span>
+        ),
+    },
+    {
+      accessorKey: 'status',
+      header: 'Status',
+      cell: ({ row }) => (
+        <Badge variant="outline" className={STATUS_CLASS[row.original.status] ?? ''}>
+          {row.original.status.replace(/_/g, ' ')}
+        </Badge>
+      ),
+    },
+    {
+      id: 'actions',
+      header: '',
+      cell: ({ row }) => (
+        <Button
+          variant="outline"
+          size="sm"
+          className="text-destructive"
+          onClick={() => onRemove(row.original)}
+        >
+          Remove
+        </Button>
+      ),
+    },
+  ];
+}
 
 /** Ch.12 §47 Product Module — Ch.16 §93 Product Management API. */
 export default function ProductsPage() {
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
+  const load = React.useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/v1/admin/products?limit=100');
+      const body = await response.json();
+      if (!response.ok || !body.success) throw new Error(body.error?.message ?? 'Failed to load.');
+      setProducts(body.data.items as ProductRow[]);
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Failed to load.');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   React.useEffect(() => {
-    async function load() {
-      setIsLoading(true);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void load();
+  }, [load]);
+
+  /**
+   * Archives rather than erases. Past orders and invoices still name the
+   * product they were placed for — deleting the row outright would leave
+   * blanks in records that have to stay accurate.
+   */
+  const removeProduct = React.useCallback(
+    async (row: ProductRow) => {
+      if (
+        !window.confirm(
+          `Remove "${row.name}" from the shop?\n\nIt disappears from the storefront immediately. Past orders and invoices keep showing it.`,
+        )
+      ) {
+        return;
+      }
       try {
-        const response = await fetch('/api/v1/admin/products?limit=100');
+        const response = await fetch(`/api/v1/admin/products/${row.id}`, { method: 'DELETE' });
         const body = await response.json();
         if (!response.ok || !body.success)
-          throw new Error(body.error?.message ?? 'Failed to load.');
-        setProducts(body.data.items as ProductRow[]);
+          throw new Error(body.error?.message ?? 'Failed to remove.');
+        toast.success(`"${row.name}" removed from the shop.`);
+        await load();
       } catch (cause) {
-        toast.error(cause instanceof Error ? cause.message : 'Failed to load.');
-      } finally {
-        setIsLoading(false);
+        toast.error(cause instanceof Error ? cause.message : 'Failed to remove.');
       }
-    }
-    void load();
-  }, []);
+    },
+    [load],
+  );
+
+  const columns = React.useMemo(() => buildColumns(removeProduct), [removeProduct]);
 
   return (
     <div className="space-y-4">

@@ -81,7 +81,13 @@ const createReview = createApiRoute({
         title: body.title,
         comment: body.comment,
         verified_purchase: true,
-        status: 'pending',
+        // Auto-approved at the owner's request, now that the Reviews
+        // moderation tab is gone: a queue nobody can reach would mean
+        // every review sat unpublished forever. Only customers with a
+        // delivered order for this product can post one (checked above),
+        // so this isn't open to drive-by spam — but it does mean a
+        // negative review publishes without review.
+        status: 'approved',
       })
       .select()
       .single();

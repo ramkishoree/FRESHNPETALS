@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import { AdminResourcePage } from '@/components/admin/admin-resource-page';
+import { DeliveryChargesPanel } from '@/components/admin/delivery-charges-panel';
 import { Badge } from '@/components/ui/badge';
 
 interface DeliverySlotRow extends Record<string, unknown> {
@@ -37,41 +38,55 @@ const columns: ColumnDef<DeliverySlotRow>[] = [
   },
 ];
 
-/** Ch.16 §106 Delivery Slot Management API. */
+/**
+ * Ch.16 §106 Delivery Slot Management API, plus the delivery charges —
+ * they are the same decision from the owner's side ("when and what do I
+ * charge to deliver"), so they belong on one page rather than split
+ * between here and a generic key/value settings screen.
+ */
 export default function DeliverySlotsPage() {
   return (
-    <AdminResourcePage
-      title="Delivery slots"
-      singularLabel="Delivery slot"
-      description="Time windows and capacity per delivery group."
-      endpoint="/api/v1/admin/delivery-slots"
-      columns={columns}
-      fields={[
-        {
-          name: 'delivery_group_id',
-          label: 'Delivery group ID',
-          type: 'text',
-          required: true,
-          placeholder: 'uuid',
-        },
-        {
-          name: 'label',
-          label: 'Label',
-          type: 'text',
-          required: true,
-          placeholder: '9 AM - 12 PM',
-        },
-        {
-          name: 'start_time',
-          label: 'Start time',
-          type: 'text',
-          required: true,
-          placeholder: '09:00',
-        },
-        { name: 'end_time', label: 'End time', type: 'text', required: true, placeholder: '12:00' },
-        { name: 'max_capacity', label: 'Max capacity', type: 'number', required: true },
-        { name: 'is_active', label: 'Active', type: 'boolean' },
-      ]}
-    />
+    <div className="space-y-6">
+      <DeliveryChargesPanel />
+      <AdminResourcePage
+        title="Delivery slots"
+        singularLabel="Delivery slot"
+        description="The time windows customers can pick at checkout."
+        endpoint="/api/v1/admin/delivery-slots"
+        columns={columns}
+        fields={[
+          {
+            name: 'delivery_group_id',
+            label: 'Delivery group ID',
+            type: 'text',
+            required: true,
+            placeholder: 'uuid',
+          },
+          {
+            name: 'label',
+            label: 'Label',
+            type: 'text',
+            required: true,
+            placeholder: '9 AM - 12 PM',
+          },
+          {
+            name: 'start_time',
+            label: 'Start time',
+            type: 'text',
+            required: true,
+            placeholder: '09:00',
+          },
+          {
+            name: 'end_time',
+            label: 'End time',
+            type: 'text',
+            required: true,
+            placeholder: '12:00',
+          },
+          { name: 'max_capacity', label: 'Max capacity', type: 'number', required: true },
+          { name: 'is_active', label: 'Active', type: 'boolean' },
+        ]}
+      />
+    </div>
   );
 }
