@@ -58,10 +58,7 @@ export class SupabaseAdminProductRepository
     // must not fail the product creation that already succeeded.
     const postCreateFields = stripUndefined({
       color: input.color,
-      flower_type: input.flowerType,
-      size_label: input.sizeLabel,
-      packaging: input.packaging,
-      owner_note: input.ownerNote,
+      owner_description: input.ownerDescription,
     });
     if (Object.keys(postCreateFields).length > 0) {
       await this.adminClient
@@ -86,11 +83,8 @@ export class SupabaseAdminProductRepository
       productPatch['short_description'] = productFields.shortDescription;
     }
     if (productFields.color !== undefined) productPatch['color'] = productFields.color;
-    if (productFields.flowerType !== undefined)
-      productPatch['flower_type'] = productFields.flowerType;
-    if (productFields.sizeLabel !== undefined) productPatch['size_label'] = productFields.sizeLabel;
-    if (productFields.packaging !== undefined) productPatch['packaging'] = productFields.packaging;
-    if (productFields.ownerNote !== undefined) productPatch['owner_note'] = productFields.ownerNote;
+    if (productFields.ownerDescription !== undefined)
+      productPatch['owner_description'] = productFields.ownerDescription;
     if (productFields.description !== undefined)
       productPatch['description'] = productFields.description;
     if (productFields.categoryId !== undefined)
