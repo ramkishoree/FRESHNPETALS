@@ -24,6 +24,12 @@ export async function GoogleReviewsCarousel() {
     .select('google_business_name, google_rating, google_rating_count, google_reviews')
     .not('google_place_id', 'is', null)
     .eq('is_active', true)
+    .is('deleted_at', null)
+    // The owner picks which shop speaks for the brand. This used to take
+    // whichever linked outlet had the most reviews, which is how a
+    // wrongly-linked business with 101 reviews displaced the real shop's
+    // 15 and published a stranger's reputation as ours.
+    .eq('show_google_reviews', true)
     .order('google_rating_count', { ascending: false, nullsFirst: false })
     .limit(1)
     .maybeSingle();

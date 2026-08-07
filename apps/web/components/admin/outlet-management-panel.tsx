@@ -19,6 +19,7 @@ interface OutletGoogleStatus {
   name: string;
   google_business_name: string | null;
   google_place_query: string | null;
+  show_google_reviews: boolean;
   google_rating: number | null;
   google_rating_count: number | null;
 }
@@ -57,6 +58,22 @@ function GoogleBusinessSection({ reloadKey }: { reloadKey: number }) {
   // Without it this list was fetched once on mount and only refetched
   // after a link, so an outlet added in the table never appeared here —
   // reported as "only Gomti Nagar can be linked".
+  /**
+   * Which outlet's reviews the storefront shows. Off by default for a
+   * newly linked outlet: a link has to be confirmed as genuinely ours
+   * before its reviews speak for the brand — a text-search match once
+   * pulled in a different florist's reviews entirely.
+   */
+  async function setShowReviews(outletId: string, show: boolean) {
+    const response = await fetch(`/api/v1/admin/outlets/${outletId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ show_google_reviews: show }),
+    });
+    if (!response.ok) return;
+    await load();
+  }
+
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
@@ -84,14 +101,29 @@ function GoogleBusinessSection({ reloadKey }: { reloadKey: number }) {
               // days-to-weeks to reach Google's Places API. Saying so
               // stops this reading as a failure.
               <p className="text-caption text-muted-foreground">
-                Waiting for Google to list “{outlet.google_place_query}” — it links itself
-                automatically.
+                Noted: “{outlet.google_place_query}”. Link it here once Google lists the shop.
               </p>
             ) : (
               <p className="text-caption text-muted-foreground">Not linked yet</p>
             )}
           </div>
-          <GooglePlacePickerDialog outletId={outlet.id} outletName={outlet.name} onLinked={load} />
+          <div className="flex shrink-0 items-center gap-2">
+            {outlet.google_business_name && (
+              <label className="text-caption text-foreground flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={outlet.show_google_reviews}
+                  onChange={(event) => void setShowReviews(outlet.id, event.target.checked)}
+                />
+                Show reviews
+              </label>
+            )}
+            <GooglePlacePickerDialog
+              outletId={outlet.id}
+              outletName={outlet.name}
+              onLinked={load}
+            />
+          </div>
         </div>
       ))}
     </div>

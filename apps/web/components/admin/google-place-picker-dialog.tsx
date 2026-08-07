@@ -110,7 +110,7 @@ export function GooglePlacePickerDialog({
       });
       const body = await response.json();
       if (!response.ok || !body.success) throw new Error(body.error?.message ?? 'Failed to save.');
-      toast.success('Saved. It will link itself once Google lists this shop.');
+      toast.success('Noted. Come back and link it once Google lists this shop.');
       setOpen(false);
       setPendingQuery('');
       onLinked();
@@ -175,8 +175,9 @@ export function GooglePlacePickerDialog({
           <div className="border-border space-y-2 border-t pt-4">
             <p className="text-caption text-muted-foreground">
               Can&apos;t find it? A brand-new shop appears on Google Maps well before Google&apos;s
-              API can search it. Paste the Maps link or type the business name and it will link
-              itself once Google lists it.
+              API can search it. Note the name or Maps link here and it will be waiting for you to
+              link once Google lists it &mdash; nothing is linked automatically, because a name
+              search can match a different florist with a similar name.
             </p>
             <Input
               placeholder="Fresh N Petals Flowers & Gifts, Arjunganj"

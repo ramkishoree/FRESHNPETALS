@@ -28,6 +28,8 @@ const schema = z.object({
   // Set when the shop is too new for the Places API to find; the review
   // sweep retries it and clears it once a place_id resolves.
   google_place_query: z.string().max(300).optional(),
+  // Whether this outlet's Google reviews appear on the storefront.
+  show_google_reviews: z.boolean().optional(),
 });
 
 export const { GET, POST } = createAdminCrudCollectionRoute({
