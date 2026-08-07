@@ -15,6 +15,10 @@ import './globals.css';
 // storefront's --font-display/--font-body vars now resolve to that stack
 // directly in styles/storefront-theme.css.
 
+/** Origin serving every product image — preconnected in <head>. */
+const SUPABASE_ORIGIN = new URL(process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'https://supabase.co')
+  .origin;
+
 export const metadata: Metadata = {
   title: 'Fresh & Petals',
   description: 'Premium flower delivery, powered by Prana Commerce OS.',
@@ -36,6 +40,14 @@ export default async function RootLayout({
       className={`${GeistSans.variable} ${GeistMono.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        {/* Every product photo comes from Supabase Storage, so the TLS
+            handshake to that origin is on the critical path for the LCP
+            image. Opening it alongside the document rather than after
+            the HTML has parsed removes a round trip from first paint. */}
+        <link rel="preconnect" href={SUPABASE_ORIGIN} crossOrigin="" />
+        <link rel="dns-prefetch" href={SUPABASE_ORIGIN} />
+      </head>
       <body>
         {/* Ch.5.27: dark mode architecture must exist but stays dormant in
             v1 — defaultTheme "light" with system detection off means this

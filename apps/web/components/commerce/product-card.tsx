@@ -9,6 +9,16 @@ import { PriceDisplay } from './price-display';
 
 export interface ProductCardProps {
   product: Product;
+  /**
+   * Load this image eagerly, at high priority, instead of lazily.
+   *
+   * `next/image` lazy-loads by default, which is right for everything
+   * below the fold and wrong for the first row: the browser could not
+   * discover the largest visible image until layout had run, costing
+   * ~585ms of pure "load delay" on the homepage's LCP. Callers set this
+   * for the cards that are visible without scrolling.
+   */
+  priority?: boolean;
   onAddToCart?: (productId: string) => void;
   onToggleWishlist?: (productId: string) => void;
   isWishlisted?: boolean;
@@ -26,6 +36,7 @@ const HOVER_INTERVAL_MS = 700;
 
 export function ProductCard({
   product,
+  priority = false,
   onAddToCart,
   onToggleWishlist,
   isWishlisted,
@@ -63,6 +74,10 @@ export function ProductCard({
               width={600}
               height={750}
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              priority={priority}
+              // Only meaningful alongside priority; tells the browser this
+              // is the image worth fetching first, not merely eagerly.
+              {...(priority ? { fetchPriority: 'high' as const } : {})}
               className={outOfStock ? 'grayscale' : ''}
             />
           ) : (
