@@ -210,7 +210,6 @@ export default async function ProductDetailPage({ params }: PageProps) {
             productId={product.id}
             name={product.name}
             slug={product.slug}
-            shortDescription={product.short_description}
             color={product.color}
             image={product.featured_image}
             basePrice={priceRow ? Number(priceRow.base_price) : 0}

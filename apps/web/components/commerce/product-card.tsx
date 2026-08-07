@@ -100,7 +100,6 @@ export function ProductCard({
             ))}
           </div>
         )}
-        {product.shortDescription && <span className="plate-tag">{product.shortDescription}</span>}
 
         {onToggleWishlist && (
           <button

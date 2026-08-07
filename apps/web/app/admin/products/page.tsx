@@ -2,6 +2,7 @@
 
 import type { ColumnDef } from '@tanstack/react-table';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { DataTable } from '@/components/data-table/data-table';
@@ -31,7 +32,10 @@ const STATUS_CLASS: Record<string, string> = {
   archived: 'text-muted-foreground',
 };
 
-function buildColumns(onRemove: (row: ProductRow) => void): ColumnDef<ProductRow>[] {
+function buildColumns(
+  onRemove: (row: ProductRow) => void,
+  onDuplicate: (row: ProductRow) => void,
+): ColumnDef<ProductRow>[] {
   return [
     {
       accessorKey: 'name',
@@ -77,14 +81,19 @@ function buildColumns(onRemove: (row: ProductRow) => void): ColumnDef<ProductRow
       id: 'actions',
       header: '',
       cell: ({ row }) => (
-        <Button
-          variant="outline"
-          size="sm"
-          className="text-destructive"
-          onClick={() => onRemove(row.original)}
-        >
-          Remove
-        </Button>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" onClick={() => onDuplicate(row.original)}>
+            Duplicate
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="text-destructive"
+            onClick={() => onRemove(row.original)}
+          >
+            Remove
+          </Button>
+        </div>
       ),
     },
   ];
@@ -92,6 +101,7 @@ function buildColumns(onRemove: (row: ProductRow) => void): ColumnDef<ProductRow
 
 /** Ch.12 §47 Product Module — Ch.16 §93 Product Management API. */
 export default function ProductsPage() {
+  const router = useRouter();
   const [products, setProducts] = React.useState<ProductRow[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -142,7 +152,36 @@ export default function ProductsPage() {
     [load],
   );
 
-  const columns = React.useMemo(() => buildColumns(removeProduct), [removeProduct]);
+  /**
+   * Most listings here are variations on one another, so copying beats
+   * retyping the description, price, category and photo. The copy opens
+   * straight away as a draft — it still carries the original's name and
+   * image, so it is never something you'd want live on the shop the
+   * instant the button is pressed.
+   */
+  const duplicateProduct = React.useCallback(
+    async (row: ProductRow) => {
+      try {
+        const response = await fetch(`/api/v1/admin/products/${row.id}/duplicate`, {
+          method: 'POST',
+        });
+        const body = await response.json();
+        if (!response.ok || !body.success) {
+          throw new Error(body.error?.message ?? 'Failed to duplicate.');
+        }
+        toast.success(`Copied "${row.name}". Opening the draft…`);
+        router.push(`/admin/products/${body.data.id}`);
+      } catch (cause) {
+        toast.error(cause instanceof Error ? cause.message : 'Failed to duplicate.');
+      }
+    },
+    [router],
+  );
+
+  const columns = React.useMemo(
+    () => buildColumns(removeProduct, duplicateProduct),
+    [removeProduct, duplicateProduct],
+  );
 
   return (
     <div className="space-y-4">

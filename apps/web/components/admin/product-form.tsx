@@ -19,10 +19,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 
 export interface ProductFormValues {
-  sku: string;
-  slug: string;
   name: string;
-  shortDescription: string;
   color: string;
   ownerDescription: string;
   description: string;
@@ -33,10 +30,7 @@ export interface ProductFormValues {
 }
 
 const EMPTY_VALUES: ProductFormValues = {
-  sku: '',
-  slug: '',
   name: '',
-  shortDescription: '',
   color: '',
   ownerDescription: '',
   description: '',
@@ -54,9 +48,13 @@ interface Category {
 /** Ch.8 §19/§20: manual admin form covering the same fields the (Phase 11) AI Product Wizard will eventually pre-fill — the validation rules are identical either way (packages/commerce's validateAdminProductInput). */
 export function ProductForm({
   productId,
+  previewSlug,
   initialValues,
 }: {
   productId?: string;
+  /** The saved product's slug. Slugs are derived server-side now, so
+   *  the form no longer holds one — this is only for the preview link. */
+  previewSlug?: string;
   initialValues?: Partial<ProductFormValues>;
 }) {
   const router = useRouter();
@@ -85,10 +83,7 @@ export function ProductForm({
     setIsSaving(true);
 
     const payload = {
-      sku: values.sku,
-      slug: values.slug,
       name: values.name,
-      shortDescription: values.shortDescription || undefined,
       color: values.color || undefined,
       ownerDescription: values.ownerDescription || undefined,
       description: values.description,
@@ -132,26 +127,6 @@ export function ProductForm({
             maxLength={120}
             value={values.name}
             onChange={(e) => set('name', e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="slug">Slug *</Label>
-          <Input
-            id="slug"
-            required
-            pattern="^[a-z0-9]+(-[a-z0-9]+)*$"
-            value={values.slug}
-            onChange={(e) => set('slug', e.target.value)}
-          />
-        </div>
-        <div className="grid gap-1.5">
-          <Label htmlFor="sku">SKU *</Label>
-          <Input
-            id="sku"
-            required
-            disabled={Boolean(productId)}
-            value={values.sku}
-            onChange={(e) => set('sku', e.target.value)}
           />
         </div>
         <div className="grid gap-1.5">
@@ -214,15 +189,6 @@ export function ProductForm({
           Shown in your WhatsApp order alert so you know what to make at a glance. Write it however
           you like. Never shown to customers.
         </p>
-      </div>
-
-      <div className="grid gap-1.5">
-        <Label htmlFor="shortDescription">Short description</Label>
-        <Input
-          id="shortDescription"
-          value={values.shortDescription}
-          onChange={(e) => set('shortDescription', e.target.value)}
-        />
       </div>
 
       <div className="grid gap-1.5">
@@ -289,10 +255,10 @@ export function ProductForm({
         <Button type="submit" disabled={isSaving}>
           {isSaving ? 'Saving...' : productId ? 'Save changes' : 'Create product'}
         </Button>
-        {productId && values.slug && (
+        {productId && previewSlug && (
           <Button type="button" variant="outline" asChild>
             <a
-              href={`/api/draft/enable?path=${encodeURIComponent(`/product/${values.slug}`)}`}
+              href={`/api/draft/enable?path=${encodeURIComponent(`/product/${previewSlug}`)}`}
               target="_blank"
               rel="noreferrer"
             >

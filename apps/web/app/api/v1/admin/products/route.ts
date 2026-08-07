@@ -10,6 +10,7 @@ import { z } from 'zod';
 import { zUuid } from '@/lib/uuid';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { stripUndefined } from '@/lib/strip-undefined';
+import { deriveSku, deriveSlug } from '@/server/products/derive-identifiers';
 import { recordAuditEvent } from '@/server/audit/record-audit-event';
 import { requireAdmin } from '@/server/auth/session';
 import { createApiRoute } from '@/server/http/route-handler';
@@ -35,10 +36,11 @@ const querySchema = z.object({
 });
 
 const createBodySchema = z.object({
-  sku: z.string().min(1),
-  slug: z.string().min(1),
+  // Both derived from the name when absent — see deriveSlug/deriveSku.
+  // Still accepted so an API client can pin them deliberately.
+  sku: z.string().min(1).optional(),
+  slug: z.string().min(1).optional(),
   name: z.string().min(3).max(120),
-  shortDescription: z.string().optional(),
   color: z.string().max(60).optional(),
   // Owner-only packing details — never returned by a storefront query.
   ownerDescription: z.string().max(1000).optional(),
@@ -82,10 +84,16 @@ const createProduct = createApiRoute({
     const admin = createSupabaseAdminClient();
     const repository = new SupabaseAdminProductRepository(admin);
     const service = new CreateProductService(repository);
-    const seoDefaults = deriveSeoDefaults(body.name, body.description, body.shortDescription);
+    const seoDefaults = deriveSeoDefaults(body.name, body.description);
+    const [slug, sku] = await Promise.all([
+      body.slug ? Promise.resolve(body.slug) : deriveSlug(admin, body.name),
+      body.sku ? Promise.resolve(body.sku) : deriveSku(admin, body.name),
+    ]);
     const result = await service.execute(
       stripUndefined({
         ...body,
+        slug,
+        sku,
         seoTitle: body.seoTitle ?? seoDefaults.seoTitle,
         metaDescription: body.metaDescription ?? seoDefaults.metaDescription,
         focusKeyword: body.focusKeyword ?? seoDefaults.focusKeyword,

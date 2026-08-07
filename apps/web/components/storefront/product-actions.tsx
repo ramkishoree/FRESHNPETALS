@@ -11,7 +11,6 @@ export interface ProductActionsProps {
   productId: string;
   name: string;
   slug: string;
-  shortDescription: string | null;
   color: string | null;
   image: string | null;
   basePrice: number;
@@ -25,7 +24,6 @@ export function ProductActions({
   productId,
   name,
   slug,
-  shortDescription,
   color,
   image,
   basePrice,
@@ -89,8 +87,6 @@ export function ProductActions({
           Colour: <span className="text-foreground font-medium">{color}</span>
         </p>
       )}
-
-      {shortDescription && <p className="text-body-lg mt-3 max-w-prose">{shortDescription}</p>}
 
       <div className="mt-6">
         <PriceDisplay basePrice={basePrice} salePrice={salePrice} size="lg" />
