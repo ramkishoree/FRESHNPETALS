@@ -77,7 +77,7 @@ interface PricingBreakdown {
  * tied to where the package is going and which outlet they choose.
  */
 export function CheckoutFlow({ nonce }: { nonce?: string }) {
-  const { items, subtotal, clear, setQuantity } = useCart();
+  const { items, subtotal, clear, setQuantity, removeItem } = useCart();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -322,7 +322,16 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
     setSelectedAddressId(address.id);
     setPinTarget({ lat, lng });
-    setDeliveryPin({ lat, lng, formattedAddress: address.address_line_1 });
+    setDeliveryPin({
+      lat,
+      lng,
+      formattedAddress: address.address_line_1,
+      // A saved address stores only the formatted line, not its parts.
+      // The panel below simply omits what it doesn't have; the fee still
+      // comes from these coords, which is the part that must be honest.
+      postalCode: null,
+      locality: null,
+    });
     setManualAddress((current) => ({
       ...current,
       recipientName: address.recipient_name,
@@ -372,8 +381,34 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         amount,
         currency,
         name: 'Fresh & Petals',
-        handler: () => {
+        // Razorpay hands back the payment id and an HMAC of it. Passing
+        // those to the server is what lets it ask Razorpay directly
+        // whether the money was captured, instead of the order existing
+        // only if a webhook happens to be delivered. Nothing here is
+        // trusted on its own — see the confirm-payment route.
+        handler: (response: {
+          razorpay_payment_id?: string;
+          razorpay_order_id?: string;
+          razorpay_signature?: string;
+        }) => {
           clear();
+          const confirmable =
+            response?.razorpay_payment_id && response?.razorpay_order_id ? response : null;
+          if (confirmable) {
+            // Fire-and-forget on purpose: the processing page polls for
+            // the same answer, so a failed or slow confirm costs the
+            // customer nothing but a few more seconds of waiting.
+            void fetch(`/api/v1/checkout/${checkoutSessionId}/confirm-payment${guestSuffix}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpayOrderId: confirmable.razorpay_order_id,
+                razorpayPaymentId: confirmable.razorpay_payment_id,
+                razorpaySignature: confirmable.razorpay_signature ?? '',
+              }),
+              keepalive: true,
+            }).catch(() => {});
+          }
           router.push(`/checkout/${checkoutSessionId}/processing${guestSuffix}`);
         },
         modal: {
@@ -734,9 +769,20 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Delivery details</h2>
             {deliveryPin ? (
-              <p className="text-caption mb-4 text-[var(--sf-ink-muted)]">
-                📍 {deliveryPin.formattedAddress}
-              </p>
+              <div className="mb-5 rounded-[var(--r-md)] border border-[var(--sf-border)] bg-[var(--sf-surface-2)] p-4">
+                <p className="text-caption text-[var(--sf-ink-muted)]">
+                  📍 {deliveryPin.formattedAddress}
+                </p>
+                {(deliveryPin.locality || deliveryPin.postalCode) && (
+                  <p className="text-caption mt-1.5 text-[var(--sf-ink-muted)]">
+                    {[deliveryPin.locality, deliveryPin.postalCode].filter(Boolean).join(' · ')}
+                  </p>
+                )}
+                <p className="text-caption mt-2 text-[var(--sf-ink-muted)]">
+                  Taken from your pin, so the delivery fee matches where we actually ride to. Move
+                  the pin above to change it.
+                </p>
+              </div>
             ) : (
               <p className="text-caption mb-4 text-[var(--sale)]">
                 Pin your delivery location above first — it&apos;s the address we deliver to.
@@ -923,6 +969,18 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                         className="grid size-6 place-items-center rounded border border-[var(--sf-border)] disabled:opacity-40"
                       >
                         +
+                      </button>
+                      {/* Stepping down to zero is not a way out: the
+                          minus button stops at 1. Someone who changed
+                          their mind about an item needs to drop it here
+                          rather than go back to the basket and lose the
+                          pin, outlet and slot they already chose. */}
+                      <button
+                        type="button"
+                        onClick={() => removeItem(item.productId)}
+                        className="text-xs underline underline-offset-2 hover:text-[var(--sale)]"
+                      >
+                        Remove
                       </button>
                       {max !== null && (
                         <span className="text-xs text-[var(--price-was)]">

@@ -7,6 +7,33 @@ export interface MapLocation {
   lat: number;
   lng: number;
   formattedAddress: string;
+  /**
+   * Pulled off the geocoder result rather than typed by the customer.
+   *
+   * The fee is measured from the pin, so letting someone pin a nearby
+   * street and then hand-write a pincode across town would quote one
+   * delivery and require another. Whatever the pin says is what the
+   * florist rides to.
+   */
+  postalCode: string | null;
+  locality: string | null;
+}
+
+/** Reads the pieces of an address out of a geocoder result. */
+export function extractComponents(result: google.maps.GeocoderResult | undefined): {
+  postalCode: string | null;
+  locality: string | null;
+} {
+  const components = result?.address_components ?? [];
+  const find = (type: string) =>
+    components.find((component) => component.types.includes(type))?.long_name ?? null;
+  return {
+    postalCode: find('postal_code'),
+    // Lucknow addresses land on sublocality far more often than locality
+    // — "Gomti Nagar" is a sublocality_level_1, and falling back to
+    // "Lucknow" alone tells the rider nothing.
+    locality: find('sublocality_level_1') ?? find('sublocality') ?? find('locality'),
+  };
 }
 
 interface DeliveryMapProps {
@@ -63,13 +90,16 @@ export function DeliveryMap({ onLocationChange, defaultCenter, pinTo }: Delivery
         });
         mapInstanceRef.current = map;
 
-        // Draggable marker
+        // No marker until the customer places one. Showing a pin at the
+        // city centre on load made the map look answered before it was:
+        // the delivery fee is measured from this point, so a default
+        // meant every order that ignored the map was quoted from the
+        // middle of Lucknow rather than the customer's doorstep.
         const marker = new maps.Marker({
-          position: center,
           map,
           draggable: true,
-          animation: maps.Animation.DROP,
-          title: 'Drop your delivery location here',
+          title: 'Your delivery location',
+          visible: false,
         });
         markerRef.current = marker;
 
@@ -78,10 +108,11 @@ export function DeliveryMap({ onLocationChange, defaultCenter, pinTo }: Delivery
           if (!geocoderRef.current) return;
           try {
             const result = await geocoderRef.current.geocode({ location: { lat, lng } });
+            const best = result.results[0];
             const formattedAddress =
-              result.results[0]?.formatted_address ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+              best?.formatted_address ?? `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
             if (!cancelled) {
-              onLocationChange({ lat, lng, formattedAddress });
+              onLocationChange({ lat, lng, formattedAddress, ...extractComponents(best) });
             }
           } catch {
             if (!cancelled) {
@@ -89,13 +120,25 @@ export function DeliveryMap({ onLocationChange, defaultCenter, pinTo }: Delivery
                 lat,
                 lng,
                 formattedAddress: `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+                postalCode: null,
+                locality: null,
               });
             }
           }
         }
 
-        // Initial geocode
-        await updateLocation(center.lat, center.lng);
+        function placeMarker(lat: number, lng: number) {
+          marker.setPosition({ lat, lng });
+          marker.setVisible(true);
+          void updateLocation(lat, lng);
+        }
+
+        // Tapping the map is the most direct way to say "here", and on a
+        // phone it is far easier than dragging a pin that isn't there yet.
+        map.addListener('click', (event: { latLng?: { lat: () => number; lng: () => number } }) => {
+          const position = event.latLng;
+          if (position) placeMarker(position.lat(), position.lng());
+        });
 
         marker.addListener('dragend', () => {
           const pos = marker.getPosition();
@@ -128,20 +171,15 @@ export function DeliveryMap({ onLocationChange, defaultCenter, pinTo }: Delivery
 
           autocompleteElement.addEventListener('gmp-select', async (event) => {
             const place = event.placePrediction.toPlace();
-            await place.fetchFields({ fields: ['location', 'formattedAddress'] });
+            await place.fetchFields({ fields: ['location'] });
             if (!place.location) return;
             const loc = place.location;
             map.setCenter(loc);
-            map.setZoom(15);
-            marker.setPosition(loc);
-            if (!cancelled) {
-              onLocationChange({
-                lat: loc.lat(),
-                lng: loc.lng(),
-                formattedAddress:
-                  place.formattedAddress ?? `${loc.lat().toFixed(4)}, ${loc.lng().toFixed(4)}`,
-              });
-            }
+            map.setZoom(16);
+            // Routed through placeMarker rather than reported straight from
+            // the prediction, so a searched address yields the same
+            // pincode and locality a dragged pin would.
+            placeMarker(loc.lat(), loc.lng());
           });
         }
 
@@ -171,6 +209,7 @@ export function DeliveryMap({ onLocationChange, defaultCenter, pinTo }: Delivery
     if (!pinTo || !map || !marker) return;
     const position = { lat: pinTo.lat, lng: pinTo.lng };
     marker.setPosition(position);
+    marker.setVisible(true);
     map.setCenter(position);
     map.setZoom(15);
   }, [pinTo?.lat, pinTo?.lng, status]);
@@ -210,8 +249,8 @@ export function DeliveryMap({ onLocationChange, defaultCenter, pinTo }: Delivery
       </div>
 
       <p className="text-caption text-[var(--sf-ink-muted)]">
-        Drag the pin to your exact delivery location. Distance from the selected outlet determines
-        the delivery fee.
+        Search above, or tap the map to drop a pin — then drag it to your exact door. This pin is
+        the address we deliver to, and its distance from the outlet sets the delivery fee.
       </p>
     </div>
   );

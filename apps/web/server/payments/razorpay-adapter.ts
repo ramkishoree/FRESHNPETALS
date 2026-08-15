@@ -42,11 +42,42 @@ export async function createRazorpayOrder(params: {
   return { id: order.id, amount: Number(order.amount), currency: order.currency };
 }
 
+export interface RazorpayPaymentSnapshot {
+  id: string;
+  orderId: string | null;
+  /** Smallest currency unit — paise for INR, as Razorpay reports it. */
+  amount: number;
+  status: string;
+}
+
+/**
+ * Asks Razorpay what actually happened to a payment.
+ *
+ * The browser's success callback proves someone finished the widget, not
+ * that money moved; only Razorpay knows that. Reading the amount from
+ * here rather than from the callback also means a tampered client can't
+ * talk the server into recording a payment larger or smaller than the
+ * one that was captured.
+ */
+export async function fetchRazorpayPayment(paymentId: string): Promise<RazorpayPaymentSnapshot> {
+  const payment = await getClient().payments.fetch(paymentId);
+  return {
+    id: payment.id,
+    orderId: payment.order_id ?? null,
+    amount: Number(payment.amount),
+    status: payment.status,
+  };
+}
+
 /**
  * Ch.8 §100/§101: "Verify Signature... Never trust frontend callback."
  * Razorpay's checkout.js success callback carries
  * order_id|payment_id + an HMAC-SHA256 signature keyed with the API
  * secret — this recomputes it server-side and compares in constant time.
+ *
+ * Passing this is the first of three checks in the confirm-payment route,
+ * not a substitute for asking Razorpay what happened: it proves the
+ * payload's origin, nothing about whether the money moved.
  */
 export function verifyPaymentSignature(params: {
   razorpayOrderId: string;

@@ -22,12 +22,17 @@ interface RazorpayWebhookPayload {
 /**
  * Ch.16 §136 Razorpay Webhooks — "Every webhook validates Signature,
  * Timestamp, Replay Protection, Order Mapping, Audit Log. Invalid
- * webhooks rejected." Ch.8 §89 Principle 5: this is the *only* path that
- * ever creates an order — the frontend's checkout.js success callback is
- * never trusted, so there's no separate client-submitted payment
- * signature to check here (that pattern is a different integration this
- * app deliberately doesn't use — see razorpay-adapter.ts's
- * verifyPaymentSignature, kept as a documented, unused-by-design utility).
+ * webhooks rejected."
+ *
+ * This was once the only path that could create an order from an online
+ * payment, which stranded every such customer for as long as the webhook
+ * went undelivered. It now shares that job with
+ * `/api/v1/checkout/[sessionId]/confirm-payment`, which the browser
+ * pokes the moment the widget closes and which re-verifies everything
+ * against Razorpay's API rather than trusting the callback. This remains
+ * the path that catches the customer who closes the tab straight after
+ * paying. Both end in `checkout_complete`, whose idempotency makes two
+ * arrivals resolve to one order.
  *
  * Order Mapping: `checkout_start` stores the Razorpay order id it just
  * created into `checkout_sessions.metadata.razorpayOrderId` (the only
