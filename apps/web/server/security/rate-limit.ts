@@ -14,6 +14,10 @@ export const RATE_LIMIT_TIERS = {
   login: { limit: 10, windowSeconds: 900 },
   checkout: { limit: 20, windowSeconds: 60 },
   admin: { limit: 100, windowSeconds: 60 },
+  // Public review posting: unauthenticated and accepts uploads, so it is
+  // the most abusable endpoint on the site. A genuine customer writes one
+  // review, not five an hour.
+  review: { limit: 5, windowSeconds: 3600 },
 } as const;
 
 export type RateLimitTier = keyof typeof RATE_LIMIT_TIERS;

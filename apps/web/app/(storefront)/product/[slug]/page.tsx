@@ -11,6 +11,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb';
 import { getPublicEnv } from '@/config/env';
+import { getCurrentUser } from '@/server/auth/session';
 import { JsonLd } from '@/components/seo/json-ld';
 import { DraftModeBanner } from '@/components/storefront/draft-mode-banner';
 import { GoogleReviewsCarousel } from '@/components/storefront/google-reviews-carousel';
@@ -78,7 +79,9 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const [{ data: reviews }, { data: extraMedia }] = await Promise.all([
     supabase
       .from('reviews')
-      .select('id, rating, title, comment, created_at, verified_purchase, customers(first_name)')
+      .select(
+        'id, rating, title, comment, created_at, verified_purchase, author_name, images, customers(first_name)',
+      )
       .eq('product_id', product.id)
       .eq('status', 'approved')
       .order('created_at', { ascending: false })
@@ -103,6 +106,13 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const productUrl = `${appUrl}/product/${product.slug}`;
   const displayPrice = priceRow?.sale_price ?? priceRow?.base_price ?? 0;
   const approvedReviews = reviews ?? [];
+
+  // Public reviews publish instantly, so the owner gets an inline delete
+  // control. Decided on the server — a customer never receives the
+  // markup for it, rather than it being hidden with CSS.
+  const currentUser = await getCurrentUser();
+  const canModerate =
+    currentUser?.roles.some((role) => role === 'administrator' || role === 'owner') ?? false;
 
   return (
     <div className="container-brand py-10">
@@ -227,15 +237,20 @@ export default async function ProductDetailPage({ params }: PageProps) {
       </div>
 
       <ProductReviews
+        productId={product.id}
+        canModerate={canModerate}
         reviews={approvedReviews.map((review) => {
           const author = Array.isArray(review.customers) ? review.customers[0] : review.customers;
           return {
             id: review.id,
-            authorName: author?.first_name ?? 'Verified customer',
+            // A public reviewer typed their own name; a signed-in
+            // customer's comes from their profile.
+            authorName: review.author_name ?? author?.first_name ?? 'Verified customer',
             rating: review.rating,
             comment: review.comment ?? review.title ?? '',
             createdAt: review.created_at,
             verifiedPurchase: review.verified_purchase ?? false,
+            images: Array.isArray(review.images) ? (review.images as string[]) : [],
           };
         })}
         googleReviews={<GoogleReviewsCarousel />}

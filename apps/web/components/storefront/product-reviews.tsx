@@ -1,9 +1,12 @@
 'use client';
 
 import { Star } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import * as React from 'react';
+import { toast } from 'sonner';
 import { ReviewCard } from '@/components/commerce/review-card';
 import { Reveal } from '@/components/storefront/reveal';
+import { ReviewForm } from '@/components/storefront/review-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export interface ProductReview {
@@ -13,6 +16,7 @@ export interface ProductReview {
   comment: string;
   createdAt: string;
   verifiedPurchase: boolean;
+  images: string[];
 }
 
 /**
@@ -26,12 +30,39 @@ export interface ProductReview {
  * component only owns the tab switching.
  */
 export function ProductReviews({
+  productId,
   reviews,
   googleReviews,
+  canModerate = false,
 }: {
+  productId: string;
   reviews: ProductReview[];
   googleReviews: React.ReactNode;
+  /** True only for a signed-in owner/administrator, decided on the
+   *  server — the delete control is never rendered for a customer. */
+  canModerate?: boolean;
 }) {
+  const router = useRouter();
+  const [deletingId, setDeletingId] = React.useState<string | null>(null);
+
+  async function removeReview(id: string) {
+    if (!window.confirm('Remove this review from the site?')) return;
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/v1/admin/reviews/${id}`, { method: 'DELETE' });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(body.error?.message ?? 'Could not remove the review.');
+      }
+      toast.success('Review removed.');
+      router.refresh();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Could not remove the review.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   const averageRating =
     reviews.length > 0
       ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length
@@ -70,10 +101,10 @@ export function ProductReviews({
         </div>
 
         <TabsContent value="product">
+          <ReviewForm productId={productId} />
           {reviews.length === 0 ? (
             <p className="text-body text-muted-foreground">
-              No reviews on this product yet — order it and you&apos;ll be asked for one after
-              delivery.
+              No reviews on this product yet — be the first to leave one.
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
@@ -85,6 +116,9 @@ export function ProductReviews({
                   comment={review.comment}
                   createdAt={review.createdAt}
                   verifiedPurchase={review.verifiedPurchase}
+                  images={review.images}
+                  {...(canModerate ? { onDelete: () => void removeReview(review.id) } : {})}
+                  isDeleting={deletingId === review.id}
                 />
               ))}
             </div>

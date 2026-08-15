@@ -21,6 +21,9 @@ describe('RATE_LIMIT_TIERS', () => {
       login: { limit: 10, windowSeconds: 900 },
       checkout: { limit: 20, windowSeconds: 60 },
       admin: { limit: 100, windowSeconds: 60 },
+      // Not from Ch.16 §19: public review posting is unauthenticated and
+      // accepts uploads, so it gets its own far tighter budget.
+      review: { limit: 5, windowSeconds: 3600 },
     });
   });
 });
