@@ -1,13 +1,15 @@
 'use client';
 
-import { Star } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { ReviewCard } from '@/components/commerce/review-card';
+import { StarRating } from '@/components/commerce/star-rating';
 import { Reveal } from '@/components/storefront/reveal';
+import { ReviewEditor } from '@/components/storefront/review-editor';
 import { ReviewForm } from '@/components/storefront/review-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { forgetReviewToken, getReviewToken, ownedReviewIds } from '@/lib/my-reviews';
 
 export interface ProductReview {
   id: string;
@@ -15,7 +17,6 @@ export interface ProductReview {
   rating: number;
   comment: string;
   createdAt: string;
-  verifiedPurchase: boolean;
   images: string[];
 }
 
@@ -44,6 +45,46 @@ export function ProductReviews({
 }) {
   const router = useRouter();
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
+  const [editingId, setEditingId] = React.useState<string | null>(null);
+  /**
+   * Which of these reviews this browser can edit. Read in an effect
+   * rather than during render because localStorage does not exist on the
+   * server, and a mismatch between the two would be a hydration error.
+   */
+  const [ownedIds, setOwnedIds] = React.useState<ReadonlySet<string>>(new Set());
+  const refreshOwned = React.useCallback(() => {
+    setOwnedIds(new Set(ownedReviewIds()));
+  }, []);
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    refreshOwned();
+  }, [refreshOwned]);
+
+  /** The reviewer withdrawing their own review, not the owner removing it. */
+  async function withdrawReview(id: string) {
+    const token = getReviewToken(id);
+    if (!token) return;
+    if (!window.confirm('Remove your review from this product?')) return;
+    setDeletingId(id);
+    try {
+      const response = await fetch(`/api/v1/products/${productId}/reviews/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-review-token': token },
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success) {
+        throw new Error(body.error?.message ?? 'Could not remove your review.');
+      }
+      forgetReviewToken(id);
+      refreshOwned();
+      toast.success('Your review has been removed.');
+      router.refresh();
+    } catch (cause) {
+      toast.error(cause instanceof Error ? cause.message : 'Could not remove your review.');
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   async function removeReview(id: string) {
     if (!window.confirm('Remove this review from the site?')) return;
@@ -77,27 +118,7 @@ export function ProductReviews({
             <TabsTrigger value="google">Google reviews</TabsTrigger>
           </TabsList>
 
-          {averageRating !== null && (
-            <div className="flex items-center gap-2">
-              <div className="flex" role="img" aria-label={`${averageRating.toFixed(1)} out of 5`}>
-                {Array.from({ length: 5 }, (_, index) => (
-                  <Star
-                    key={index}
-                    className={
-                      index < Math.round(averageRating)
-                        ? 'fill-accent text-accent size-4'
-                        : 'text-muted-foreground size-4 fill-none'
-                    }
-                    aria-hidden="true"
-                  />
-                ))}
-              </div>
-              <span className="text-caption text-muted-foreground">
-                {averageRating.toFixed(1)} from {reviews.length}{' '}
-                {reviews.length === 1 ? 'review' : 'reviews'}
-              </span>
-            </div>
-          )}
+          {averageRating !== null && <StarRating rating={averageRating} count={reviews.length} />}
         </div>
 
         <TabsContent value="product">
@@ -108,19 +129,47 @@ export function ProductReviews({
             </p>
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
-              {reviews.map((review) => (
-                <ReviewCard
-                  key={review.id}
-                  authorName={review.authorName}
-                  rating={review.rating}
-                  comment={review.comment}
-                  createdAt={review.createdAt}
-                  verifiedPurchase={review.verifiedPurchase}
-                  images={review.images}
-                  {...(canModerate ? { onDelete: () => void removeReview(review.id) } : {})}
-                  isDeleting={deletingId === review.id}
-                />
-              ))}
+              {reviews.map((review) => {
+                const token = ownedIds.has(review.id) ? getReviewToken(review.id) : null;
+
+                if (editingId === review.id && token) {
+                  return (
+                    <ReviewEditor
+                      key={review.id}
+                      productId={productId}
+                      reviewId={review.id}
+                      token={token}
+                      initialRating={review.rating}
+                      initialComment={review.comment}
+                      initialImages={review.images}
+                      onDone={() => {
+                        setEditingId(null);
+                        router.refresh();
+                      }}
+                      onCancel={() => setEditingId(null)}
+                    />
+                  );
+                }
+
+                return (
+                  <ReviewCard
+                    key={review.id}
+                    authorName={review.authorName}
+                    rating={review.rating}
+                    comment={review.comment}
+                    createdAt={review.createdAt}
+                    images={review.images}
+                    isMine={token !== null}
+                    {...(token ? { onEdit: () => setEditingId(review.id) } : {})}
+                    {...(token
+                      ? { onDelete: () => void withdrawReview(review.id) }
+                      : canModerate
+                        ? { onDelete: () => void removeReview(review.id) }
+                        : {})}
+                    isDeleting={deletingId === review.id}
+                  />
+                );
+              })}
             </div>
           )}
         </TabsContent>

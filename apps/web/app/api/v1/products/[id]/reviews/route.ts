@@ -1,16 +1,16 @@
 import type { NextRequest } from 'next/server';
-import sharp from 'sharp';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { apiError, apiSuccess } from '@/server/http/envelope';
 import { logger } from '@/server/logger';
-import { sniffImageType } from '@/server/media/sniff-image-type';
+import {
+  hashEditToken,
+  MAX_COMMENT,
+  MAX_IMAGES,
+  MAX_NAME,
+  ReviewImageError,
+  storeReviewImages,
+} from '@/server/reviews/review-images';
 import { runSecurityChain } from '@/server/security/chain';
-
-const MEDIA_BUCKET = 'media';
-const MAX_IMAGES = 3;
-const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const MAX_COMMENT = 2000;
-const MAX_NAME = 80;
 
 /**
  * Public review submission — no account needed.
@@ -33,7 +33,8 @@ const MAX_NAME = 80;
  *    coordinates of their home.
  *  - `status: 'approved'` publishes immediately, per the owner's
  *    decision; the owner can delete any review inline on the product
- *    page.
+ *    page, and the reviewer can edit or withdraw their own using the
+ *    one-time token returned here.
  *
  * Written with the service-role client because `reviews` has no anon
  * INSERT policy, and shouldn't: validation belongs here, not in RLS.
@@ -91,47 +92,20 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       );
     }
 
-    const imageUrls: string[] = [];
-    for (const file of files) {
-      if (file.size === 0) continue;
-      if (file.size > MAX_IMAGE_BYTES) {
-        return apiError('VALIDATION_ERROR', 'Each photo must be under 5MB.', 400, correlationId);
+    let imageUrls: string[];
+    try {
+      imageUrls = await storeReviewImages(files, productId);
+    } catch (cause) {
+      if (cause instanceof ReviewImageError) {
+        return apiError('VALIDATION_ERROR', cause.message, 400, correlationId);
       }
-
-      const sourceBytes = Buffer.from(await file.arrayBuffer());
-      if (!sniffImageType(sourceBytes)) {
-        return apiError(
-          'VALIDATION_ERROR',
-          'Photos must be JPEG or PNG files.',
-          400,
-          correlationId,
-        );
-      }
-
-      // Re-encoded, not stored as uploaded. `.rotate()` bakes in EXIF
-      // orientation before the metadata is discarded, so a phone photo
-      // is not served sideways; WebP output then carries no EXIF at all.
-      const converted = await sharp(sourceBytes)
-        .rotate()
-        .resize(1400, 1400, { fit: 'inside', withoutEnlargement: true })
-        .webp({ quality: 78 })
-        .toBuffer();
-
-      const path = `reviews/${productId}/${crypto.randomUUID()}.webp`;
-      const { error: uploadError } = await admin.storage
-        .from(MEDIA_BUCKET)
-        .upload(path, converted, { contentType: 'image/webp', upsert: false });
-      if (uploadError) {
-        logger.error('review.image_upload_failed', { correlationId, message: uploadError.message });
-        return apiError(
-          'EXTERNAL_SERVICE_ERROR',
-          'Could not save that photo. Please try again.',
-          502,
-          correlationId,
-        );
-      }
-      imageUrls.push(admin.storage.from(MEDIA_BUCKET).getPublicUrl(path).data.publicUrl);
+      throw cause;
     }
+
+    // Handed to the browser once and never stored in readable form. It
+    // is what lets the reviewer come back and change or withdraw what
+    // they wrote without an account to sign in to.
+    const editToken = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '');
 
     const { data: review, error: insertError } = await admin
       .from('reviews')
@@ -142,11 +116,10 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
         rating,
         comment: comment || null,
         images: imageUrls,
-        // Not a confirmed buyer — the badge stays honest.
-        verified_purchase: false,
+        edit_token_hash: hashEditToken(editToken),
         status: 'approved',
       })
-      .select('id, author_name, rating, comment, images, created_at, verified_purchase')
+      .select('id, author_name, rating, comment, images, created_at')
       .single();
 
     if (insertError || !review) {
@@ -159,7 +132,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
       );
     }
 
-    return apiSuccess(review, { meta: { correlationId } });
+    return apiSuccess({ ...review, editToken }, { meta: { correlationId } });
   } catch (cause) {
     logger.error('review.unhandled_exception', {
       correlationId,

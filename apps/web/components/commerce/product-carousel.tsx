@@ -1,8 +1,7 @@
-import type { Product } from '@prana/commerce';
 import { ProductCard, type ProductCardProps } from './product-card';
 
 export interface ProductCarouselProps {
-  products: Product[];
+  products: ProductCardProps['product'][];
   onAddToCart?: ProductCardProps['onAddToCart'];
   onToggleWishlist?: ProductCardProps['onToggleWishlist'];
   wishlistedIds?: ReadonlySet<string>;

@@ -79,9 +79,7 @@ export default async function ProductDetailPage({ params }: PageProps) {
   const [{ data: reviews }, { data: extraMedia }] = await Promise.all([
     supabase
       .from('reviews')
-      .select(
-        'id, rating, title, comment, created_at, verified_purchase, author_name, images, customers(first_name)',
-      )
+      .select('id, rating, title, comment, created_at, author_name, images, customers(first_name)')
       .eq('product_id', product.id)
       .eq('status', 'approved')
       // Explicit, not left to RLS. `reviews_select_approved` hides
@@ -251,11 +249,10 @@ export default async function ProductDetailPage({ params }: PageProps) {
             id: review.id,
             // A public reviewer typed their own name; a signed-in
             // customer's comes from their profile.
-            authorName: review.author_name ?? author?.first_name ?? 'Verified customer',
+            authorName: review.author_name ?? author?.first_name ?? 'A customer',
             rating: review.rating,
             comment: review.comment ?? review.title ?? '',
             createdAt: review.created_at,
-            verifiedPurchase: review.verified_purchase ?? false,
             images: Array.isArray(review.images) ? (review.images as string[]) : [],
           };
         })}

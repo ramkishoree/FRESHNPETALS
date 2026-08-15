@@ -6,9 +6,15 @@ import Image from 'next/image';
 import Link from 'next/link';
 import * as React from 'react';
 import { PriceDisplay } from './price-display';
+import { StarRating } from './star-rating';
 
 export interface ProductCardProps {
-  product: Product;
+  /**
+   * Rating aggregates ride along optionally: the storefront listing
+   * carries them (`StorefrontProduct`), other callers pass a plain
+   * `Product` and simply show no rating.
+   */
+  product: Product & { averageRating?: number | null; approvedReviewCount?: number };
   /**
    * Load this image eagerly, at high priority, instead of lazily.
    *
@@ -130,6 +136,17 @@ export function ProductCard({
           <PriceDisplay basePrice={product.basePrice} salePrice={product.salePrice} />
         </span>
       </div>
+
+      {/* Nothing at all when unreviewed, rather than an empty row of grey
+          stars — a new product should not look like a badly rated one. */}
+      {product.averageRating != null && product.approvedReviewCount ? (
+        <StarRating
+          rating={product.averageRating}
+          count={product.approvedReviewCount}
+          size="sm"
+          className="mt-1"
+        />
+      ) : null}
 
       {onAddToCart && (
         <button

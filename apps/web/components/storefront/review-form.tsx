@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { rememberReviewToken } from '@/lib/my-reviews';
 
 const MAX_IMAGES = 3;
 
@@ -68,6 +69,13 @@ export function ReviewForm({ productId }: { productId: string }) {
       const payload = await response.json();
       if (!response.ok || !payload.success) {
         throw new Error(payload.error?.message ?? 'Could not post your review.');
+      }
+
+      // The token is the only way back to this review: without an
+      // account, it is what proves authorship when they want to edit or
+      // withdraw it later.
+      if (payload.data?.id && payload.data?.editToken) {
+        rememberReviewToken(payload.data.id, payload.data.editToken);
       }
 
       toast.success('Thank you — your review is live.');

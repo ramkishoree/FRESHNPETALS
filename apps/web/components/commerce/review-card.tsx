@@ -9,23 +9,27 @@ export interface ReviewCardProps {
   rating: number;
   comment: string;
   createdAt: string;
-  verifiedPurchase?: boolean;
   /** Photos the reviewer uploaded, already re-encoded server-side. */
   images?: string[];
-  /** Rendered only for the owner — public reviews publish instantly, so
-   *  there has to be a way to take one down from where you see it. */
+  /** Written from this browser — labels the card and changes what
+   *  "Remove" means (withdrawing your own, not moderating someone
+   *  else's). */
+  isMine?: boolean;
+  onEdit?: () => void;
+  /** Owner moderation, or the reviewer withdrawing their own. */
   onDelete?: () => void;
   isDeleting?: boolean;
 }
 
-/** Ch.12 §82. Ch.8: "verified-purchase badge". */
+/** Ch.12 §82. */
 export function ReviewCard({
   authorName,
   rating,
   comment,
   createdAt,
-  verifiedPurchase,
   images = [],
+  isMine = false,
+  onEdit,
   onDelete,
   isDeleting = false,
 }: ReviewCardProps) {
@@ -34,16 +38,22 @@ export function ReviewCard({
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <span className="font-medium">{authorName}</span>
-          {verifiedPurchase && (
-            <Badge variant="outline" className="text-success-text">
-              Verified purchase
-            </Badge>
-          )}
+          {isMine && <Badge variant="outline">Your review</Badge>}
         </div>
         <div className="flex items-center gap-3">
           <time dateTime={createdAt} className="text-caption text-muted-foreground">
             {formatDate(createdAt)}
           </time>
+          {onEdit && (
+            <button
+              type="button"
+              onClick={onEdit}
+              disabled={isDeleting}
+              className="text-caption underline underline-offset-2 disabled:opacity-50"
+            >
+              Edit
+            </button>
+          )}
           {onDelete && (
             <button
               type="button"

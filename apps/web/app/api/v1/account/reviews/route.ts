@@ -7,7 +7,16 @@ import { getCurrentCustomer } from '@/server/customer/current-customer';
 import { createApiRoute } from '@/server/http/route-handler';
 import { runSecurityChain } from '@/server/security/chain';
 
-/** Ch.16 §80 Review API. "Verified Purchase Required" (Ch.8 §115) — checked here; RLS only enforces ownership, not purchase history. */
+/**
+ * Ch.16 §80 Review API. A delivered order containing the product is
+ * still required on this path — checked here, since RLS enforces
+ * ownership but knows nothing about purchase history.
+ *
+ * It no longer records that fact as a badge. Since migration 0076 anyone
+ * can review from the product page without an account, so a
+ * "verified purchase" mark would sit on a small minority of reviews and
+ * make the honest majority look doubtful by comparison.
+ */
 const createSchema = z.object({
   productId: zUuid(),
   orderId: zUuid(),
@@ -25,7 +34,7 @@ const listOwnReviews = createApiRoute({
 
     const { data, error } = await supabase
       .from('reviews')
-      .select('id, product_id, rating, title, comment, status, verified_purchase, created_at')
+      .select('id, product_id, rating, title, comment, status, created_at')
       .eq('customer_id', customer.id)
       .order('created_at', { ascending: false });
     if (error)
@@ -80,7 +89,6 @@ const createReview = createApiRoute({
         rating: body.rating,
         title: body.title,
         comment: body.comment,
-        verified_purchase: true,
         // Auto-approved at the owner's request, now that the Reviews
         // moderation tab is gone: a queue nobody can reach would mean
         // every review sat unpublished forever. Only customers with a

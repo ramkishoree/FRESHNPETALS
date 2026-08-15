@@ -1,8 +1,8 @@
 'use client';
 
-import type { Product } from '@prana/commerce';
 import * as React from 'react';
 import { toast } from 'sonner';
+import type { ProductCardProps } from '@/components/commerce/product-card';
 import { ProductCarousel } from '@/components/commerce/product-carousel';
 import { ProductGrid } from '@/components/commerce/product-grid';
 import { useCart } from '@/lib/cart-context';
@@ -20,7 +20,7 @@ export function AddToCartProductGrid({
   products,
   layout = 'grid',
 }: {
-  products: Product[];
+  products: ProductCardProps['product'][];
   layout?: 'grid' | 'carousel';
 }) {
   const { addItem } = useCart();

@@ -1,9 +1,8 @@
-import type { Product } from '@prana/commerce';
 import { EmptyState } from '@/components/states/empty-state';
 import { ProductCard, type ProductCardProps } from './product-card';
 
 export interface ProductGridProps {
-  products: Product[];
+  products: ProductCardProps['product'][];
   onAddToCart?: ProductCardProps['onAddToCart'];
   onToggleWishlist?: ProductCardProps['onToggleWishlist'];
   wishlistedIds?: ReadonlySet<string>;
