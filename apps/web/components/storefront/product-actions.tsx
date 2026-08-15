@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { PriceDisplay } from '@/components/commerce/price-display';
+import { setBuyNowItem } from '@/lib/buy-now';
 import { useCart } from '@/lib/cart-context';
 
 export interface ProductActionsProps {
@@ -55,14 +56,23 @@ export function ProductActions({
     toast.success(`${name} added to cart.`);
   }
 
+  /**
+   * Straight to checkout, and deliberately not through the basket: this
+   * is one item bought on its own, so placing the order must not empty a
+   * basket the customer is still assembling.
+   */
   function buyNow() {
     if (outOfStock) return;
-    addItem(
-      { productId, slug, name, image, unitPrice: basePrice, salePrice },
-      quantity,
-      availableQuantity,
-    );
-    router.push('/cart');
+    setBuyNowItem({
+      productId,
+      slug,
+      name,
+      image,
+      unitPrice: basePrice,
+      salePrice,
+      quantity: Math.min(quantity, availableQuantity),
+    });
+    router.push('/checkout');
   }
 
   async function toggleWishlist() {

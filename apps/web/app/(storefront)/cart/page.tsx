@@ -5,6 +5,7 @@ import { ShoppingBag } from 'lucide-react';
 import { CartItem } from '@/components/commerce/cart-item';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { CartWishlist } from '@/components/storefront/cart-wishlist';
+import { clearBuyNowItem } from '@/lib/buy-now';
 import { useCart } from '@/lib/cart-context';
 
 /** Ch.12 §24 Cart Experience. Delivery fee is distance-based (₹50 for the
@@ -78,6 +79,11 @@ export default function CartPage() {
 
           <Link
             href="/checkout"
+            // Checking out from the basket means the basket is the order.
+            // Dropping any leftover buy-now item stops a single product
+            // bought earlier in this tab from hijacking the whole
+            // checkout — and this is the order that empties the basket.
+            onClick={() => clearBuyNowItem()}
             className="btn btn-primary mt-6 flex w-full items-center justify-center px-7 py-3.5 text-sm"
           >
             Proceed to checkout

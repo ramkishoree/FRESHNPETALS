@@ -5,13 +5,13 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
 import { PriceDisplay } from '@/components/commerce/price-display';
-import { formatSavedAddress, type SavedAddress } from '@/components/storefront/address-manager';
 import { DeliveryMap, type MapLocation } from '@/components/storefront/delivery-map';
 import { OutletSelector, type OutletWithStock } from '@/components/storefront/outlet-selector';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useCart } from '@/lib/cart-context';
+import { clearBuyNowItem, readBuyNowItem, setBuyNowItem as persistBuyNowItem } from '@/lib/buy-now';
+import { type CartLineItem, useCart } from '@/lib/cart-context';
 
 declare global {
   interface Window {
@@ -77,9 +77,71 @@ interface PricingBreakdown {
  * tied to where the package is going and which outlet they choose.
  */
 export function CheckoutFlow({ nonce }: { nonce?: string }) {
-  const { items, subtotal, clear, setQuantity, removeItem } = useCart();
+  const cart = useCart();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  /**
+   * Checkout sells either the basket or a single "buy now" item, never
+   * both. Read once on mount: the basket must stay untouched through a
+   * buy-now order, so the two sources have to stay genuinely separate
+   * rather than the instant purchase being shoved into the basket and
+   * pulled back out again.
+   */
+  const [buyNowItem, setBuyNowItem] = React.useState<CartLineItem | null>(null);
+  const [hasReadBuyNow, setHasReadBuyNow] = React.useState(false);
+  React.useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setBuyNowItem(readBuyNowItem());
+    setHasReadBuyNow(true);
+  }, []);
+
+  const isBuyNow = buyNowItem !== null;
+  const items = React.useMemo(
+    () => (buyNowItem ? [buyNowItem] : cart.items),
+    [buyNowItem, cart.items],
+  );
+  const subtotal = buyNowItem
+    ? (buyNowItem.salePrice ?? buyNowItem.unitPrice) * buyNowItem.quantity
+    : cart.subtotal;
+
+  const setQuantity = React.useCallback(
+    (productId: string, quantity: number) => {
+      if (buyNowItem) {
+        const next = { ...buyNowItem, quantity: Math.max(1, quantity) };
+        setBuyNowItem(next);
+        persistBuyNowItem(next);
+        return;
+      }
+      cart.setQuantity(productId, quantity);
+    },
+    [buyNowItem, cart],
+  );
+
+  const removeItem = React.useCallback(
+    (productId: string) => {
+      if (buyNowItem) {
+        // The only line there is — dropping it means there is nothing
+        // left to check out, so send them somewhere they can shop.
+        setBuyNowItem(null);
+        clearBuyNowItem();
+        router.replace('/cart');
+        return;
+      }
+      cart.removeItem(productId);
+    },
+    [buyNowItem, cart, router],
+  );
+
+  /** Discards exactly what was just sold, and nothing else. */
+  const clearPurchased = React.useCallback(() => {
+    if (isBuyNow) {
+      clearBuyNowItem();
+      setBuyNowItem(null);
+      return;
+    }
+    cart.clear();
+  }, [isBuyNow, cart]);
 
   const [manualAddress, setManualAddress] = React.useState(EMPTY_ADDRESS);
   const [couponInput, setCouponInput] = React.useState('');
@@ -101,14 +163,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [selectedSlotId, setSelectedSlotId] = React.useState<string | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = React.useState(true);
 
-  // ---- Saved address state ---------------------------------------------------
-  // Only addresses that carry a map pin are offered: without lat/lng
-  // there's nothing to restore, and the delivery fee is computed from the
-  // pin. (Rows saved before migration 0066 can lack one.)
-  const [savedAddresses, setSavedAddresses] = React.useState<SavedAddress[]>([]);
-  const [selectedAddressId, setSelectedAddressId] = React.useState<string | null>(null);
-  const [pinTarget, setPinTarget] = React.useState<{ lat: number; lng: number } | null>(null);
-
+  // ---- Delivery pin state ------------------------------------------------
   // ---- Outlet selection state ------------------------------------------------
   const [outlets, setOutlets] = React.useState<OutletWithStock[]>([]);
   const [deliveryPin, setDeliveryPin] = React.useState<MapLocation | null>(null);
@@ -247,6 +302,9 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     for (const item of items) {
       const stock = selectedOutlet.stock[item.productId];
       if (stock !== undefined && stock > 0 && item.quantity > stock) {
+        // The cascade is the point and it terminates: the clamped
+        // quantity is <= stock, so the next pass finds nothing to fix.
+        // eslint-disable-next-line react-hooks/set-state-in-effect
         setQuantity(item.productId, stock);
       }
     }
@@ -292,62 +350,30 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     };
   }, [slotDate]);
 
-  // Load the customer's saved addresses. 401s for a guest checkout —
-  // that's expected, and just means no picker is offered.
-  React.useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch('/api/v1/account/addresses');
-        const body = await res.json();
-        if (cancelled || !res.ok || !body.success) return;
-        const usable = (body.data as SavedAddress[]).filter(
-          (address) => address.latitude != null && address.longitude != null,
-        );
-        setSavedAddresses(usable);
-      } catch {
-        // Non-critical — the map is always available as the primary path.
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  // Every input the server prices on, as one string. `items.length` was
+  // standing in for the basket, so changing a quantity left the summary
+  // showing the total for the old one — four wreaths quoted at the price
+  // of one, right up until the real amount appeared in the payment
+  // window. Quantity, slot (night charge) and coupon all move the total
+  // and all belong here.
+  const pricingKey = [
+    items.map((item) => `${item.productId}:${item.quantity}`).join(','),
+    selectedOutletId ?? '',
+    pinKey ?? '',
+    selectedSlotId ?? '',
+    appliedCoupon ?? '',
+  ].join('|');
 
-  /** Replay a saved address: move the pin, and fill the details form. */
-  function applySavedAddress(address: SavedAddress) {
-    const lat = Number(address.latitude);
-    const lng = Number(address.longitude);
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-    setSelectedAddressId(address.id);
-    setPinTarget({ lat, lng });
-    setDeliveryPin({
-      lat,
-      lng,
-      formattedAddress: address.address_line_1,
-      // A saved address stores only the formatted line, not its parts.
-      // The panel below simply omits what it doesn't have; the fee still
-      // comes from these coords, which is the part that must be honest.
-      postalCode: null,
-      locality: null,
-    });
-    setManualAddress((current) => ({
-      ...current,
-      recipientName: address.recipient_name,
-      phone: address.phone,
-      flatNo: address.address_line_2 ?? '',
-    }));
-  }
-
-  // Re-fetch pricing when outlet selection or delivery pin changes.
   React.useEffect(() => {
     if (items.length === 0) return;
     void (async () => {
-      await loadPricing(null);
+      // Passing the applied coupon, not null: re-pricing after any other
+      // change used to silently drop a coupon the customer had already
+      // applied, so the summary showed the undiscounted total.
+      await loadPricing(appliedCoupon);
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selectedOutletId, deliveryPin, items.length]);
+  }, [pricingKey]);
 
   /**
    * Declared above the empty-cart guard below, not beside the rest of the
@@ -391,7 +417,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
           razorpay_order_id?: string;
           razorpay_signature?: string;
         }) => {
-          clear();
+          clearPurchased();
           const confirmable =
             response?.razorpay_payment_id && response?.razorpay_order_id ? response : null;
           if (confirmable) {
@@ -409,22 +435,25 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
               keepalive: true,
             }).catch(() => {});
           }
-          router.push(`/checkout/${checkoutSessionId}/processing${guestSuffix}`);
+          // `replace`, not `push`: pressing back from the waiting screen
+          // should never return to a checkout whose basket has just been
+          // emptied — there is nothing left there to do.
+          router.replace(`/checkout/${checkoutSessionId}/processing${guestSuffix}`);
         },
         modal: {
-          // Razorpay's own widget can show a failure/retry screen and close
-          // itself (calling this instead of `handler`) even when the charge
-          // actually succeeded on the bank's side — our webhook is the only
-          // source of truth for whether the order went through, never this
-          // client-side callback. Sending the customer to the same polling
-          // page `handler` uses (rather than just resetting the form) means
-          // a real success still resolves to their order confirmation; a
-          // real cancellation still resolves to the cart via the session's
-          // 'cancelled'/'expired' status — either way they see what
-          // actually happened instead of losing all visibility into it.
+          // Closing the payment window is a decision, not an event to
+          // wait on. Staying put keeps the pin, outlet, slot and basket
+          // exactly as they were, so trying again costs nothing.
+          //
+          // Razorpay can close its own widget after a charge the bank
+          // actually took, so this is not treated as proof of failure:
+          // the session stays open, the webhook and confirm-payment can
+          // still complete it, and the order then appears under My
+          // Orders. The one thing it must not do is strand the customer
+          // on a spinner with no terminal state coming.
           ondismiss: () => {
             setIsPaying(false);
-            router.push(`/checkout/${checkoutSessionId}/processing${guestSuffix}`);
+            toast.message('Payment cancelled. Your order is still here when you want it.');
           },
         },
       });
@@ -440,14 +469,12 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
       // bank actually captured.
       razorpay.on('payment.failed', () => {
         setIsPaying(false);
-        router.push(
-          `/checkout/${checkoutSessionId}/processing${guestSuffix ? `${guestSuffix}&` : '?'}attempt=failed`,
-        );
+        toast.error('That payment did not go through. You have not been charged — try again.');
       });
 
       razorpay.open();
     },
-    [clear, router],
+    [clearPurchased, router],
   );
 
   // Retrying a failed payment reopens the *same* Razorpay order rather
@@ -482,7 +509,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   // ---- Guard (empty cart) ----------------------------------------------------
 
-  if (items.length === 0) {
+  // `hasReadBuyNow` gates this so the empty-basket message can't flash
+  // over a buy-now purchase that simply hasn't been read out of session
+  // storage yet.
+  if (hasReadBuyNow && items.length === 0) {
     return (
       <div className="container-brand py-14 text-center">
         <p className="text-body-lg">Add something to your cart before checking out.</p>
@@ -598,11 +628,18 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
         throw new Error(body.error?.message ?? 'Failed to start checkout.');
 
       if (body.data.paymentMethod === 'cod') {
-        clear();
-        const codGuestSuffix = body.data.guestToken
-          ? `?t=${encodeURIComponent(body.data.guestToken)}`
-          : '';
-        router.push(`/checkout/${body.data.checkoutSessionId}/processing${codGuestSuffix}`);
+        clearPurchased();
+        // Straight to the order. Cash on delivery completes inside this
+        // one request — the order id is in the response — so there is
+        // nothing to wait for. Routing it through the payment-waiting
+        // screen meant a customer who had already placed an order sat
+        // watching a spinner poll for a status that was set before the
+        // page even loaded.
+        router.replace(
+          body.data.guestToken
+            ? `/order/${body.data.checkoutSessionId}?t=${encodeURIComponent(body.data.guestToken)}`
+            : `/account/orders/${body.data.orderId}`,
+        );
         return;
       }
 
@@ -636,54 +673,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
       <div className="grid min-w-0 gap-10 lg:grid-cols-[1.5fr_1fr]">
         <div className="min-w-0 space-y-8">
-          {/* ---- Saved addresses ---- */}
-          {savedAddresses.length > 0 && (
-            <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
-              <h2 className="text-h4 mb-4">Deliver to a saved address</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {savedAddresses.map((address) => {
-                  const isSelected = selectedAddressId === address.id;
-                  return (
-                    <button
-                      key={address.id}
-                      type="button"
-                      onClick={() => applySavedAddress(address)}
-                      aria-pressed={isSelected}
-                      className={`rounded-[var(--r-md)] border p-3 text-left transition-colors ${
-                        isSelected
-                          ? 'border-[var(--sf-ink)] bg-[var(--sf-surface-2)]'
-                          : 'border-[var(--sf-border-strong)] hover:border-[var(--sf-ink)]'
-                      }`}
-                    >
-                      <span className="block text-sm font-medium">
-                        {address.label || 'Address'}
-                        {address.is_default ? ' · Default' : ''}
-                      </span>
-                      <span className="text-caption mt-0.5 block text-[var(--sf-ink-muted)]">
-                        {formatSavedAddress(address)}
-                      </span>
-                    </button>
-                  );
-                })}
-              </div>
-              <p className="text-caption mt-3 text-[var(--sf-ink-muted)]">
-                Or pin a new location on the map below.
-              </p>
-            </section>
-          )}
-
           {/* ---- Pin your delivery location (Google Maps) ---- */}
           <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
             <h2 className="text-h4 mb-4">Pin your delivery location</h2>
-            <DeliveryMap
-              onLocationChange={(loc) => {
-                // Any manual pin move means they're no longer on the
-                // saved address they picked.
-                setSelectedAddressId(null);
-                setDeliveryPin(loc);
-              }}
-              pinTo={pinTarget}
-            />
+            <DeliveryMap onLocationChange={setDeliveryPin} />
           </section>
 
           {/* ---- Outlet selector ---- */}
