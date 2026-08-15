@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { EmptyState } from '@/components/states/empty-state';
 import { ProductGrid } from '@/components/commerce/product-grid';
 import { useCart } from '@/lib/cart-context';
+import { forgetWishlisted } from '@/lib/use-wishlist';
 
 interface WishlistProductRow {
   id: string;
@@ -70,6 +71,8 @@ export function WishlistGrid({ entries }: { entries: WishlistEntry[] }) {
       if (!response.ok || !body.success)
         throw new Error(body.error?.message ?? 'Failed to remove.');
       toast.success('Removed from wishlist.');
+      // Keeps every other heart on the site in step with this removal.
+      forgetWishlisted(productId);
       window.location.reload();
     } catch (cause) {
       toast.error(cause instanceof Error ? cause.message : 'Failed to remove.');

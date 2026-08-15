@@ -104,8 +104,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       setItems((prev) => {
         const existing = prev.find((line) => line.productId === item.productId);
         if (existing) {
-          const wanted = existing.quantity + quantity;
-          const capped = maxQuantity !== undefined ? Math.min(wanted, maxQuantity) : wanted;
+          // The stepper on the product page is a statement of how many
+          // they want, not how many to append. Adding to what was already
+          // there meant picking 1, then 2, then 1 again left 4 in the
+          // basket and no way to tell where the number came from. The
+          // latest choice is the choice.
+          const capped = maxQuantity !== undefined ? Math.min(quantity, maxQuantity) : quantity;
           return prev.map((line) =>
             line.productId === item.productId ? { ...line, quantity: capped } : line,
           );

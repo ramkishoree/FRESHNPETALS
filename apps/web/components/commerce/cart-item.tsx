@@ -8,6 +8,8 @@ export interface CartItemProps {
   productImage?: string | null;
   quantity: number;
   unitPrice: number;
+  /** Most that can be ordered, when it is known. Omitted means no cap. */
+  maxQuantity?: number;
   onQuantityChange?: (quantity: number) => void;
   onRemove?: () => void;
 }
@@ -19,9 +21,11 @@ export function CartItem({
   productImage,
   quantity,
   unitPrice,
+  maxQuantity,
   onQuantityChange,
   onRemove,
 }: CartItemProps) {
+  const atMax = maxQuantity !== undefined && quantity >= maxQuantity;
   return (
     <div className="flex items-center gap-4 py-4">
       <div className="rounded-image bg-muted relative size-20 shrink-0 overflow-hidden">
@@ -33,6 +37,10 @@ export function CartItem({
       <div className="flex-1 space-y-1">
         <p className="text-foreground font-medium">{productName}</p>
         <PriceDisplay basePrice={unitPrice} size="sm" />
+        <p className="text-caption text-muted-foreground">
+          Qty {quantity}
+          {atMax ? ` — only ${maxQuantity} available` : ''}
+        </p>
       </div>
 
       {onQuantityChange && (
@@ -55,6 +63,7 @@ export function CartItem({
             variant="ghost"
             size="icon-sm"
             aria-label="Increase quantity"
+            disabled={atMax}
             onClick={() => onQuantityChange(quantity + 1)}
           >
             <Plus />

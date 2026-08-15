@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { PriceDisplay } from '@/components/commerce/price-display';
 import { setBuyNowItem } from '@/lib/buy-now';
 import { useCart } from '@/lib/cart-context';
+import { useWishlist } from '@/lib/use-wishlist';
 
 export interface ProductActionsProps {
   productId: string;
@@ -32,6 +33,7 @@ export function ProductActions({
   availableQuantity,
 }: ProductActionsProps) {
   const { addItem } = useCart();
+  const { isWishlisted, toggle } = useWishlist();
   const router = useRouter();
   const [quantity, setQuantity] = React.useState(1);
 
@@ -75,25 +77,7 @@ export function ProductActions({
     router.push('/checkout');
   }
 
-  async function toggleWishlist() {
-    try {
-      const response = await fetch('/api/v1/account/wishlist', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId }),
-      });
-      if (response.status === 401) {
-        toast.error('Sign in to save products to your wishlist.');
-        return;
-      }
-      const body = await response.json();
-      if (!response.ok || !body.success)
-        throw new Error(body.error?.message ?? 'Failed to update wishlist.');
-      toast.success('Added to wishlist.');
-    } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Failed to update wishlist.');
-    }
-  }
+  const saved = isWishlisted(productId);
 
   return (
     <div className="flex flex-col">
@@ -170,13 +154,19 @@ export function ProductActions({
         >
           Buy now
         </button>
+        {/* Filled and leaf-green once saved — the same signal the
+            listing cards give, so the two never disagree about a product
+            you are looking at from both. */}
         <button
           type="button"
-          onClick={toggleWishlist}
-          aria-label="Add to wishlist"
-          className="btn btn-outline grid h-[52px] w-[52px] place-items-center px-0"
+          onClick={() => void toggle(productId)}
+          aria-pressed={saved}
+          aria-label={saved ? 'Remove from wishlist' : 'Save to wishlist'}
+          className={`btn btn-outline grid h-[52px] w-[52px] place-items-center px-0 ${
+            saved ? 'text-[var(--sage)]' : ''
+          }`}
         >
-          <Heart className="size-5" />
+          <Heart className="size-5" fill={saved ? 'currentColor' : 'none'} />
         </button>
       </div>
 

@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { ProductCarousel } from '@/components/commerce/product-carousel';
 import { ProductGrid } from '@/components/commerce/product-grid';
 import { useCart } from '@/lib/cart-context';
+import { useWishlist } from '@/lib/use-wishlist';
 
 /**
  * Thin client boundary around Phase 7's `ProductGrid` — the rest of every
@@ -23,7 +24,7 @@ export function AddToCartProductGrid({
   layout?: 'grid' | 'carousel';
 }) {
   const { addItem } = useCart();
-  const [wishlistedIds, setWishlistedIds] = React.useState<ReadonlySet<string>>(new Set());
+  const { wishlistedIds, toggle } = useWishlist();
 
   function handleAddToCart(productId: string) {
     const product = products.find((item) => item.id === productId);
@@ -39,42 +40,12 @@ export function AddToCartProductGrid({
     toast.success(`${product.name} added to cart.`);
   }
 
-  async function handleToggleWishlist(productId: string) {
-    const alreadyWishlisted = wishlistedIds.has(productId);
-    try {
-      const response = alreadyWishlisted
-        ? await fetch(`/api/v1/account/wishlist/${productId}`, { method: 'DELETE' })
-        : await fetch('/api/v1/account/wishlist', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ productId }),
-          });
-      if (response.status === 401) {
-        toast.error('Sign in to save products to your wishlist.');
-        return;
-      }
-      const body = await response.json();
-      if (!response.ok || !body.success)
-        throw new Error(body.error?.message ?? 'Failed to update wishlist.');
-
-      setWishlistedIds((previous) => {
-        const next = new Set(previous);
-        if (alreadyWishlisted) next.delete(productId);
-        else next.add(productId);
-        return next;
-      });
-      toast.success(alreadyWishlisted ? 'Removed from wishlist.' : 'Added to wishlist.');
-    } catch (cause) {
-      toast.error(cause instanceof Error ? cause.message : 'Failed to update wishlist.');
-    }
-  }
-
   if (layout === 'carousel') {
     return (
       <ProductCarousel
         products={products}
         onAddToCart={handleAddToCart}
-        onToggleWishlist={handleToggleWishlist}
+        onToggleWishlist={(id) => void toggle(id)}
         wishlistedIds={wishlistedIds}
       />
     );
@@ -84,7 +55,7 @@ export function AddToCartProductGrid({
     <ProductGrid
       products={products}
       onAddToCart={handleAddToCart}
-      onToggleWishlist={handleToggleWishlist}
+      onToggleWishlist={(id) => void toggle(id)}
       wishlistedIds={wishlistedIds}
     />
   );

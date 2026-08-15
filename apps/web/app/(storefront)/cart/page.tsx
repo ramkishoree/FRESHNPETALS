@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import * as React from 'react';
 import { ShoppingBag } from 'lucide-react';
 import { CartItem } from '@/components/commerce/cart-item';
 import { BrandDivider } from '@/components/storefront/brand-divider';
@@ -14,7 +15,45 @@ import { useCart } from '@/lib/cart-context';
  * checkout, so the cart itself just states the pricing model rather than
  * a progress bar toward a threshold that no longer exists. */
 export default function CartPage() {
-  const { items, subtotal, removeItem } = useCart();
+  const { items, subtotal, removeItem, setQuantity } = useCart();
+
+  /**
+   * Best available stock per product, summed to the single best outlet.
+   *
+   * The precise ceiling is per-outlet and no outlet is chosen until
+   * checkout, so this is the most anyone could possibly get — enough to
+   * stop the basket walking past every branch's stock, and checkout
+   * still clamps to the branch actually chosen.
+   */
+  const [maxByProduct, setMaxByProduct] = React.useState<Record<string, number>>({});
+  const productIds = items.map((item) => item.productId).join(',');
+
+  React.useEffect(() => {
+    if (!productIds) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const response = await fetch(
+          `/api/v1/outlets/with-stock?productIds=${encodeURIComponent(productIds)}`,
+        );
+        const body = await response.json();
+        if (cancelled || !response.ok || !body.success) return;
+        const best: Record<string, number> = {};
+        for (const outlet of body.data as { stock: Record<string, number> }[]) {
+          for (const [id, quantity] of Object.entries(outlet.stock ?? {})) {
+            best[id] = Math.max(best[id] ?? 0, Number(quantity) || 0);
+          }
+        }
+        setMaxByProduct(best);
+      } catch {
+        // Without stock figures the stepper simply has no ceiling here.
+        // Checkout still holds the real one.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [productIds]);
 
   if (items.length === 0) {
     return (
@@ -55,11 +94,10 @@ export default function CartPage() {
               productImage={item.image}
               quantity={item.quantity}
               unitPrice={item.salePrice ?? item.unitPrice}
-              // No stepper here on purpose: how many you can have depends
-              // on the outlet fulfilling the order, and that isn't chosen
-              // until checkout. Offering a limit here would either be
-              // wrong or would have to guess an outlet on the customer's
-              // behalf.
+              {...(maxByProduct[item.productId] !== undefined
+                ? { maxQuantity: maxByProduct[item.productId] }
+                : {})}
+              onQuantityChange={(quantity) => setQuantity(item.productId, quantity)}
               onRemove={() => removeItem(item.productId)}
             />
           ))}

@@ -163,8 +163,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   const [selectedSlotId, setSelectedSlotId] = React.useState<string | null>(null);
   const [isLoadingSlots, setIsLoadingSlots] = React.useState(true);
 
-  // ---- Delivery pin state ------------------------------------------------
-  // ---- Outlet selection state ------------------------------------------------
+  // ---- Delivery pin and outlet selection -------------------------------------
   const [outlets, setOutlets] = React.useState<OutletWithStock[]>([]);
   const [deliveryPin, setDeliveryPin] = React.useState<MapLocation | null>(null);
   // The customer's explicit pick always wins; it resets back to "follow the
@@ -182,9 +181,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   // ---- Helpers ----------------------------------------------------------------
 
-  /** Coordinates from the delivery pin (Google Maps). If the pin hasn't
-   *  been placed yet, returns null and the server falls back to the
-   *  standard flat delivery fee. */
+  /** Coordinates from the delivery pin (Google Maps). Null until the
+   *  customer places one — the server then answers with its flat
+   *  fallback rate, which the summary deliberately does not show as a
+   *  quote (see `hasDeliveryQuote`). */
   function resolveDeliveryCoords(): { lat: number; lng: number } | null {
     return deliveryPin ? { lat: deliveryPin.lat, lng: deliveryPin.lng } : null;
   }
@@ -282,6 +282,15 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
    * them to go back up the page. Saying it up front — with the button
    * disabled — is the difference between a rule and an ambush.
    */
+  /**
+   * The fee is measured outlet -> pin, so before both exist there is no
+   * fee to state. The server answers with its flat fallback rate in that
+   * case, which read as a real quote — the summary showed ₹50 delivery
+   * on a checkout that had no idea where it was delivering to. Better to
+   * say nothing than to name a number that is going to change.
+   */
+  const hasDeliveryQuote = pricing != null && deliveryPin != null && selectedOutletId != null;
+
   const blockingReason = React.useMemo(() => {
     if (items.length === 0) return 'Your basket is empty.';
     const missing = findMissingAddressFields(manualAddress);
@@ -1020,7 +1029,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             <div className="flex items-center justify-between text-sm">
               <span className="text-[var(--sf-ink-muted)]">Delivery fee</span>
               <span>
-                {pricing ? (
+                {hasDeliveryQuote ? (
                   pricing.deliveryFee > 0 ? (
                     <>
                       ₹{pricing.deliveryFee}
@@ -1034,9 +1043,7 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
                     'Free'
                   )
                 ) : (
-                  <span className="text-xs text-[var(--sf-ink-muted)]">
-                    {deliveryPin ? 'Calculating…' : 'Pin your location first'}
-                  </span>
+                  '—'
                 )}
               </span>
             </div>
@@ -1051,8 +1058,10 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             )}
             <div className="flex items-center justify-between border-t border-[var(--sf-border)] pt-3">
               <span className="font-display text-base">Grand total</span>
+              {/* Withheld for the same reason as the fee above: a total
+                  missing an unknown delivery charge is not the total. */}
               <span className="font-display text-2xl text-[var(--sf-ink)]">
-                ₹{pricing ? pricing.grandTotal : subtotal}
+                {hasDeliveryQuote ? `₹${pricing.grandTotal}` : '—'}
               </span>
             </div>
           </div>
@@ -1072,8 +1081,8 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             {isPaying
               ? 'Processing...'
               : paymentMethod === 'cod'
-                ? `Place order (COD) ₹${pricing ? pricing.grandTotal : subtotal}`
-                : `Pay ₹${pricing ? pricing.grandTotal : subtotal}`}
+                ? `Place order (COD)${hasDeliveryQuote ? ` ₹${pricing.grandTotal}` : ''}`
+                : `Pay${hasDeliveryQuote ? ` ₹${pricing.grandTotal}` : ''}`}
           </button>
 
           <p className="text-caption mt-4 text-center">

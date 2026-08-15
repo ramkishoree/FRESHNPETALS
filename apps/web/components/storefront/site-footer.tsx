@@ -10,12 +10,8 @@ export function SiteFooter() {
   return (
     <footer className="border-border bg-secondary border-t">
       <div className="container-brand flex flex-wrap items-center justify-between gap-4 py-6">
-        {/* One template string rather than JSX text around an expression:
-            the latter renders as `2026<!-- -->Fresh` — React drops the
-            separating space when the interpolation sits between text
-            nodes, which is exactly what the old footer shipped. */}
         <p className="text-caption text-muted-foreground">
-          {`© ${new Date().getFullYear()} Fresh & Petals. Powered by Prana Commerce OS.`}
+          Fresh N Petals &mdash; Serving Flowers Since 2021
         </p>
         {/* Razorpay's merchant activation checklist looks for all four of
             these reachable from every page, and the Consumer Protection

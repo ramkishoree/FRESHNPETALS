@@ -29,14 +29,18 @@ describe('CartProvider / useCart', () => {
     expect(result.current.itemCount).toBe(2);
   });
 
-  it('merges quantity when the same product is added again', () => {
+  it('replaces the quantity when the same product is added again', () => {
+    // The product page's stepper says how many they want, not how many
+    // to append. Accumulating meant picking 1, then 2, then 1 again left
+    // 4 in the basket with nothing on screen explaining the number.
     const { result } = renderHook(() => useCart(), { wrapper: CartProvider });
 
     act(() => result.current.addItem(makeItem(), 1));
     act(() => result.current.addItem(makeItem(), 3));
+    act(() => result.current.addItem(makeItem(), 1));
 
     expect(result.current.items).toHaveLength(1);
-    expect(result.current.items[0]?.quantity).toBe(4);
+    expect(result.current.items[0]?.quantity).toBe(1);
   });
 
   it('removes the line when setQuantity is called with 0', () => {
@@ -97,14 +101,12 @@ describe('CartProvider / useCart', () => {
   });
 
   it('will not let repeated adds exceed the stock cap', () => {
-    // The product page's stepper stops at the limit, but pressing "Add
-    // to basket" again did not — the basket walked past whatever stock
-    // existed and checkout rejected the order after the customer had
-    // already filled in their address.
+    // The product page's stepper stops at the limit, but a request that
+    // walks past it must still be capped — checkout would otherwise
+    // reject the order after the customer had filled in their address.
     const { result } = renderHook(() => useCart(), { wrapper: CartProvider });
 
-    act(() => result.current.addItem(makeItem(), 3, 4));
-    act(() => result.current.addItem(makeItem(), 3, 4));
+    act(() => result.current.addItem(makeItem(), 6, 4));
 
     expect(result.current.items[0]?.quantity).toBe(4);
   });

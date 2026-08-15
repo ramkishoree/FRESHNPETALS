@@ -107,7 +107,9 @@ export function ProductCard({
             onClick={() => onToggleWishlist(product.id)}
             aria-pressed={isWishlisted}
             aria-label={isWishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
-            className="absolute top-3 right-3 grid size-8 place-items-center rounded-full bg-[var(--paper)]/85 text-[var(--ink)] backdrop-blur transition-colors hover:text-[var(--petal)] focus-visible:outline"
+            className={`absolute top-3 right-3 grid size-8 place-items-center rounded-full bg-[var(--paper)]/85 backdrop-blur transition-colors focus-visible:outline ${
+              isWishlisted ? 'text-[var(--sage)]' : 'text-[var(--ink)] hover:text-[var(--sage)]'
+            }`}
           >
             <Heart className="size-4" fill={isWishlisted ? 'currentColor' : 'none'} />
           </button>

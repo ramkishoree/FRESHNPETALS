@@ -21,7 +21,7 @@ const SUPABASE_ORIGIN = new URL(process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'http
 
 export const metadata: Metadata = {
   title: 'Fresh & Petals',
-  description: 'Premium flower delivery, powered by Prana Commerce OS.',
+  description: 'Fresh N Petals — serving flowers in Lucknow since 2021.',
 };
 
 export default async function RootLayout({
