@@ -95,4 +95,34 @@ describe('CartProvider / useCart', () => {
     expect(result.current.items).toHaveLength(1);
     expect(result.current.items[0]?.productId).toBe('11111111-1111-4111-8111-111111111111');
   });
+
+  it('will not let repeated adds exceed the stock cap', () => {
+    // The product page's stepper stops at the limit, but pressing "Add
+    // to basket" again did not — the basket walked past whatever stock
+    // existed and checkout rejected the order after the customer had
+    // already filled in their address.
+    const { result } = renderHook(() => useCart(), { wrapper: CartProvider });
+
+    act(() => result.current.addItem(makeItem(), 3, 4));
+    act(() => result.current.addItem(makeItem(), 3, 4));
+
+    expect(result.current.items[0]?.quantity).toBe(4);
+  });
+
+  it('caps the very first add too, not just the merge', () => {
+    const { result } = renderHook(() => useCart(), { wrapper: CartProvider });
+
+    act(() => result.current.addItem(makeItem(), 10, 2));
+
+    expect(result.current.items[0]?.quantity).toBe(2);
+  });
+
+  it('leaves quantity alone when no cap is given', () => {
+    // Callers without stock information must not be silently clamped.
+    const { result } = renderHook(() => useCart(), { wrapper: CartProvider });
+
+    act(() => result.current.addItem(makeItem(), 7));
+
+    expect(result.current.items[0]?.quantity).toBe(7);
+  });
 });

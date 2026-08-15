@@ -77,7 +77,7 @@ interface PricingBreakdown {
  * tied to where the package is going and which outlet they choose.
  */
 export function CheckoutFlow({ nonce }: { nonce?: string }) {
-  const { items, subtotal, clear } = useCart();
+  const { items, subtotal, clear, setQuantity } = useCart();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -213,6 +213,22 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   }, [deliveryPin, outlets]);
 
   const selectedOutletId = manualOutletId ?? nearestOutletId;
+  // The outlet actually fulfilling the order — its stock is the ceiling
+  // on how many of each item the customer can order.
+  const selectedOutlet = outlets.find((outlet) => outlet.id === selectedOutletId) ?? null;
+
+  // Switching outlets can leave a quantity the new shop cannot fill.
+  // Clamping here means the customer sees the corrected number before
+  // they pay, rather than a rejection from the server after.
+  React.useEffect(() => {
+    if (!selectedOutlet) return;
+    for (const item of items) {
+      const stock = selectedOutlet.stock[item.productId];
+      if (stock !== undefined && stock > 0 && item.quantity > stock) {
+        setQuantity(item.productId, stock);
+      }
+    }
+  }, [selectedOutlet, items, setQuantity]);
 
   // Fetch delivery slots for the selected date (defaults to today on the
   // server). Auto-advances to the server's suggested next-available date
@@ -852,16 +868,51 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
               </button>
             </div>
           </div>
+          {/* Quantity is chosen here rather than in the basket because
+              the ceiling is whatever the chosen outlet actually holds,
+              and no outlet is chosen until this page. */}
           <ul className="space-y-3">
-            {items.map((item) => (
-              <li key={item.productId} className="flex justify-between gap-3 text-sm">
-                <span className="text-[var(--sf-ink-muted)]">
-                  {item.name}
-                  <span className="text-[var(--price-was)]"> × {item.quantity}</span>
-                </span>
-                <PriceDisplay basePrice={(item.salePrice ?? item.unitPrice) * item.quantity} />
-              </li>
-            ))}
+            {items.map((item) => {
+              const stock = selectedOutlet?.stock[item.productId];
+              const max = stock ?? null;
+              const atMax = max !== null && item.quantity >= max;
+              return (
+                <li key={item.productId} className="flex justify-between gap-3 text-sm">
+                  <span className="min-w-0 flex-1 text-[var(--sf-ink-muted)]">
+                    <span className="block">{item.name}</span>
+                    <span className="mt-1 inline-flex items-center gap-2">
+                      <button
+                        type="button"
+                        aria-label={`Fewer ${item.name}`}
+                        disabled={item.quantity <= 1}
+                        onClick={() => setQuantity(item.productId, item.quantity - 1)}
+                        className="grid size-6 place-items-center rounded border border-[var(--sf-border)] disabled:opacity-40"
+                      >
+                        −
+                      </button>
+                      <span className="min-w-4 text-center text-[var(--sf-ink)]">
+                        {item.quantity}
+                      </span>
+                      <button
+                        type="button"
+                        aria-label={`More ${item.name}`}
+                        disabled={atMax}
+                        onClick={() => setQuantity(item.productId, item.quantity + 1)}
+                        className="grid size-6 place-items-center rounded border border-[var(--sf-border)] disabled:opacity-40"
+                      >
+                        +
+                      </button>
+                      {max !== null && (
+                        <span className="text-xs text-[var(--price-was)]">
+                          {atMax ? `only ${max} in stock here` : `${max} in stock`}
+                        </span>
+                      )}
+                    </span>
+                  </span>
+                  <PriceDisplay basePrice={(item.salePrice ?? item.unitPrice) * item.quantity} />
+                </li>
+              );
+            })}
           </ul>
 
           <div className="mt-5 space-y-2 border-t border-[var(--sf-border)] pt-4">

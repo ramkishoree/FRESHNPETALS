@@ -17,7 +17,7 @@ interface CartContextValue {
   items: CartLineItem[];
   itemCount: number;
   subtotal: number;
-  addItem: (item: Omit<CartLineItem, 'quantity'>, quantity?: number) => void;
+  addItem: (item: Omit<CartLineItem, 'quantity'>, quantity?: number, maxQuantity?: number) => void;
   setQuantity: (productId: string, quantity: number) => void;
   removeItem: (productId: string) => void;
   clear: () => void;
@@ -86,20 +86,36 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
   }, [items, isHydrated]);
 
-  const addItem = React.useCallback((item: Omit<CartLineItem, 'quantity'>, quantity = 1) => {
-    if (!isValidCartItem({ ...item, quantity })) return;
-    setItems((prev) => {
-      const existing = prev.find((line) => line.productId === item.productId);
-      if (existing) {
-        return prev.map((line) =>
-          line.productId === item.productId
-            ? { ...line, quantity: line.quantity + quantity }
-            : line,
-        );
-      }
-      return [...prev, { ...item, quantity }];
-    });
-  }, []);
+  /**
+   * `maxQuantity` caps what the basket can hold for this product.
+   *
+   * Without it, adding the same product repeatedly walks straight past
+   * whatever stock exists — the product page's own stepper stops at the
+   * limit, but pressing "Add to basket" five times did not. Checkout
+   * would then reject the order after the customer had filled in their
+   * address, which is the worst moment to find out.
+   *
+   * The cap here is the total across outlets; the per-outlet ceiling is
+   * applied at checkout, once an outlet has actually been chosen.
+   */
+  const addItem = React.useCallback(
+    (item: Omit<CartLineItem, 'quantity'>, quantity = 1, maxQuantity?: number) => {
+      if (!isValidCartItem({ ...item, quantity })) return;
+      setItems((prev) => {
+        const existing = prev.find((line) => line.productId === item.productId);
+        if (existing) {
+          const wanted = existing.quantity + quantity;
+          const capped = maxQuantity !== undefined ? Math.min(wanted, maxQuantity) : wanted;
+          return prev.map((line) =>
+            line.productId === item.productId ? { ...line, quantity: capped } : line,
+          );
+        }
+        const capped = maxQuantity !== undefined ? Math.min(quantity, maxQuantity) : quantity;
+        return [...prev, { ...item, quantity: capped }];
+      });
+    },
+    [],
+  );
 
   const setQuantity = React.useCallback((productId: string, quantity: number) => {
     setItems((prev) =>

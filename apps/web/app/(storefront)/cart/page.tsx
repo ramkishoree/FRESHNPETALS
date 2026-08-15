@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { ShoppingBag } from 'lucide-react';
 import { CartItem } from '@/components/commerce/cart-item';
 import { BrandDivider } from '@/components/storefront/brand-divider';
+import { CartWishlist } from '@/components/storefront/cart-wishlist';
 import { useCart } from '@/lib/cart-context';
 
 /** Ch.12 §24 Cart Experience. Delivery fee is distance-based (₹50 for the
@@ -12,7 +13,7 @@ import { useCart } from '@/lib/cart-context';
  * checkout, so the cart itself just states the pricing model rather than
  * a progress bar toward a threshold that no longer exists. */
 export default function CartPage() {
-  const { items, subtotal, setQuantity, removeItem } = useCart();
+  const { items, subtotal, removeItem } = useCart();
 
   if (items.length === 0) {
     return (
@@ -28,6 +29,11 @@ export default function CartPage() {
         <Link href="/" className="btn btn-primary inline-flex px-8 py-3.5 text-sm">
           Shop now
         </Link>
+
+        {/* An empty basket is exactly when saved items are worth seeing. */}
+        <div className="mx-auto mt-12 max-w-3xl text-left">
+          <CartWishlist />
+        </div>
       </div>
     );
   }
@@ -48,7 +54,11 @@ export default function CartPage() {
               productImage={item.image}
               quantity={item.quantity}
               unitPrice={item.salePrice ?? item.unitPrice}
-              onQuantityChange={(quantity) => setQuantity(item.productId, quantity)}
+              // No stepper here on purpose: how many you can have depends
+              // on the outlet fulfilling the order, and that isn't chosen
+              // until checkout. Offering a limit here would either be
+              // wrong or would have to guess an outlet on the customer's
+              // behalf.
               onRemove={() => removeItem(item.productId)}
             />
           ))}
@@ -80,6 +90,8 @@ export default function CartPage() {
           </Link>
         </aside>
       </div>
+
+      <CartWishlist />
     </div>
   );
 }

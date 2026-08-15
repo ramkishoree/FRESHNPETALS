@@ -47,13 +47,21 @@ export function ProductActions({
 
   function addToCart() {
     if (outOfStock) return;
-    addItem({ productId, slug, name, image, unitPrice: basePrice, salePrice }, quantity);
+    addItem(
+      { productId, slug, name, image, unitPrice: basePrice, salePrice },
+      quantity,
+      availableQuantity,
+    );
     toast.success(`${name} added to cart.`);
   }
 
   function buyNow() {
     if (outOfStock) return;
-    addItem({ productId, slug, name, image, unitPrice: basePrice, salePrice }, quantity);
+    addItem(
+      { productId, slug, name, image, unitPrice: basePrice, salePrice },
+      quantity,
+      availableQuantity,
+    );
     router.push('/cart');
   }
 
