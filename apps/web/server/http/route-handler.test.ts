@@ -125,6 +125,27 @@ describe('createApiRoute', () => {
     expect(body.error.message).toContain('at least 100');
   });
 
+  it('counts array entries as items, not characters', async () => {
+    const route = createApiRoute({
+      bodySchema: z.object({ lines: z.array(z.string()).min(1) }),
+      handler: async () => Promise.resolve(ok({})),
+    });
+
+    const response = await route(
+      new NextRequest(
+        new Request('http://localhost/api/v1/example', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ lines: [] }),
+        }),
+      ),
+    );
+    const body = await response.json();
+
+    expect(body.error.message).toContain('at least 1 items');
+    expect(body.error.message).not.toContain('characters');
+  });
+
   it('summarises several failures without listing every one', async () => {
     const route = createApiRoute({
       bodySchema: z.object({

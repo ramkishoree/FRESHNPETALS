@@ -22,14 +22,20 @@ import { apiError, apiSuccess } from './envelope';
  * The field path and reason are the caller's own submitted data, so
  * naming them leaks nothing they did not just send.
  */
-function describeIssues(issues: { path: PropertyKey[]; message: string; code: string }[]): string {
+function describeIssues(
+  issues: { path: PropertyKey[]; message: string; code: string; origin?: string }[],
+): string {
   const described = issues.slice(0, 3).map((issue) => {
     const field = issue.path.filter((part) => typeof part !== 'number').join('.');
+    // "at least 1 characters" for an array reads like a bug in itself.
+    const unit =
+      issue.origin === 'array' ? 'items' : issue.origin === 'number' ? '' : ' characters';
+    const bound = (key: 'minimum' | 'maximum') => String((issue as Record<string, unknown>)[key]);
     const detail =
       issue.code === 'too_small' && 'minimum' in issue
-        ? `must be at least ${String((issue as { minimum: unknown }).minimum)} characters`
+        ? `must be at least ${bound('minimum')}${unit === 'items' ? ' items' : unit}`.trim()
         : issue.code === 'too_big' && 'maximum' in issue
-          ? `must be at most ${String((issue as { maximum: unknown }).maximum)} characters`
+          ? `must be at most ${bound('maximum')}${unit === 'items' ? ' items' : unit}`.trim()
           : issue.message;
     return field ? `${field}: ${detail}` : detail;
   });
