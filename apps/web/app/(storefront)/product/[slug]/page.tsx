@@ -84,6 +84,12 @@ export default async function ProductDetailPage({ params }: PageProps) {
       )
       .eq('product_id', product.id)
       .eq('status', 'approved')
+      // Explicit, not left to RLS. `reviews_select_approved` hides
+      // deleted rows, but `reviews_admin_all` is a permissive FOR ALL
+      // policy and policies are OR'd — so an owner kept seeing reviews
+      // they had just removed, while customers no longer could. A
+      // display filter has to apply whoever is asking.
+      .is('deleted_at', null)
       .order('created_at', { ascending: false })
       .limit(10),
     supabase

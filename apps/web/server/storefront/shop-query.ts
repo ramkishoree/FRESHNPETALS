@@ -1,7 +1,7 @@
 import type { Product, ProductStatus } from '@prana/commerce';
 
 export const PRODUCT_SELECT_COLUMNS =
-  'id, sku, slug, name, short_description, color, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at)), product_media(url, media_type, position), reviews(rating, status)';
+  'id, sku, slug, name, short_description, color, featured_image, status, created_at, product_prices(base_price, sale_price), inventory(available_quantity, outlets(is_active, deleted_at)), product_media(url, media_type, position), reviews(rating, status, deleted_at)';
 
 interface ProductPriceRow {
   base_price: string | number;
@@ -24,6 +24,7 @@ interface ProductMediaRow {
 
 interface ProductReviewRow {
   rating: number;
+  deleted_at: string | null;
   status: string;
 }
 
@@ -58,7 +59,10 @@ export interface StorefrontProduct extends Product {
 /** Same mapping as SupabaseProductRepository — duplicated rather than imported because storefront listing queries (category-filtered, sorted) don't fit the repository's fixed `list`/`findPublished` shapes cleanly. */
 export function mapProductRow(row: ProductRow): StorefrontProduct {
   const approvedRatings = (row.reviews ?? [])
-    .filter((review) => review.status === 'approved')
+    // `deleted_at` is checked here rather than trusted to RLS: the admin
+    // policy is permissive, so a removed review would otherwise still
+    // count toward the average an owner sees.
+    .filter((review) => review.status === 'approved' && review.deleted_at == null)
     .map((review) => Number(review.rating))
     .filter((rating) => Number.isFinite(rating));
   const priceRow = Array.isArray(row.product_prices)
