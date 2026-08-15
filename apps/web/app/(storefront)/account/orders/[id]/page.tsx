@@ -1,5 +1,6 @@
 import Image from 'next/image';
 import { notFound } from 'next/navigation';
+import { DeliveryAddress } from '@/components/commerce/delivery-address';
 import { ContactUsButton } from '@/components/commerce/contact-us-button';
 import { InvoicePreview } from '@/components/commerce/invoice-preview';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -44,9 +45,6 @@ export default async function AccountOrderDetailPage({
     address?: { flatNo?: string; formattedAddress?: string };
   };
   const delivery = snapshot?.delivery;
-  const deliveryAddress =
-    [snapshot?.address?.flatNo, snapshot?.address?.formattedAddress].filter(Boolean).join(', ') ||
-    null;
   const paymentMethodLabel = order.payment_method === 'cod' ? 'Cash on delivery' : 'Paid online';
 
   return (
@@ -116,7 +114,12 @@ export default async function AccountOrderDetailPage({
             </div>
             <div>
               <dt className="text-caption text-muted-foreground">Delivery address</dt>
-              <dd className="text-body">{deliveryAddress ?? 'No address on file'}</dd>
+              <dd>
+                <DeliveryAddress
+                  flatNo={snapshot?.address?.flatNo}
+                  formattedAddress={snapshot?.address?.formattedAddress}
+                />
+              </dd>
             </div>
           </dl>
         </CardContent>

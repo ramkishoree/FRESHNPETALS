@@ -103,9 +103,13 @@ export async function runPostOrderSideEffects(
     headerImageUrl: collageUrl,
     customerName: address?.recipientName ?? 'Unknown customer',
     customerPhone: address?.phone ?? 'No phone on file',
-    deliveryAddress:
-      [address?.flatNo, address?.formattedAddress].filter(Boolean).join(', ') ||
-      'No address on file',
+    // Meta rejects newlines in a template parameter, so the two halves
+    // cannot be separate lines here — but a bare comma join reads as one
+    // address ("5/8, Vikalp Khand, Gomti Nagar") and leaves the rider
+    // guessing which part is the door. The label does that work instead.
+    deliveryAddress: address?.flatNo
+      ? `${address.flatNo}${address.formattedAddress ? ` (pin: ${address.formattedAddress})` : ''}`
+      : (address?.formattedAddress ?? 'No address on file'),
     deliveryDate: snapshot?.delivery?.date ?? 'Not yet scheduled',
     deliveryTime: snapshot?.delivery?.slotLabel ?? 'Not yet scheduled',
   });

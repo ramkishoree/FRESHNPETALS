@@ -142,4 +142,35 @@ describe('multi-item orders', () => {
     expect(html).toContain('3 items');
     expect(html).not.toContain('products ·');
   });
+
+  describe('delivery address', () => {
+    it('shows the typed flat number and the pinned location as separate lines', () => {
+      // The rider needs both: the pin alone says "Vikalp Khand" with no
+      // idea which door, and the typed part alone loses the locality.
+      const html = buildOrderConfirmationEmailHtml(
+        makeParams({ flatNo: '5/8', formattedAddress: 'Vikalp Khand, Gomti Nagar, Lucknow' }),
+      );
+
+      expect(html).toContain('Delivering to:');
+      expect(html).toContain('5/8');
+      expect(html).toContain('Pinned location:');
+      expect(html).toContain('Vikalp Khand, Gomti Nagar, Lucknow');
+    });
+
+    it('does not label a pinned location as such when there is nothing to tell it apart from', () => {
+      const html = buildOrderConfirmationEmailHtml(makeParams({ formattedAddress: '12 MG Road' }));
+
+      expect(html).toContain('Delivering to: 12 MG Road');
+      expect(html).not.toContain('Pinned location');
+    });
+
+    it('escapes an address rather than letting it inject markup', () => {
+      const html = buildOrderConfirmationEmailHtml(
+        makeParams({ flatNo: '<script>alert(1)</script>', formattedAddress: 'A & B Road' }),
+      );
+
+      expect(html).not.toContain('<script>alert(1)</script>');
+      expect(html).toContain('A &amp; B Road');
+    });
+  });
 });

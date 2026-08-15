@@ -165,6 +165,7 @@ export async function sendOrderConfirmationEmails(
     orderNumber: orderRow.order_number,
     orderDate: new Date(orderRow.created_at),
     formattedAddress: address.formattedAddress ?? '',
+    ...(address.flatNo ? { flatNo: address.flatNo } : {}),
     ...(delivery.date ? { deliveryDate: delivery.date } : {}),
     ...(delivery.slotLabel ? { deliveryTime: delivery.slotLabel } : {}),
     items,

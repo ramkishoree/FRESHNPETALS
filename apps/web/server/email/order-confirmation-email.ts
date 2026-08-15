@@ -13,7 +13,10 @@ export interface OrderConfirmationEmailParams {
   orderNumber: string;
   orderDate: Date;
   recipientName: string;
+  /** The pinned map location — where the delivery fee was measured to. */
   formattedAddress: string;
+  /** Flat/house number as the customer typed it. */
+  flatNo?: string;
   deliveryDate?: string;
   deliveryTime?: string;
   items: OrderConfirmationItem[];
@@ -57,6 +60,7 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
     orderDate,
     recipientName,
     formattedAddress,
+    flatNo,
     deliveryDate,
     deliveryTime,
     items,
@@ -80,6 +84,28 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
     items.length === totalUnits
       ? `${items.length} ${items.length === 1 ? 'item' : 'items'}`
       : `${items.length} products · ${totalUnits} items`;
+
+  /**
+   * Both halves of the address, told apart.
+   *
+   * The map pin gives a Google-formatted line for the building, and the
+   * customer types their flat or house number separately. Printing only
+   * the pin left the rider reading "Vikalp Khand" with no idea which
+   * door; printing only the typed part loses the locality entirely.
+   * Shown as two labelled lines rather than one joined string, because
+   * concatenating them reads as a single address that no map agrees
+   * with.
+   */
+  const addressBlock = [
+    flatNo
+      ? `<p style="color:#555;font-size:14px;margin:0 0 4px;">Delivering to: <strong>${escapeHtml(flatNo)}</strong></p>`
+      : '',
+    `<p style="color:#555;font-size:14px;margin:0 0 4px;">${
+      flatNo ? 'Pinned location' : 'Delivering to'
+    }: ${escapeHtml(formattedAddress)}</p>`,
+  ]
+    .filter(Boolean)
+    .join('\n                ');
 
   const itemsHtml = items
     .map(
@@ -147,7 +173,7 @@ export function buildOrderConfirmationEmailHtml(params: OrderConfirmationEmailPa
               <td style="padding:32px;">
                 ${greeting}
                 <p style="color:#555;font-size:14px;margin:0 0 4px;"><strong>Order ${escapeHtml(orderNumber)}</strong> · ${orderDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}</p>
-                <p style="color:#555;font-size:14px;margin:0 0 4px;">Delivering to: ${escapeHtml(formattedAddress)}</p>
+                ${addressBlock}
                 ${deliverySlotLine}
                 <div style="margin-bottom:16px;"></div>
                 ${deliveryCommitment}

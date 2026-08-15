@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation';
+import { DeliveryAddress } from '@/components/commerce/delivery-address';
 import { InvoicePreview } from '@/components/commerce/invoice-preview';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
@@ -63,9 +64,6 @@ export default async function GuestOrderPage({
     address?: { flatNo?: string; formattedAddress?: string };
   };
   const delivery = snapshot?.delivery;
-  const deliveryAddress =
-    [snapshot?.address?.flatNo, snapshot?.address?.formattedAddress].filter(Boolean).join(', ') ||
-    null;
 
   return (
     <div className="container-brand space-y-8 py-10">
@@ -107,7 +105,12 @@ export default async function GuestOrderPage({
             </div>
             <div className="sm:col-span-2">
               <dt className="text-caption text-muted-foreground">Delivery address</dt>
-              <dd className="text-body">{deliveryAddress ?? 'No address on file'}</dd>
+              <dd>
+                <DeliveryAddress
+                  flatNo={snapshot?.address?.flatNo}
+                  formattedAddress={snapshot?.address?.formattedAddress}
+                />
+              </dd>
             </div>
           </dl>
         </CardContent>
