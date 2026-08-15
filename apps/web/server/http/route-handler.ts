@@ -11,6 +11,36 @@ import { logger } from '@/server/logger';
 import { apiError, apiSuccess } from './envelope';
 
 /**
+ * Turns Zod issues into something the person who hit the button can act
+ * on.
+ *
+ * Every failure used to read "Invalid request body." — true, useless,
+ * and identical whichever field was wrong. A product with a 98-character
+ * description silently refused every save, and the only way to find out
+ * why was to read server logs.
+ *
+ * The field path and reason are the caller's own submitted data, so
+ * naming them leaks nothing they did not just send.
+ */
+function describeIssues(issues: { path: PropertyKey[]; message: string; code: string }[]): string {
+  const described = issues.slice(0, 3).map((issue) => {
+    const field = issue.path.filter((part) => typeof part !== 'number').join('.');
+    const detail =
+      issue.code === 'too_small' && 'minimum' in issue
+        ? `must be at least ${String((issue as { minimum: unknown }).minimum)} characters`
+        : issue.code === 'too_big' && 'maximum' in issue
+          ? `must be at most ${String((issue as { maximum: unknown }).maximum)} characters`
+          : issue.message;
+    return field ? `${field}: ${detail}` : detail;
+  });
+  const extra =
+    issues.length > described.length ? ` (+${issues.length - described.length} more)` : '';
+  return described.length > 0
+    ? `Check these fields — ${described.join('; ')}${extra}.`
+    : 'Invalid request body.';
+}
+
+/**
  * Ch.11 §11 (Route → Schema → Controller → Service) + §12 (every error maps
  * through AppError, no stack trace ever reaches the client) + §13
  * (structured request logging) as one composable wrapper, so every /api/v1
@@ -58,7 +88,7 @@ export function createApiRoute<TQuery, TResult, TBody = undefined, TParams = und
         const raw = await request.json().catch(() => undefined);
         const parsed = config.bodySchema.safeParse(raw);
         if (!parsed.success) {
-          const error = new ValidationError('Invalid request body.', {
+          const error = new ValidationError(describeIssues(parsed.error.issues), {
             issues: parsed.error.issues,
           });
           logger.warn('api.validation_failed', {

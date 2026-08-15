@@ -217,6 +217,28 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
   // on how many of each item the customer can order.
   const selectedOutlet = outlets.find((outlet) => outlet.id === selectedOutletId) ?? null;
 
+  /**
+   * Why the order can't be placed yet, or null when it can.
+   *
+   * The delivery fee is computed from the pin to the chosen outlet, so
+   * without a pin there is no fee and no honest total to charge. These
+   * were previously checked only inside `payNow`, which meant the
+   * customer filled in everything, pressed Pay, and got a toast telling
+   * them to go back up the page. Saying it up front — with the button
+   * disabled — is the difference between a rule and an ambush.
+   */
+  const blockingReason = React.useMemo(() => {
+    if (items.length === 0) return 'Your basket is empty.';
+    const missing = findMissingAddressFields(manualAddress);
+    if (missing.length > 0) return `Fill in your ${missing.join(', ')} to continue.`;
+    if (!deliveryPin) {
+      return 'Search for your address or drag the pin on the map — the delivery fee is worked out from it.';
+    }
+    if (!selectedOutletId) return 'Choose which outlet should fulfil this order.';
+    if (slotsResponse?.hasBookableSlot && !selectedSlotId) return 'Choose a delivery time.';
+    return null;
+  }, [items.length, manualAddress, deliveryPin, selectedOutletId, slotsResponse, selectedSlotId]);
+
   // Switching outlets can leave a quantity the new shop cannot fill.
   // Clamping here means the customer sees the corrected number before
   // they pay, rather than a rejection from the server after.
@@ -984,11 +1006,17 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             </div>
           </div>
 
+          {blockingReason && (
+            <p className="text-caption mt-6 rounded-[var(--r-md)] border border-[var(--sf-border)] bg-[var(--sf-surface)] px-3 py-2 text-[var(--sf-ink-muted)]">
+              {blockingReason}
+            </p>
+          )}
+
           <button
             type="button"
             onClick={payNow}
-            disabled={isPaying}
-            className="btn btn-primary mt-6 flex w-full items-center justify-center px-7 py-4 text-sm disabled:opacity-60"
+            disabled={isPaying || blockingReason !== null}
+            className="btn btn-primary mt-6 flex w-full items-center justify-center px-7 py-4 text-sm disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isPaying
               ? 'Processing...'

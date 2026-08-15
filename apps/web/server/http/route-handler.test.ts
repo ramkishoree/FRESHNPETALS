@@ -99,4 +99,54 @@ describe('createApiRoute', () => {
     expect(body.error.code).toBe('INFRASTRUCTURE_ERROR');
     expect(body.error.message).not.toMatch(/null pointer/);
   });
+
+  it('names the field that failed instead of a generic message', async () => {
+    // "Invalid request body." was identical whichever field was wrong. A
+    // product with a 98-character description refused every save and the
+    // only way to learn why was to read server logs.
+    const route = createApiRoute({
+      bodySchema: z.object({ description: z.string().min(100) }),
+      handler: async () => Promise.resolve(ok({})),
+    });
+
+    const response = await route(
+      new NextRequest(
+        new Request('http://localhost/api/v1/example', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ description: 'too short' }),
+        }),
+      ),
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(422);
+    expect(body.error.message).toContain('description');
+    expect(body.error.message).toContain('at least 100');
+  });
+
+  it('summarises several failures without listing every one', async () => {
+    const route = createApiRoute({
+      bodySchema: z.object({
+        a: z.string(),
+        b: z.string(),
+        c: z.string(),
+        d: z.string(),
+      }),
+      handler: async () => Promise.resolve(ok({})),
+    });
+
+    const response = await route(
+      new NextRequest(
+        new Request('http://localhost/api/v1/example', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({}),
+        }),
+      ),
+    );
+    const body = await response.json();
+
+    expect(body.error.message).toContain('+1 more');
+  });
 });

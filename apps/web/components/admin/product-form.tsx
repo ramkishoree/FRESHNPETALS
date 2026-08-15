@@ -214,7 +214,16 @@ export function ProductForm({
       )}
 
       <div className="grid gap-1.5">
-        <Label htmlFor="description">Description * (min. 100 characters)</Label>
+        <Label htmlFor="description">
+          Description *{' '}
+          <span
+            className={
+              values.description.trim().length < 100 ? 'text-destructive' : 'text-muted-foreground'
+            }
+          >
+            ({values.description.trim().length}/100 characters minimum)
+          </span>
+        </Label>
         <Textarea
           id="description"
           required
