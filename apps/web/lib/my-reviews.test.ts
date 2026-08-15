@@ -4,11 +4,15 @@ import {
   getReviewToken,
   ownedReviewIds,
   rememberReviewToken,
+  resetReviewTokenCache,
 } from './my-reviews';
 
 describe('my reviews', () => {
   beforeEach(() => {
     window.localStorage.clear();
+    // The module caches storage in memory so a product page does not
+    // re-parse it on every render; each test needs a clean read.
+    resetReviewTokenCache();
   });
 
   it('remembers a token per review', () => {
@@ -17,7 +21,7 @@ describe('my reviews', () => {
 
     expect(getReviewToken('review-a')).toBe('token-a');
     expect(getReviewToken('review-b')).toBe('token-b');
-    expect(ownedReviewIds().sort()).toEqual(['review-a', 'review-b']);
+    expect([...ownedReviewIds()].sort()).toEqual(['review-a', 'review-b']);
   });
 
   it('claims nothing for a review written elsewhere', () => {
@@ -39,6 +43,7 @@ describe('my reviews', () => {
 
   it('survives corrupt storage rather than throwing on a product page', () => {
     window.localStorage.setItem('fnp-my-reviews', '{not json');
+    resetReviewTokenCache();
 
     expect(ownedReviewIds()).toEqual([]);
     expect(getReviewToken('review-a')).toBeNull();

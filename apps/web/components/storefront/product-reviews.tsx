@@ -9,7 +9,7 @@ import { Reveal } from '@/components/storefront/reveal';
 import { ReviewEditor } from '@/components/storefront/review-editor';
 import { ReviewForm } from '@/components/storefront/review-form';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { forgetReviewToken, getReviewToken, ownedReviewIds } from '@/lib/my-reviews';
+import { forgetReviewToken, getReviewToken, useOwnedReviewIds } from '@/lib/my-reviews';
 
 export interface ProductReview {
   id: string;
@@ -47,18 +47,12 @@ export function ProductReviews({
   const [deletingId, setDeletingId] = React.useState<string | null>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   /**
-   * Which of these reviews this browser can edit. Read in an effect
-   * rather than during render because localStorage does not exist on the
-   * server, and a mismatch between the two would be a hydration error.
+   * Which of these reviews this browser can edit. Subscribed rather than
+   * read once on mount: posting a review refreshes server data without
+   * remounting, and the reviewer should see their own Edit and Remove
+   * controls straight away rather than after a manual reload.
    */
-  const [ownedIds, setOwnedIds] = React.useState<ReadonlySet<string>>(new Set());
-  const refreshOwned = React.useCallback(() => {
-    setOwnedIds(new Set(ownedReviewIds()));
-  }, []);
-  React.useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    refreshOwned();
-  }, [refreshOwned]);
+  const ownedIds = useOwnedReviewIds();
 
   /** The reviewer withdrawing their own review, not the owner removing it. */
   async function withdrawReview(id: string) {
@@ -76,7 +70,6 @@ export function ProductReviews({
         throw new Error(body.error?.message ?? 'Could not remove your review.');
       }
       forgetReviewToken(id);
-      refreshOwned();
       toast.success('Your review has been removed.');
       router.refresh();
     } catch (cause) {
@@ -130,7 +123,7 @@ export function ProductReviews({
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {reviews.map((review) => {
-                const token = ownedIds.has(review.id) ? getReviewToken(review.id) : null;
+                const token = ownedIds.includes(review.id) ? getReviewToken(review.id) : null;
 
                 if (editingId === review.id && token) {
                   return (
