@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { CheckoutFlow } from '@/components/storefront/checkout-flow';
+import { getPublicEnv } from '@/config/env';
 import { getCurrentUser } from '@/server/auth/session';
 
 /**
@@ -28,11 +29,18 @@ export default async function CheckoutPage({
     }
   }
   const nonce = (await headers()).get('x-nonce') ?? undefined;
+  // Read here rather than in the client component: only a literal
+  // `process.env.NEXT_PUBLIC_*` reference is inlined into the browser
+  // bundle, and `getPublicEnv` reads it dynamically.
+  const ownerPhoneNumber = getPublicEnv().NEXT_PUBLIC_OWNER_PHONE_NUMBER;
 
   return (
     <div className="container-brand py-10">
       <h1 className="text-h2 text-foreground mb-6 font-bold">Checkout</h1>
-      <CheckoutFlow {...(nonce ? { nonce } : {})} />
+      <CheckoutFlow
+        {...(nonce ? { nonce } : {})}
+        {...(ownerPhoneNumber ? { ownerPhoneNumber } : {})}
+      />
     </div>
   );
 }

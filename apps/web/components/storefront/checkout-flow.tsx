@@ -4,8 +4,10 @@ import Script from 'next/script';
 import { useRouter, useSearchParams } from 'next/navigation';
 import * as React from 'react';
 import { toast } from 'sonner';
+import { ContactUsButton } from '@/components/commerce/contact-us-button';
 import { PriceDisplay } from '@/components/commerce/price-display';
 import { DeliveryMap, type MapLocation } from '@/components/storefront/delivery-map';
+import { rankOutletsByDistance } from '@prana/commerce';
 import { OutletSelector, type OutletWithStock } from '@/components/storefront/outlet-selector';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { Input } from '@/components/ui/input';
@@ -76,7 +78,13 @@ interface PricingBreakdown {
  * not from the customer's current GPS position — so the fee is always
  * tied to where the package is going and which outlet they choose.
  */
-export function CheckoutFlow({ nonce }: { nonce?: string }) {
+export function CheckoutFlow({
+  nonce,
+  ownerPhoneNumber,
+}: {
+  nonce?: string;
+  ownerPhoneNumber?: string;
+}) {
   const cart = useCart();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -246,28 +254,43 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
 
   // Nearest outlet by Haversine distance — pure derivation from
   // deliveryPin/outlets, recomputed on render rather than synced via effect.
-  const nearestOutletId = React.useMemo(() => {
-    if (!deliveryPin || outlets.length === 0) return null;
-    let nearest: OutletWithStock | undefined = outlets[0];
-    let minDist = Infinity;
-    for (const o of outlets) {
-      const dLat = ((o.latitude - deliveryPin.lat) * Math.PI) / 180;
-      const dLon = ((o.longitude - deliveryPin.lng) * Math.PI) / 180;
-      const a =
-        Math.sin(dLat / 2) ** 2 +
-        Math.cos((deliveryPin.lat * Math.PI) / 180) *
-          Math.cos((o.latitude * Math.PI) / 180) *
-          Math.sin(dLon / 2) ** 2;
-      const dist = 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-      if (dist < minDist) {
-        minDist = dist;
-        nearest = o;
-      }
-    }
-    return nearest?.id ?? null;
+  /**
+   * Outlets that can actually reach this pin, nearest first.
+   *
+   * The selector already filtered by each outlet's delivery radius while
+   * the page picked a default by raw distance, so the two disagreed: a
+   * pin in Delhi showed "no outlets" and silently selected Gomti Nagar
+   * anyway, quoting a fee and enabling Pay for an order nobody could
+   * deliver. One shared answer, from the same function the selector
+   * uses, is what stops that happening again.
+   */
+  const serviceableOutlets = React.useMemo(() => {
+    if (!deliveryPin || outlets.length === 0) return [];
+    return rankOutletsByDistance(
+      outlets.map((outlet) => ({
+        id: outlet.id,
+        latitude: outlet.latitude,
+        longitude: outlet.longitude,
+        deliveryRadiusKm: outlet.deliveryRadiusKm,
+        isActive: true,
+      })),
+      deliveryPin.lat,
+      deliveryPin.lng,
+    );
   }, [deliveryPin, outlets]);
 
-  const selectedOutletId = manualOutletId ?? nearestOutletId;
+  const nearestOutletId = serviceableOutlets[0]?.outlet.id ?? null;
+
+  /** A pinned address no branch delivers to. Only the owner can help. */
+  const isOutsideDeliveryArea =
+    deliveryPin != null && outlets.length > 0 && serviceableOutlets.length === 0;
+
+  // A manual pick is honoured only while it can still serve the pin —
+  // moving the pin out of range must not leave the old choice standing.
+  const selectedOutletId =
+    manualOutletId && serviceableOutlets.some((entry) => entry.outlet.id === manualOutletId)
+      ? manualOutletId
+      : nearestOutletId;
   // The outlet actually fulfilling the order — its stock is the ceiling
   // on how many of each item the customer can order.
   const selectedOutlet = outlets.find((outlet) => outlet.id === selectedOutletId) ?? null;
@@ -298,10 +321,20 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
     if (!deliveryPin) {
       return 'Search for your address or drag the pin on the map — the delivery fee is worked out from it.';
     }
+    if (isOutsideDeliveryArea)
+      return 'None of our branches deliver to this address. Call us — we can sometimes arrange it by hand.';
     if (!selectedOutletId) return 'Choose which outlet should fulfil this order.';
     if (slotsResponse?.hasBookableSlot && !selectedSlotId) return 'Choose a delivery time.';
     return null;
-  }, [items.length, manualAddress, deliveryPin, selectedOutletId, slotsResponse, selectedSlotId]);
+  }, [
+    items.length,
+    manualAddress,
+    deliveryPin,
+    isOutsideDeliveryArea,
+    selectedOutletId,
+    slotsResponse,
+    selectedSlotId,
+  ]);
 
   // Switching outlets can leave a quantity the new shop cannot fill.
   // Clamping here means the customer sees the corrected number before
@@ -688,8 +721,27 @@ export function CheckoutFlow({ nonce }: { nonce?: string }) {
             <DeliveryMap onLocationChange={setDeliveryPin} />
           </section>
 
+          {/* ---- Outside every delivery radius ---- */}
+          {isOutsideDeliveryArea && (
+            <section className="rounded-[var(--r-lg)] border border-[var(--sale)]/40 bg-[var(--sf-surface)] p-6">
+              <h2 className="text-h4 mb-2">We don&rsquo;t deliver here yet</h2>
+              <p className="text-body">
+                {deliveryPin?.locality ?? 'That address'} is outside the range of every branch, so
+                this order can&rsquo;t be placed online. Long-distance deliveries are sometimes
+                possible by arrangement — give us a call and we&rsquo;ll tell you honestly whether
+                we can do it.
+              </p>
+              <div className="mt-4">
+                <ContactUsButton ownerPhoneNumber={ownerPhoneNumber} />
+              </div>
+              <p className="text-caption mt-3 text-[var(--sf-ink-muted)]">
+                Or move the pin to an address inside Lucknow.
+              </p>
+            </section>
+          )}
+
           {/* ---- Outlet selector ---- */}
-          {outlets.length > 0 && (
+          {outlets.length > 0 && !isOutsideDeliveryArea && (
             <section className="rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface)] p-6">
               <h2 className="text-h4 mb-4">Select outlet</h2>
               <OutletSelector
