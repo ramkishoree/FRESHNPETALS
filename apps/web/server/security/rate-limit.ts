@@ -18,6 +18,13 @@ export const RATE_LIMIT_TIERS = {
   // the most abusable endpoint on the site. A genuine customer writes one
   // review, not five an hour.
   review: { limit: 5, windowSeconds: 3600 },
+  // Editing or withdrawing a review you already wrote. Deliberately far
+  // looser than posting: every request has to present a token proving
+  // authorship of one specific existing review, so it creates nothing
+  // and can only touch what the caller already published. Sharing the
+  // posting budget meant someone who left one review and then fixed two
+  // typos was most of the way to being locked out of their own words.
+  reviewEdit: { limit: 40, windowSeconds: 3600 },
 } as const;
 
 export type RateLimitTier = keyof typeof RATE_LIMIT_TIERS;

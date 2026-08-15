@@ -67,7 +67,7 @@ async function authoriseReviewer(
 }
 
 export async function PATCH(request: NextRequest, context: { params: Promise<RouteParams> }) {
-  const blocked = await runSecurityChain(request, { tier: 'review' });
+  const blocked = await runSecurityChain(request, { tier: 'reviewEdit' });
   if (blocked) return blocked;
 
   const correlationId = crypto.randomUUID();
@@ -175,7 +175,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<Rou
 }
 
 export async function DELETE(request: NextRequest, context: { params: Promise<RouteParams> }) {
-  const blocked = await runSecurityChain(request, { tier: 'review' });
+  const blocked = await runSecurityChain(request, { tier: 'reviewEdit' });
   if (blocked) return blocked;
 
   const correlationId = crypto.randomUUID();

@@ -24,6 +24,7 @@ describe('RATE_LIMIT_TIERS', () => {
       // Not from Ch.16 §19: public review posting is unauthenticated and
       // accepts uploads, so it gets its own far tighter budget.
       review: { limit: 5, windowSeconds: 3600 },
+      reviewEdit: { limit: 40, windowSeconds: 3600 },
     });
   });
 });
