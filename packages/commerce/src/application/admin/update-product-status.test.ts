@@ -16,15 +16,29 @@ describe('UpdateProductStatusService', () => {
     }
   });
 
-  it('rejects a transition the state machine does not draw (draft -> published)', async () => {
+  it('allows draft -> published: a new listing must be able to go on sale', async () => {
+    // This used to be forbidden by the editorial pipeline, which meant a
+    // product created in the admin could never actually be sold.
     const repo = new FakeAdminProductRepository([makeProduct({ id: '1', status: 'draft' })]);
     const service = new UpdateProductStatusService(repo);
 
     const result = await service.execute('1', 'published', 'actor-1');
 
-    expect(isErr(result)).toBe(true);
-    if (isErr(result)) {
-      expect(result.error.code).toBe('BUSINESS_RULE_ERROR');
+    expect(isErr(result)).toBe(false);
+    if (!isErr(result)) {
+      expect(result.value.status).toBe('published');
+    }
+  });
+
+  it('allows archived -> published, so a removed product can be restored', async () => {
+    const repo = new FakeAdminProductRepository([makeProduct({ id: '1', status: 'archived' })]);
+    const service = new UpdateProductStatusService(repo);
+
+    const result = await service.execute('1', 'published', 'actor-1');
+
+    expect(isErr(result)).toBe(false);
+    if (!isErr(result)) {
+      expect(result.value.status).toBe('published');
     }
   });
 

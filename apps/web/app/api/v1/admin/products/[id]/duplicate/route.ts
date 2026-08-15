@@ -19,10 +19,10 @@ interface RouteParams {
  * in a different colour or size — and retyping the description, price,
  * category and photo every time is the slow part of adding stock.
  *
- * The copy is always created as a **draft**. A duplicate is by
- * definition not ready to sell: it still has the original's name and
- * photo, and publishing it automatically would put two identical
- * products in the shop the moment the button is pressed.
+ * The copy is always created **archived**, i.e. hidden from the shop. A
+ * duplicate is by definition not ready to sell: it still carries the
+ * original's name and photo, and publishing it automatically would put
+ * two identical products on the shop the moment the button is pressed.
  *
  * Slug and SKU are re-derived rather than copied, since both are unique.
  */
@@ -65,7 +65,7 @@ const duplicateProduct = createApiRoute<undefined, unknown, undefined, RoutePara
         seo_title: source.seo_title,
         meta_description: source.meta_description,
         metadata: source.metadata ?? {},
-        status: 'draft',
+        status: 'archived',
         created_by: actor.id,
       })
       .select('id, name, slug')

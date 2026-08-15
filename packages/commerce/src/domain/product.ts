@@ -50,16 +50,31 @@ export interface ProductRepository extends ReadRepository<Product> {
  * doesn't distinguish them) — treated as a synonym administrators can
  * publish from, same as pending_review.
  */
+/**
+ * Ch.8 §16 drew an editorial review pipeline — draft to AI-generated to
+ * pending review to approved to published. The owner runs the shop
+ * alone and asked for the two states that actually mean something to
+ * them: **published** (on the shop) and **archived** (not on the shop).
+ *
+ * So every status can now reach either one directly. The old edges stay
+ * for rows still sitting in the intermediate states, but the pipeline is
+ * no longer a gate: `draft -> published` was forbidden, which meant a
+ * newly created product could never be put on sale, and `archived` could
+ * only go back to `draft`, so nothing archived could be restored without
+ * a second hop.
+ */
+const ALWAYS: readonly ProductStatus[] = ['published', 'archived'];
+
 export const PRODUCT_STATUS_TRANSITIONS: Readonly<Record<ProductStatus, readonly ProductStatus[]>> =
   {
-    draft: ['ai_generated', 'pending_review'],
-    ai_generated: ['pending_review', 'published'],
-    pending_review: ['approved', 'published'],
-    approved: ['published'],
-    published: ['archived', 'out_of_stock', 'hidden'],
-    out_of_stock: ['published', 'archived'],
-    hidden: ['published', 'archived'],
-    archived: ['draft'],
+    draft: [...ALWAYS, 'ai_generated', 'pending_review'],
+    ai_generated: [...ALWAYS, 'pending_review'],
+    pending_review: [...ALWAYS, 'approved'],
+    approved: [...ALWAYS],
+    published: [...ALWAYS, 'out_of_stock', 'hidden'],
+    out_of_stock: [...ALWAYS],
+    hidden: [...ALWAYS],
+    archived: [...ALWAYS, 'draft'],
   };
 
 export function canTransitionProductStatus(from: ProductStatus, to: ProductStatus): boolean {
@@ -78,6 +93,9 @@ export const PRODUCT_LIMITS = {
 } as const;
 
 export interface AdminProductInput {
+  /** 'published' puts it on the shop immediately; 'archived' keeps it
+   *  hidden. Absent leaves the database default. */
+  status?: ProductStatus;
   /** Flower colour — the fastest way to tell similarly-named
    *  arrangements apart on the shop and in order alerts (migration 0069). */
   color?: string;

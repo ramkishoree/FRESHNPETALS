@@ -44,6 +44,9 @@ const createBodySchema = z.object({
   color: z.string().max(60).optional(),
   // Owner-only packing details — never returned by a storefront query.
   ownerDescription: z.string().max(1000).optional(),
+  // Products are created 'draft' by database default, which is invisible
+  // to customers — so a new listing needs to say whether it goes on sale.
+  status: z.enum(['published', 'archived']).optional(),
   description: z.string().min(100),
   categoryId: zUuid(),
   collectionId: zUuid().optional(),

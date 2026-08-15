@@ -12,17 +12,20 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 
-/** Ch.8 §16 Product State Machine — only the transitions the diagram draws are offered, matching the backend's canTransitionProductStatus. */
-const TRANSITIONS: Record<string, string[]> = {
-  draft: ['ai_generated', 'pending_review'],
-  ai_generated: ['pending_review', 'published'],
-  pending_review: ['approved', 'published'],
-  approved: ['published'],
-  published: ['archived', 'out_of_stock', 'hidden'],
-  out_of_stock: ['published', 'archived'],
-  hidden: ['published', 'archived'],
-  archived: ['draft'],
-};
+/**
+ * Two states, in the only terms that matter to the shop: on sale, or
+ * not. Ch.8 §16's editorial pipeline (draft, AI-generated, pending
+ * review, approved) offered options like "ai generated" and "pending
+ * review" that meant nothing to a florist and, worse, could not reach
+ * `published` at all from `draft`.
+ *
+ * The other statuses still exist in the database for rows that already
+ * carry them, so this reads any status but only ever writes these two.
+ */
+const CHOICES = [
+  { value: 'published', label: 'Published — showing on the shop' },
+  { value: 'archived', label: 'Archived — hidden from the shop' },
+] as const;
 
 export function ProductStatusControl({
   productId,
@@ -34,7 +37,10 @@ export function ProductStatusControl({
   const router = useRouter();
   const [target, setTarget] = React.useState('');
   const [isSaving, setIsSaving] = React.useState(false);
-  const options = TRANSITIONS[currentStatus] ?? [];
+  // Anything that isn't published is invisible to customers, so every
+  // legacy status reads as "hidden" rather than exposing its name.
+  const isLive = currentStatus === 'published';
+  const options = CHOICES.filter((choice) => choice.value !== currentStatus);
 
   async function apply() {
     if (!target) return;
@@ -48,7 +54,11 @@ export function ProductStatusControl({
       const body = await response.json();
       if (!response.ok || !body.success)
         throw new Error(body.error?.message ?? 'Failed to update status.');
-      toast.success(`Status changed to ${target.replace(/_/g, ' ')}.`);
+      toast.success(
+        target === 'published'
+          ? 'Published — now showing on the shop.'
+          : 'Archived — hidden from the shop.',
+      );
       setTarget('');
       router.refresh();
     } catch (cause) {
@@ -61,19 +71,20 @@ export function ProductStatusControl({
   return (
     <div className="flex items-center gap-2">
       <span className="text-caption text-muted-foreground">
-        Currently:{' '}
-        <span className="text-foreground font-medium">{currentStatus.replace(/_/g, ' ')}</span>
+        <span className={isLive ? 'text-success-text font-medium' : 'text-foreground font-medium'}>
+          {isLive ? 'Published' : 'Hidden from the shop'}
+        </span>
       </span>
       {options.length > 0 && (
         <>
           <Select value={target} onValueChange={setTarget}>
-            <SelectTrigger className="w-44">
-              <SelectValue placeholder="Move to..." />
+            <SelectTrigger className="w-64">
+              <SelectValue placeholder="Change visibility..." />
             </SelectTrigger>
             <SelectContent>
-              {options.map((status) => (
-                <SelectItem key={status} value={status}>
-                  {status.replace(/_/g, ' ')}
+              {options.map((choice) => (
+                <SelectItem key={choice.value} value={choice.value}>
+                  {choice.label}
                 </SelectItem>
               ))}
             </SelectContent>

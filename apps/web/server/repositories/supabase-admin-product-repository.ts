@@ -59,6 +59,9 @@ export class SupabaseAdminProductRepository
     const postCreateFields = stripUndefined({
       color: input.color,
       owner_description: input.ownerDescription,
+      // `admin_create_product` has a fixed parameter list and always
+      // inserts as 'draft', so an explicit choice is applied here.
+      status: input.status,
     });
     if (Object.keys(postCreateFields).length > 0) {
       await this.adminClient

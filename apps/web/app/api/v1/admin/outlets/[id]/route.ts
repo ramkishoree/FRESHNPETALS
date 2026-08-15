@@ -20,7 +20,14 @@ const schema = z.object({
   email: z.string().email().optional(),
   is_active: z.boolean().optional(),
   google_cover_photo_url: z.string().optional(),
+  // Was missing, so the picker's "note it and link later" PATCH was
+  // silently dropped — an unknown key never reaches the table.
+  google_place_query: z.string().max(300).nullable().optional(),
 });
+
+// `show_google_reviews` is deliberately absent: enabling one outlet
+// disables every other, which is a decision about the whole set rather
+// than an edit to one row. It has its own endpoint (reviews-source).
 
 export const { PATCH, DELETE } = createAdminCrudItemRoute({
   table: 'outlets',

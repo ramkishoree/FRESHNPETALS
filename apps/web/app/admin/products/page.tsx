@@ -155,9 +155,9 @@ export default function ProductsPage() {
   /**
    * Most listings here are variations on one another, so copying beats
    * retyping the description, price, category and photo. The copy opens
-   * straight away as a draft — it still carries the original's name and
-   * image, so it is never something you'd want live on the shop the
-   * instant the button is pressed.
+   * hidden from the shop — it still carries the original's name and
+   * image, so it is never something you'd want live the instant the
+   * button is pressed.
    */
   const duplicateProduct = React.useCallback(
     async (row: ProductRow) => {
@@ -169,7 +169,7 @@ export default function ProductsPage() {
         if (!response.ok || !body.success) {
           throw new Error(body.error?.message ?? 'Failed to duplicate.');
         }
-        toast.success(`Copied "${row.name}". Opening the draft…`);
+        toast.success(`Copied "${row.name}". Opening the hidden copy…`);
         router.push(`/admin/products/${body.data.id}`);
       } catch (cause) {
         toast.error(cause instanceof Error ? cause.message : 'Failed to duplicate.');

@@ -4,6 +4,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import * as React from 'react';
 import { AdminResourcePage } from '@/components/admin/admin-resource-page';
 import { GooglePlacePickerDialog } from '@/components/admin/google-place-picker-dialog';
+import { toast } from 'sonner';
 import { Badge } from '@/components/ui/badge';
 
 interface OutletRow extends Record<string, unknown> {
@@ -54,10 +55,6 @@ function GoogleBusinessSection({ reloadKey }: { reloadKey: number }) {
     setIsLoading(false);
   }, []);
 
-  // `reloadKey` changes whenever the outlets table below is mutated.
-  // Without it this list was fetched once on mount and only refetched
-  // after a link, so an outlet added in the table never appeared here —
-  // reported as "only Gomti Nagar can be linked".
   /**
    * Which outlet's reviews the storefront shows. Off by default for a
    * newly linked outlet: a link has to be confirmed as genuinely ours
@@ -65,15 +62,41 @@ function GoogleBusinessSection({ reloadKey }: { reloadKey: number }) {
    * pulled in a different florist's reviews entirely.
    */
   async function setShowReviews(outletId: string, show: boolean) {
-    const response = await fetch(`/api/v1/admin/outlets/${outletId}`, {
-      method: 'PATCH',
+    // Google returns at most 5 reviews per place, so only one outlet can
+    // be the source — switching is a swap, not an independent toggle.
+    // Confirming names both shops, because the cost of a silent switch
+    // is the wrong branch's reputation on the homepage.
+    if (show) {
+      const current = outlets.find((o) => o.show_google_reviews && o.id !== outletId);
+      const next = outlets.find((o) => o.id === outletId);
+      if (
+        current &&
+        !window.confirm(
+          `Show reviews from “${next?.name ?? 'this outlet'}” instead of “${current.name}”?\n\nGoogle only returns 5 reviews per shop, so just one outlet can be the source.`,
+        )
+      ) {
+        return;
+      }
+    }
+
+    const response = await fetch(`/api/v1/admin/outlets/${outletId}/reviews-source`, {
+      method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ show_google_reviews: show }),
+      body: JSON.stringify({ show }),
     });
-    if (!response.ok) return;
+    const body = await response.json();
+    if (!response.ok || !body.success) {
+      toast.error(body.error?.message ?? 'Could not change the reviews source.');
+      return;
+    }
+    toast.success(show ? 'Reviews source updated.' : 'Reviews hidden for this outlet.');
     await load();
   }
 
+  // `reloadKey` changes whenever the outlets table below is mutated.
+  // Without it this list was fetched once on mount and only refetched
+  // after a link, so an outlet added in the table never appeared here —
+  // reported as "only Gomti Nagar can be linked".
   React.useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     void load();
@@ -109,13 +132,19 @@ function GoogleBusinessSection({ reloadKey }: { reloadKey: number }) {
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {outlet.google_business_name && (
-              <label className="text-caption text-foreground flex items-center gap-2">
+              <label className="text-caption text-foreground flex cursor-pointer items-center gap-2">
                 <input
-                  type="checkbox"
+                  type="radio"
+                  name="reviews-source"
                   checked={outlet.show_google_reviews}
-                  onChange={(event) => void setShowReviews(outlet.id, event.target.checked)}
+                  // A radio can't be unchecked by clicking it, so the
+                  // click handler does the toggling and onChange only
+                  // exists to keep React from warning about a controlled
+                  // input without one.
+                  onChange={() => {}}
+                  onClick={() => void setShowReviews(outlet.id, !outlet.show_google_reviews)}
                 />
-                Show reviews
+                Show these reviews
               </label>
             )}
             <GooglePlacePickerDialog

@@ -22,6 +22,7 @@ export interface ProductFormValues {
   name: string;
   color: string;
   ownerDescription: string;
+  status: string;
   description: string;
   categoryId: string;
   basePrice: string;
@@ -33,6 +34,9 @@ const EMPTY_VALUES: ProductFormValues = {
   name: '',
   color: '',
   ownerDescription: '',
+  // A new listing is normally made to be sold, so it goes live unless
+  // the owner says otherwise.
+  status: 'published',
   description: '',
   categoryId: '',
   basePrice: '',
@@ -86,6 +90,9 @@ export function ProductForm({
       name: values.name,
       color: values.color || undefined,
       ownerDescription: values.ownerDescription || undefined,
+      // Only on create — an existing product's visibility is changed with
+      // the control at the top of the page, not by resaving the form.
+      ...(productId ? {} : { status: values.status }),
       description: values.description,
       categoryId: values.categoryId,
       basePrice: Number(values.basePrice),
@@ -190,6 +197,21 @@ export function ProductForm({
           you like. Never shown to customers.
         </p>
       </div>
+
+      {!productId && (
+        <div className="grid gap-1.5">
+          <Label htmlFor="status">Visibility</Label>
+          <Select value={values.status} onValueChange={(v) => set('status', v)}>
+            <SelectTrigger id="status" className="w-64">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="published">Published — showing on the shop</SelectItem>
+              <SelectItem value="archived">Archived — hidden from the shop</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
 
       <div className="grid gap-1.5">
         <Label htmlFor="description">Description * (min. 100 characters)</Label>
