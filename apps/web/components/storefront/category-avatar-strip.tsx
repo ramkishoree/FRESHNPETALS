@@ -33,6 +33,10 @@ const ALL_IMAGE = '/category-all.webp';
  * container, so `sticky top-16` holds it under the header the whole way
  * down.
  *
+ * Carries no negative margin, so it shares the container's content box
+ * exactly with the hero band directly below — the two are meant to read
+ * as one block, and a banner that overhung its own navigation did not.
+ *
  * Nothing here is client-side, so it costs no JavaScript — the active
  * entry is decided on the server from the route.
  */
@@ -53,7 +57,7 @@ export function CategoryAvatarStrip({
   return (
     <nav
       aria-label="Shop by category"
-      className="sticky top-16 z-30 -mx-4 border-b border-[var(--sf-border)] bg-[var(--sf-surface)]/95 px-4 py-3 backdrop-blur sm:mx-0"
+      className="sticky top-16 z-30 border-b border-[var(--sf-border)] bg-[var(--sf-surface)]/95 px-4 py-3 backdrop-blur"
     >
       <ul className="flex gap-4 overflow-x-auto sm:flex-wrap sm:justify-center sm:overflow-visible">
         {entries.map((entry) => {

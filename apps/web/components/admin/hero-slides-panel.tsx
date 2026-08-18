@@ -162,8 +162,15 @@ export function HeroSlidesPanel() {
                 }
               />
               <p className="text-caption text-muted-foreground">
-                Recommended: a 1440×480px landscape photo — it is cropped to a taller 16:9 shape on
-                phones, so keep anything important away from the left and right edges.
+                <strong className="text-foreground">Best size: 2400 × 900 px</strong> (landscape,
+                8:3). The band is 1200 × 450 px at its largest on a computer, so 2400 × 900 keeps it
+                sharp on high-resolution screens. Anything wider or taller is fine — it will be
+                cropped to fit, never squashed.
+              </p>
+              <p className="text-caption text-muted-foreground">
+                On phones the band is a taller 16:9 shape, which trims roughly a sixth off each
+                side. Keep the words and the main subject in the middle third and nothing important
+                will be lost. The preview above is the computer shape.
               </p>
             </div>
 
