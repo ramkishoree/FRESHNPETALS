@@ -2,7 +2,6 @@ import type { Metadata } from 'next';
 import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { CategoryAvatarStrip } from '@/components/storefront/category-avatar-strip';
-import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
 import { HeroCarousel, type HeroSlide } from '@/components/storefront/hero-carousel';
 import { OfferBadge } from '@/components/storefront/offer-badge';
 import { ShopSortControl } from '@/components/storefront/shop-sort-control';
@@ -27,8 +26,9 @@ export const metadata: Metadata = {
  * in pixels rather than viewport units — and it disappears entirely
  * until the owner puts something in a slot.
  *
- * Category pills scope to the existing `/shop/[category]` pages; the
- * round avatars above the hero go to exactly the same places.
+ * The round category avatars are the only category navigation left; the
+ * text pill bar that used to sit under the hero went to the same
+ * `/shop/[category]` pages and competed for the same sticky slot.
  */
 export default async function ProductsPage({
   searchParams,
@@ -107,27 +107,18 @@ export default async function ProductsPage({
         />
       )}
 
-      {/* One sticky container for the strip and the hero: the avatar bar
-          pins under the header while the hero scrolls beneath it, then
-          releases as the pill bar arrives to take the same slot. Both
-          pinning forever would put two bars at one coordinate. */}
-      <div className="relative">
-        <CategoryAvatarStrip
-          categories={categories.map((category) => ({
-            name: category.name as string,
-            slug: category.slug as string,
-            imageUrl: (category.image_url as string | null) ?? null,
-          }))}
-        />
-        <HeroCarousel slides={heroSlides} />
-      </div>
-
-      <FloatingCategoryBar
+      {/* A direct child of the page container, so its sticky containing
+          block is the whole page and it stays pinned all the way down
+          rather than releasing at the bottom of a wrapper. */}
+      <CategoryAvatarStrip
         categories={categories.map((category) => ({
           name: category.name as string,
           slug: category.slug as string,
+          imageUrl: (category.image_url as string | null) ?? null,
         }))}
       />
+
+      <HeroCarousel slides={heroSlides} />
 
       <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-h4 font-semibold">

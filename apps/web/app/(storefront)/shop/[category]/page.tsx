@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
-import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
+import { CategoryAvatarStrip } from '@/components/storefront/category-avatar-strip';
 import { ShopSortControl } from '@/components/storefront/shop-sort-control';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
@@ -52,18 +52,26 @@ export default async function CategoryShopPage({ params, searchParams }: PagePro
 
   const products = sortProducts((data ?? []).map(mapProductRow), sort);
 
-  // Same pill bar as the catalogue landing page, so switching category —
-  // or getting back to "All" — never requires the browser back button.
+  // Same avatar strip as the catalogue landing page, so switching
+  // category — or getting back to "All" — never requires the browser
+  // back button.
   const { data: categories } = await supabase
     .from('categories')
-    .select('name, slug')
+    .select('name, slug, image_url')
     .eq('is_active', true)
     .is('deleted_at', null)
     .order('sort_order', { ascending: true });
 
   return (
     <div className="container-brand py-6 pb-20">
-      <FloatingCategoryBar categories={categories ?? []} />
+      <CategoryAvatarStrip
+        categories={(categories ?? []).map((entry) => ({
+          name: entry.name as string,
+          slug: entry.slug as string,
+          imageUrl: (entry.image_url as string | null) ?? null,
+        }))}
+        activeSlug={category.slug}
+      />
 
       <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
