@@ -552,6 +552,49 @@
   color: #223a2c;
 }
 
+/* ---------- category strip ---------- */
+/* Owner's call: every category has to be visible at once, on every
+   screen, with no sideways scrolling. Seven round buttons at a fixed
+   64px need 544px of room; a 320px phone offers about 264px. So the
+   buttons are not a fixed size — the row divides the space it has by the
+   number of entries and every button takes an equal share, up to 80px.
+
+   `flex: 1 1 0` with `min-width: 0` is what allows shrinking below the
+   content's natural width; without the `min-width` a flex item refuses
+   to go narrower than its longest word, which is what forces a row like
+   this into an overflow. `justify-content: center` only does anything
+   once the buttons hit their 80px ceiling and slack appears.
+
+   The trade-off is honest: on a 320px screen the labels end up around
+   8px. That is the price of showing all seven without scrolling, and it
+   is the owner's stated preference. It also means the design has a
+   limit — somewhere past a dozen categories the shares get too narrow to
+   read and this becomes a scroller again. */
+.storefront-theme .cat-strip {
+  display: flex;
+  justify-content: center;
+  gap: clamp(0.25rem, 1.2vw, 1rem);
+}
+.storefront-theme .cat-strip > li {
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 5rem;
+}
+.storefront-theme .cat-avatar {
+  width: 100%;
+  /* Square by ratio rather than by a matching height, so it stays a
+     circle at whatever width the share works out to. */
+  aspect-ratio: 1;
+}
+.storefront-theme .cat-label {
+  font-size: clamp(0.5rem, 2.1vw, 0.75rem);
+  line-height: 1.15;
+  /* A single long category name ("Chocolate") is itself wider than its
+     share on a small phone; breaking inside the word is better than
+     pushing the row past the screen. */
+  overflow-wrap: anywhere;
+}
+
 /* ---------- homepage hero band ---------- */
 /* A banner, not a splash — it may never grow tall enough to push the
    catalogue below the fold, which is the whole point of this homepage.

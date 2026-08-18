@@ -37,6 +37,11 @@ const ALL_IMAGE = '/category-all.webp';
  * exactly with the hero band directly below — the two are meant to read
  * as one block, and a banner that overhung its own navigation did not.
  *
+ * Every entry is visible at once at every width — no sideways scrolling,
+ * at the owner's request. The buttons divide the available width between
+ * them rather than taking a fixed size; see `.cat-strip` for what that
+ * costs on a small screen.
+ *
  * Nothing here is client-side, so it costs no JavaScript — the active
  * entry is decided on the server from the route.
  */
@@ -57,9 +62,9 @@ export function CategoryAvatarStrip({
   return (
     <nav
       aria-label="Shop by category"
-      className="sticky top-16 z-30 border-b border-[var(--sf-border)] bg-[var(--sf-surface)]/95 px-4 py-3 backdrop-blur"
+      className="sticky top-16 z-30 border-b border-[var(--sf-border)] bg-[var(--sf-surface)]/95 px-2 py-3 backdrop-blur sm:px-4"
     >
-      <ul className="flex gap-4 overflow-x-auto sm:flex-wrap sm:justify-center sm:overflow-visible">
+      <ul className="cat-strip">
         {entries.map((entry) => {
           const isCurrent = entry.slug === current;
           return (
@@ -67,12 +72,12 @@ export function CategoryAvatarStrip({
               <Link
                 href={entry.href}
                 aria-current={isCurrent ? 'page' : undefined}
-                className="group flex w-16 flex-col items-center gap-1.5 sm:w-20"
+                className="group flex w-full flex-col items-center gap-1.5"
               >
                 <span
-                  className={`block size-16 overflow-hidden rounded-full bg-[var(--paper-2)] transition-colors sm:size-20 ${
+                  className={`cat-avatar block overflow-hidden rounded-full bg-[var(--paper-2)] transition-colors ${
                     isCurrent
-                      ? 'ring-2 ring-[var(--gold)] ring-offset-2 ring-offset-[var(--sf-surface)]'
+                      ? 'ring-2 ring-[var(--gold)]'
                       : 'border border-[var(--sf-border)] group-hover:border-[var(--gold)]'
                   }`}
                 >
@@ -94,7 +99,7 @@ export function CategoryAvatarStrip({
                   )}
                 </span>
                 <span
-                  className={`line-clamp-2 text-center text-[11px] leading-tight sm:text-xs ${
+                  className={`cat-label line-clamp-2 text-center ${
                     isCurrent ? 'font-semibold text-[var(--gold-deep)]' : ''
                   }`}
                 >
