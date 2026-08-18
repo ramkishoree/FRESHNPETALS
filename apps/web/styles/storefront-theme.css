@@ -536,6 +536,15 @@
   position: relative;
   display: block;
   overflow: hidden;
+  /* `width` is stated rather than left to `auto`, and that is load-bearing.
+     A block box with `aspect-ratio`, `auto` width and a `max-height`
+     transfers the height cap back through the ratio into a *width* cap —
+     so once the band got tall enough to hit 450px it also stopped
+     growing sideways and sat 1050px wide inside a 1280px slot, short of
+     the right margin. With the width definite, `max-height` clamps only
+     the height and `object-fit: cover` crops, which is what was wanted.
+     The two halves of the negative margin are added back here. */
+  width: calc(100% + 2 * clamp(1.25rem, 5vw, 2.5rem));
   margin-inline: calc(-1 * clamp(1.25rem, 5vw, 2.5rem));
   aspect-ratio: 16 / 9;
   max-height: 260px;
