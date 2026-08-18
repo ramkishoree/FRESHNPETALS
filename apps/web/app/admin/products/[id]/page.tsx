@@ -13,6 +13,7 @@ interface ProductDetailRow {
   category_id: string;
   featured_image: string | null;
   color: string | null;
+  type: string | null;
   owner_description: string | null;
   seo_title: string | null;
   meta_description: string | null;
@@ -27,7 +28,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
   const { data } = await admin
     .from('products')
     .select(
-      'id, sku, slug, name, short_description, description, category_id, featured_image, color, owner_description, seo_title, meta_description, status, metadata, product_prices(base_price, sale_price)',
+      'id, sku, slug, name, short_description, description, category_id, featured_image, color, type, owner_description, seo_title, meta_description, status, metadata, product_prices(base_price, sale_price)',
     )
     .eq('id', id)
     .maybeSingle();
@@ -51,6 +52,7 @@ export default async function EditProductPage({ params }: { params: Promise<{ id
         previewSlug={product.slug}
         initialValues={{
           name: product.name,
+          type: product.type ?? '',
           color: product.color ?? '',
           ownerDescription: product.owner_description ?? '',
           description: product.description,

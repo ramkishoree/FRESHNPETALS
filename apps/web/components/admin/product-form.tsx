@@ -20,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 
 export interface ProductFormValues {
   name: string;
+  type: string;
   color: string;
   ownerDescription: string;
   status: string;
@@ -32,6 +33,7 @@ export interface ProductFormValues {
 
 const EMPTY_VALUES: ProductFormValues = {
   name: '',
+  type: '',
   color: '',
   ownerDescription: '',
   // A new listing is normally made to be sold, so it goes live unless
@@ -88,6 +90,7 @@ export function ProductForm({
 
     const payload = {
       name: values.name,
+      type: values.type || undefined,
       color: values.color || undefined,
       ownerDescription: values.ownerDescription || undefined,
       // Only on create — an existing product's visibility is changed with
@@ -154,6 +157,38 @@ export function ProductForm({
       </div>
 
       <div className="grid gap-1.5">
+        <Label htmlFor="type">Type</Label>
+        <Input
+          id="type"
+          list="product-type-suggestions"
+          maxLength={60}
+          placeholder="Bouquet, Gift hamper, Standing arrangement…"
+          value={values.type}
+          onChange={(e) => set('type', e.target.value)}
+        />
+        {/* Suggestions rather than a fixed list, same reasoning as
+            colour below: shop vocabulary changes faster than an enum. */}
+        <datalist id="product-type-suggestions">
+          {[
+            'Bouquet',
+            'Gift hamper',
+            'Standing arrangement',
+            'Basket',
+            'Vase arrangement',
+            'Cake',
+            'Plant',
+            'Combo',
+          ].map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+        <p className="text-caption text-muted-foreground">
+          Printed above the product name on the shop card. Leave it blank and the card simply starts
+          at the name.
+        </p>
+      </div>
+
+      <div className="grid gap-1.5">
         <Label htmlFor="color">Flower colour</Label>
         <Input
           id="color"
@@ -173,7 +208,7 @@ export function ProductForm({
           )}
         </datalist>
         <p className="text-caption text-muted-foreground">
-          Shown on the shop and in every order alert — the quickest way to tell two similar
+          Shown on the product page and in every order alert — the quickest way to tell two similar
           arrangements apart while packing.
         </p>
       </div>

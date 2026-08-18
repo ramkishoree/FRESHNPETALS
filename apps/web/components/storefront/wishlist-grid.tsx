@@ -11,6 +11,7 @@ interface WishlistProductRow {
   id: string;
   slug: string;
   name: string;
+  type: string | null;
   featured_image: string | null;
   status: Product['status'];
   product_prices:
@@ -45,7 +46,10 @@ function mapEntry(entry: WishlistEntry): Product | null {
     slug: product.slug,
     name: product.name,
     shortDescription: null,
+    // Colour is a product-page attribute now, and the card no longer
+    // renders it — so there is nothing to fetch for it here.
     color: null,
+    type: product.type,
     featuredImage: product.featured_image,
     images: product.featured_image ? [product.featured_image] : [],
     status: product.status,

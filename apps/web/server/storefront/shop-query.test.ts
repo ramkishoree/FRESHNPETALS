@@ -12,6 +12,7 @@ function makeRow(overrides: Partial<Row> = {}): Row {
     name: 'Rose',
     short_description: null,
     color: null,
+    type: null,
     featured_image: null,
     status: 'published',
     created_at: '2026-01-01T00:00:00Z',
@@ -72,5 +73,21 @@ describe('mapProductRow — review aggregation', () => {
 
     expect(mapProductRow(product).averageRating).toBeNull();
     expect(mapProductRow(product).approvedReviewCount).toBe(0);
+  });
+});
+
+describe('mapProductRow — product type', () => {
+  it('carries the free-text type through to the card', () => {
+    expect(mapProductRow(makeRow({ type: 'Bouquet' })).type).toBe('Bouquet');
+  });
+
+  it('reads a missing type as null rather than undefined', () => {
+    // The card renders on `product.type &&`, and an undefined here would
+    // still be falsy — but `Product` declares `string | null`, and a row
+    // fetched before migration 0078 backfills simply has no key at all.
+    const row = makeRow();
+    delete (row as { type?: unknown }).type;
+
+    expect(mapProductRow(row).type).toBeNull();
   });
 });

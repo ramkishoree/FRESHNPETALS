@@ -23,6 +23,9 @@ export interface Product {
   shortDescription: string | null;
   /** Flower colour, shown beside the name wherever the product appears. */
   color: string | null;
+  /** Short free-text format label ("Bouquet", "Gift hamper") printed
+   *  above the name on a listing card. Null renders nothing. */
+  type: string | null;
   featuredImage: string | null;
   /** Every photo for this product, featuredImage first, then product_media
    *  in position order — a listing card hovers through this for a quick
@@ -99,6 +102,9 @@ export interface AdminProductInput {
   /** Flower colour — the fastest way to tell similarly-named
    *  arrangements apart on the shop and in order alerts (migration 0069). */
   color?: string;
+  /** Short free-text format label shown above the name on a listing
+   *  card (migration 0078). Optional, no fixed vocabulary. */
+  type?: string;
   /** Owner-only free text describing the arrangement (migration 0073).
    *  Deliberately absent from `Product` itself: it must never reach a
    *  storefront query. */

@@ -42,6 +42,7 @@ const createBodySchema = z.object({
   slug: z.string().min(1).optional(),
   name: z.string().min(3).max(120),
   color: z.string().max(60).optional(),
+  type: z.string().max(60).optional(),
   // Owner-only packing details — never returned by a storefront query.
   ownerDescription: z.string().max(1000).optional(),
   // Products are created 'draft' by database default, which is invisible

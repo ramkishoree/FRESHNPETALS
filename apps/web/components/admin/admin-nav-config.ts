@@ -1,5 +1,6 @@
 import type { LucideIcon } from 'lucide-react';
 import {
+  Images,
   LayoutDashboard,
   Megaphone,
   Package,
@@ -53,6 +54,12 @@ export const ADMIN_NAV: readonly AdminNavItem[] = [
     description: 'Live and past orders',
   },
   { label: 'Products', href: '/admin/products', icon: Package, description: 'Catalogue and stock' },
+  {
+    label: 'Hero banners',
+    href: '/admin/hero',
+    icon: Images,
+    description: 'Top of the homepage',
+  },
   { label: 'Categories', href: '/admin/categories', icon: Tags, description: 'How products group' },
   {
     label: 'Outlets',

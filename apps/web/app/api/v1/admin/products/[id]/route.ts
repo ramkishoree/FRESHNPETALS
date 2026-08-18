@@ -34,6 +34,7 @@ const patchBodySchema = z.object({
   name: z.string().min(3).max(120).optional(),
   shortDescription: z.string().optional(),
   color: z.string().max(60).optional(),
+  type: z.string().max(60).optional(),
   // Owner-only packing details — never returned by a storefront query.
   ownerDescription: z.string().max(1000).optional(),
   description: z.string().min(100).optional(),

@@ -33,7 +33,10 @@ export interface ProductCardProps {
 /**
  * Editorial "plate" treatment (owner's reference design): a plain
  * image plate with a tag overlay, then a meta row under a hairline —
- * name and price only, no card border/shadow. Add-to-cart stays (real
+ * type, name and price only, no card border/shadow. Colour deliberately
+ * is not here: it belongs on the product page next to the other
+ * attributes a buyer weighs, and on the card it was one more thing to
+ * read in a grid that is scanned, not read. Add-to-cart stays (real
  * function, just restyled as a quiet text action instead of a pill) and
  * wishlist stays as a corner glyph — CLS must stay 0, hence the fixed
  * aspect-ratio image wrapper rather than an intrinsic-sized <img>.
@@ -122,19 +125,26 @@ export function ProductCard({
         )}
       </div>
 
-      <div className="plate-meta">
-        <Link href={`/product/${product.slug}`} className="plate-nm hover:text-[var(--gold-deep)]">
-          {product.name}
-          {/* Colour sits with the name, not as a separate row: two
-              arrangements can share almost the same title, and the
-              colour is what actually tells them apart at a glance. */}
-          {product.color && (
-            <span className="text-muted-foreground font-normal"> · {product.color}</span>
-          )}
-        </Link>
-        <span className="plate-pr">
-          <PriceDisplay basePrice={product.basePrice} salePrice={product.salePrice} />
-        </span>
+      <div className="plate-text">
+        {/* First line of the card's text, above the name — and nothing at
+            all when unset, so an untyped product's name does not sit a
+            line lower than its neighbours in the grid. It lives outside
+            `.plate-meta` because that row baseline-aligns the name with
+            the price, and a second line inside it would drag the price
+            up to align with this label instead of the name. */}
+        {product.type && <p className="plate-type">{product.type}</p>}
+
+        <div className="plate-meta">
+          <Link
+            href={`/product/${product.slug}`}
+            className="plate-nm hover:text-[var(--gold-deep)]"
+          >
+            {product.name}
+          </Link>
+          <span className="plate-pr">
+            <PriceDisplay basePrice={product.basePrice} salePrice={product.salePrice} />
+          </span>
+        </div>
       </div>
 
       {/* Nothing at all when unreviewed, rather than an empty row of grey

@@ -522,6 +522,92 @@
   border-radius: 2px;
 }
 
+/* ---------- homepage hero band ---------- */
+/* A banner, not a splash. The height is capped in absolute pixels rather
+   than in viewport units on purpose: the whole point of the homepage is
+   that the catalogue starts within the first screen, so the hero may
+   never grow to push it below the fold on a tall phone.
+
+   Full-bleed inside `.container-brand` by cancelling exactly that
+   utility's own inline padding, so the band runs edge to edge while the
+   grid below it keeps its margins. Square corners: `--r-lg` is 2px
+   across this theme, which reads as square already. */
+.storefront-theme .hero-band {
+  position: relative;
+  display: block;
+  overflow: hidden;
+  margin-inline: calc(-1 * clamp(1.25rem, 5vw, 2.5rem));
+  aspect-ratio: 16 / 9;
+  max-height: 260px;
+  background: var(--paper-2);
+}
+.storefront-theme .hero-slide {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  /* Not `visibility`, which would fight the fade: pointer-events keeps
+     the hidden slides from swallowing clicks meant for the dots. */
+  pointer-events: none;
+  transition: opacity 450ms var(--ease);
+}
+.storefront-theme .hero-slide.is-active {
+  opacity: 1;
+  pointer-events: auto;
+}
+.storefront-theme .hero-media {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+/* Bottom ~40%, so a caption stays readable over a pale photograph
+   without dimming the whole frame. */
+.storefront-theme .hero-scrim {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 40%;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.62), rgba(0, 0, 0, 0));
+}
+.storefront-theme .hero-caption {
+  position: absolute;
+  left: clamp(1.25rem, 5vw, 2.5rem);
+  bottom: clamp(0.9rem, 3vw, 1.75rem);
+  right: clamp(1.25rem, 5vw, 2.5rem);
+  margin: 0;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 360;
+  font-size: clamp(1.15rem, 4vw, 2.25rem);
+  line-height: 1.1;
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.35);
+}
+.storefront-theme .hero-dots {
+  position: absolute;
+  bottom: 0.75rem;
+  right: clamp(1.25rem, 5vw, 2.5rem);
+  display: flex;
+  gap: 0.4rem;
+  z-index: 1;
+}
+.storefront-theme .hero-dots button {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: color-mix(in srgb, #fff 55%, transparent);
+  transition: background 0.25s var(--ease);
+}
+.storefront-theme .hero-dots button.is-active {
+  background: #fff;
+}
+@media (min-width: 821px) {
+  .storefront-theme .hero-band {
+    aspect-ratio: 21 / 9;
+    max-height: 450px;
+  }
+}
+
 /* ---------- product: gallery of "plates" — name+price, minimal chrome ---------- */
 /* Owner's explicit call: fixed 3-column grid made each plate stretch to
    ~380px+ on a normal desktop width — a medium, standard thumbnail size
@@ -594,14 +680,32 @@
 .storefront-theme .plate-dots span.is-active {
   background: var(--paper);
 }
+/* The hairline and the gap above it moved from `.plate-meta` to this
+   wrapper when the type label arrived: the label has to sit inside the
+   ruled block, above the name, without joining the name/price baseline
+   row. `.plate-meta` keeps doing exactly what it did — align a name
+   against a price — and nothing else changed. */
+.storefront-theme .plate-text {
+  padding-top: 1rem;
+  border-top: 1px solid var(--ink);
+  margin-top: 1rem;
+  min-width: 0;
+}
+/* Above the product name: small, spaced and quiet. It labels the thing,
+   it is not the thing. */
+.storefront-theme .plate-type {
+  font-family: var(--font-body);
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--sage);
+  margin-bottom: 0.3rem;
+}
 .storefront-theme .plate-meta {
   display: flex;
   justify-content: space-between;
   align-items: baseline;
   gap: 1rem;
-  padding-top: 1rem;
-  border-top: 1px solid var(--ink);
-  margin-top: 1rem;
   min-width: 0;
 }
 .storefront-theme .plate-nm {
@@ -640,12 +744,18 @@
   /* Name beside a nowrap price does not fit in a ~150px column; stacking
      them is what makes the two-column grid the owner asked for readable
      at 360px rather than merely non-overflowing. */
+  .storefront-theme .plate-text {
+    padding-top: 0.6rem;
+    margin-top: 0.6rem;
+  }
   .storefront-theme .plate-meta {
     flex-direction: column;
     align-items: flex-start;
     gap: 0.15rem;
-    padding-top: 0.6rem;
-    margin-top: 0.6rem;
+  }
+  .storefront-theme .plate-type {
+    font-size: 0.63rem;
+    margin-bottom: 0.2rem;
   }
   .storefront-theme .plate-nm {
     font-size: 1.05rem;

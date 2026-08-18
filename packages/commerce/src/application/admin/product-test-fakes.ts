@@ -14,6 +14,7 @@ export function makeProduct(overrides: Partial<Product> = {}): Product {
     name: 'Premium Red Rose Bouquet',
     shortDescription: null,
     color: null,
+    type: null,
     featuredImage: 'https://example.com/rose.jpg',
     images: ['https://example.com/rose.jpg'],
     status: 'draft',

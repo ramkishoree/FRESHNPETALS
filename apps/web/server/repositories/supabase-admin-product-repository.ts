@@ -58,6 +58,7 @@ export class SupabaseAdminProductRepository
     // must not fail the product creation that already succeeded.
     const postCreateFields = stripUndefined({
       color: input.color,
+      type: input.type,
       owner_description: input.ownerDescription,
       // `admin_create_product` has a fixed parameter list and always
       // inserts as 'draft', so an explicit choice is applied here.
@@ -86,6 +87,7 @@ export class SupabaseAdminProductRepository
       productPatch['short_description'] = productFields.shortDescription;
     }
     if (productFields.color !== undefined) productPatch['color'] = productFields.color;
+    if (productFields.type !== undefined) productPatch['type'] = productFields.type;
     if (productFields.ownerDescription !== undefined)
       productPatch['owner_description'] = productFields.ownerDescription;
     if (productFields.description !== undefined)

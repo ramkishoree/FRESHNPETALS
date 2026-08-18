@@ -1,7 +1,9 @@
 import type { Metadata } from 'next';
 import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
+import { CategoryAvatarStrip } from '@/components/storefront/category-avatar-strip';
 import { FloatingCategoryBar } from '@/components/storefront/floating-category-bar';
+import { HeroCarousel, type HeroSlide } from '@/components/storefront/hero-carousel';
 import { OfferBadge } from '@/components/storefront/offer-badge';
 import { ShopSortControl } from '@/components/storefront/shop-sort-control';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
@@ -19,10 +21,14 @@ export const metadata: Metadata = {
 };
 
 /**
- * Owner's explicit call: the products ARE the landing page. No hero, no
- * tagline block, no brand statement — the catalogue starts within the
- * first screen and everything is on one page rather than paginated.
- * Category pills scope to the existing `/shop/[category]` pages.
+ * Owner's explicit call: the catalogue starts within the first screen and
+ * everything is on one page rather than paginated. The hero above it is
+ * a capped band, not a splash — see `.hero-band` for why its height is
+ * in pixels rather than viewport units — and it disappears entirely
+ * until the owner puts something in a slot.
+ *
+ * Category pills scope to the existing `/shop/[category]` pages; the
+ * round avatars above the hero go to exactly the same places.
  */
 export default async function ProductsPage({
   searchParams,
@@ -33,7 +39,7 @@ export default async function ProductsPage({
   const supabase = await createSupabaseServerClient();
   const { column, ascending } = sortToOrderBy(sort);
 
-  const [productsResult, categoriesResult, offerResult] = await Promise.all([
+  const [productsResult, categoriesResult, offerResult, heroResult] = await Promise.all([
     supabase
       .from('products')
       .select(PRODUCT_SELECT_COLUMNS)
@@ -41,7 +47,10 @@ export default async function ProductsPage({
       .order(column, { ascending }),
     supabase
       .from('categories')
-      .select('name, slug')
+      // image_url is the cover photo the category cards already use —
+      // the avatar strip crops the same picture rather than asking for
+      // a second upload.
+      .select('name, slug, image_url')
       .eq('is_active', true)
       .is('deleted_at', null)
       .order('sort_order', { ascending: true }),
@@ -56,11 +65,26 @@ export default async function ProductsPage({
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
+    supabase
+      .from('hero_slides')
+      .select('id, slot_order, media_type, media_url, caption_text')
+      .eq('is_active', true)
+      .order('slot_order', { ascending: true }),
   ]);
 
   const products = sortProducts((productsResult.data ?? []).map(mapProductRow), sort);
   const categories = categoriesResult.data ?? [];
   const offer = offerResult.data;
+  // Only slots the owner has actually filled reach the browser, so an
+  // empty slot is skipped by never existing rather than by a guard in
+  // the rotation.
+  const heroSlides: HeroSlide[] = (heroResult.data ?? []).map((row) => ({
+    id: row.id as string,
+    slotOrder: row.slot_order as number,
+    mediaType: row.media_type as 'image' | 'video',
+    mediaUrl: row.media_url as string,
+    captionText: (row.caption_text as string | null) ?? null,
+  }));
 
   return (
     <div className="container-brand py-6 pb-20">
@@ -79,7 +103,27 @@ export default async function ProductsPage({
         />
       )}
 
-      <FloatingCategoryBar categories={categories} />
+      {/* One sticky container for the strip and the hero: the avatar bar
+          pins under the header while the hero scrolls beneath it, then
+          releases as the pill bar arrives to take the same slot. Both
+          pinning forever would put two bars at one coordinate. */}
+      <div className="relative">
+        <CategoryAvatarStrip
+          categories={categories.map((category) => ({
+            name: category.name as string,
+            slug: category.slug as string,
+            imageUrl: (category.image_url as string | null) ?? null,
+          }))}
+        />
+        <HeroCarousel slides={heroSlides} />
+      </div>
+
+      <FloatingCategoryBar
+        categories={categories.map((category) => ({
+          name: category.name as string,
+          slug: category.slug as string,
+        }))}
+      />
 
       <div className="mt-6 mb-6 flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-h4 font-semibold">
