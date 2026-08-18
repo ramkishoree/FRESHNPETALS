@@ -99,7 +99,7 @@ export function CategoryAvatarStrip({
                   )}
                 </span>
                 <span
-                  className={`cat-label line-clamp-2 text-center ${
+                  className={`cat-label line-clamp-3 text-center ${
                     isCurrent ? 'font-semibold text-[var(--gold-deep)]' : ''
                   }`}
                 >

@@ -591,7 +591,10 @@
   line-height: 1.15;
   /* A single long category name ("Chocolate") is itself wider than its
      share on a small phone; breaking inside the word is better than
-     pushing the row past the screen. */
+     pushing the row past the screen. The label is clamped at three lines
+     rather than two for the same reason — at 320px "Chocolate Bouquet"
+     needs the third one, and at any wider screen it never reaches it, so
+     nothing else grows. */
   overflow-wrap: anywhere;
 }
 
