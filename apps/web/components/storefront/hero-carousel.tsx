@@ -35,6 +35,28 @@ const ROTATE_MS = 4000;
 export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const [broken, setBroken] = React.useState<ReadonlySet<string>>(() => new Set());
   const [index, setIndex] = React.useState(0);
+  const markBroken = React.useCallback((id: string) => {
+    setBroken((current) => (current.has(id) ? current : new Set(current).add(id)));
+  }, []);
+  const videoRefs = React.useRef(new Map<string, HTMLVideoElement>());
+
+  /**
+   * `onError` alone is not enough for video.
+   *
+   * The element starts fetching as soon as the server-rendered HTML
+   * parses, which is before React has hydrated and attached any handler
+   * — so a clip that fails immediately (a blocked origin, a dead URL)
+   * errors into a void and the band shows a permanently blank frame
+   * instead of skipping the slot. Real case: the CSP had no `media-src`,
+   * every video was refused outright, and this component never heard
+   * about it. Asking each element for its own `error` after mount closes
+   * that window.
+   */
+  React.useEffect(() => {
+    for (const [id, element] of videoRefs.current) {
+      if (element.error) markBroken(id);
+    }
+  }, [markBroken, slides]);
 
   const usable = React.useMemo(() => slides.filter((s) => !broken.has(s.id)), [slides, broken]);
   const count = usable.length;
@@ -67,6 +89,10 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
         >
           {slide.mediaType === 'video' ? (
             <video
+              ref={(element) => {
+                if (element) videoRefs.current.set(slide.id, element);
+                else videoRefs.current.delete(slide.id);
+              }}
               src={slide.mediaUrl}
               autoPlay
               muted
@@ -74,7 +100,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               playsInline
               preload="metadata"
               className="hero-media"
-              onError={() => setBroken((current) => new Set(current).add(slide.id))}
+              onError={() => markBroken(slide.id)}
             />
           ) : (
             <Image
@@ -88,7 +114,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
               priority={position === 0}
               {...(position === 0 ? { fetchPriority: 'high' as const } : {})}
               className="hero-media"
-              onError={() => setBroken((current) => new Set(current).add(slide.id))}
+              onError={() => markBroken(slide.id)}
             />
           )}
 

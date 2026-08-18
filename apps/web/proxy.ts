@@ -61,6 +61,14 @@ function buildCsp(nonce: string, supabaseUrl: string): string {
     // down the whole /checkout page in production.
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
     "img-src 'self' data: https:",
+    // Video had no directive of its own, so it fell through to
+    // `default-src 'self'` and every clip served from Supabase Storage
+    // was refused with "Media load rejected by URL safety check" — the
+    // homepage hero's video slot and the product gallery's videos alike.
+    // Scoped to the project's own storage origin rather than opened up
+    // to `https:` the way images are: media is uploaded through the
+    // admin, so there is exactly one host it can legitimately come from.
+    `media-src 'self' ${supabaseUrl}`,
     "font-src 'self' https://fonts.gstatic.com",
     // PlaceAutocompleteElement (the modern Places widget) calls
     // places.googleapis.com directly via XHR/RPC — a different host than
