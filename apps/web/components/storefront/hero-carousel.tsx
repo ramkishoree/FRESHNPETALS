@@ -6,7 +6,6 @@ import * as React from 'react';
 export interface HeroSlide {
   id: string;
   slotOrder: number;
-  mediaType: 'image' | 'video';
   mediaUrl: string;
   captionText: string | null;
 }
@@ -17,8 +16,14 @@ const ROTATE_MS = 4000;
 /**
  * The homepage hero band.
  *
- * Four admin-managed slots, rotating on a fixed interval with a
- * crossfade. Every slide is mounted at once and only opacity changes,
+ * Four admin-managed image slots, rotating on a fixed interval with a
+ * crossfade. Slot 1 briefly took video instead; the owner's call is that
+ * all four are stills, so nothing here plays. `media_type` stays in the
+ * table and the storefront query asks for images explicitly, which means
+ * a leftover video row is skipped rather than rendered as a broken
+ * picture.
+ *
+ * Every slide is mounted at once and only opacity changes,
  * so the swap costs no layout and the next image is already decoded
  * when its turn comes — a mount-on-demand carousel flashes the
  * background on a slow connection, which is the one thing a hero must
@@ -38,25 +43,6 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
   const markBroken = React.useCallback((id: string) => {
     setBroken((current) => (current.has(id) ? current : new Set(current).add(id)));
   }, []);
-  const videoRefs = React.useRef(new Map<string, HTMLVideoElement>());
-
-  /**
-   * `onError` alone is not enough for video.
-   *
-   * The element starts fetching as soon as the server-rendered HTML
-   * parses, which is before React has hydrated and attached any handler
-   * — so a clip that fails immediately (a blocked origin, a dead URL)
-   * errors into a void and the band shows a permanently blank frame
-   * instead of skipping the slot. Real case: the CSP had no `media-src`,
-   * every video was refused outright, and this component never heard
-   * about it. Asking each element for its own `error` after mount closes
-   * that window.
-   */
-  React.useEffect(() => {
-    for (const [id, element] of videoRefs.current) {
-      if (element.error) markBroken(id);
-    }
-  }, [markBroken, slides]);
 
   const usable = React.useMemo(() => slides.filter((s) => !broken.has(s.id)), [slides, broken]);
   const count = usable.length;
@@ -87,36 +73,19 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
           className={['hero-slide', position === active ? 'is-active' : ''].join(' ')}
           aria-hidden={position !== active}
         >
-          {slide.mediaType === 'video' ? (
-            <video
-              ref={(element) => {
-                if (element) videoRefs.current.set(slide.id, element);
-                else videoRefs.current.delete(slide.id);
-              }}
-              src={slide.mediaUrl}
-              autoPlay
-              muted
-              loop
-              playsInline
-              preload="metadata"
-              className="hero-media"
-              onError={() => markBroken(slide.id)}
-            />
-          ) : (
-            <Image
-              src={slide.mediaUrl}
-              alt={slide.captionText ?? ''}
-              fill
-              sizes="100vw"
-              // The hero is the largest element above the fold, so the
-              // first slide is the page's LCP candidate and must not
-              // wait for layout to be discovered.
-              priority={position === 0}
-              {...(position === 0 ? { fetchPriority: 'high' as const } : {})}
-              className="hero-media"
-              onError={() => markBroken(slide.id)}
-            />
-          )}
+          <Image
+            src={slide.mediaUrl}
+            alt={slide.captionText ?? ''}
+            fill
+            sizes="100vw"
+            // The hero is the largest element above the fold, so the
+            // first slide is the page's LCP candidate and must not wait
+            // for layout to be discovered.
+            priority={position === 0}
+            {...(position === 0 ? { fetchPriority: 'high' as const } : {})}
+            className="hero-media"
+            onError={() => markBroken(slide.id)}
+          />
 
           {slide.captionText && (
             <>

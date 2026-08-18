@@ -6,14 +6,10 @@ import { requireAdmin } from '@/server/auth/session';
 import { apiError, apiSuccess } from '@/server/http/envelope';
 import { logger } from '@/server/logger';
 import { convertImageToWebp } from '@/server/media/convert-to-webp';
-import { convertVideoToWebOptimized } from '@/server/media/convert-video';
 import { runSecurityChain } from '@/server/security/chain';
 
 const MEDIA_BUCKET = 'media';
 const MAX_IMAGE_BYTES = 15 * 1024 * 1024;
-const MAX_VIDEO_BYTES = 50 * 1024 * 1024;
-/** Slot 1 is the video slot; 2-4 are stills. Migration 0078. */
-const VIDEO_SLOT = 1;
 
 const IMAGE_MIME_TYPES = new Set([
   'image/jpeg',
@@ -21,16 +17,6 @@ const IMAGE_MIME_TYPES = new Set([
   'image/webp',
   'image/gif',
   'image/avif',
-]);
-const VIDEO_MIME_TYPES = new Set([
-  'video/mp4',
-  'video/quicktime',
-  'video/webm',
-  'video/x-msvideo',
-  'video/x-matroska',
-  'video/3gpp',
-  'video/mpeg',
-  'video/ogg',
 ]);
 
 /**
@@ -43,10 +29,13 @@ const VIDEO_MIME_TYPES = new Set([
  * media the slot already holds, which is how "just fix the caption"
  * works without a re-upload.
  *
- * Media is converted server-side exactly as product media is (sharp →
- * WebP, ffmpeg → capped-bitrate silent H.264) — never something a
- * browser could skip. Silent matters here: the hero video autoplays, and
- * browsers only allow that for muted video.
+ * All four slots take photographs. Slot 1 briefly accepted a short
+ * video; the owner's call is that the band is stills throughout, so
+ * video is refused here with a message that says so rather than being
+ * quietly converted into something that would never play.
+ *
+ * Images are converted server-side exactly as product media is (sharp →
+ * WebP) — never something a browser could skip.
  */
 export async function GET(request: NextRequest) {
   const blocked = await runSecurityChain(request, { tier: 'admin', requireAdmin: true });
@@ -99,79 +88,38 @@ export async function POST(request: NextRequest) {
     let mediaType = existing?.media_type ?? null;
 
     if (hasFile) {
-      const isImage = IMAGE_MIME_TYPES.has(file.type);
-      const isVideo = VIDEO_MIME_TYPES.has(file.type);
-
-      // The slot decides the kind, not the upload: a still in the video
-      // slot would stop the band from ever moving, and a clip in a still
-      // slot would silently play with no controls.
-      if (slotOrder === VIDEO_SLOT && !isVideo) {
+      if (!IMAGE_MIME_TYPES.has(file.type)) {
         return apiError(
           'VALIDATION_ERROR',
-          'Slot 1 is the video slot — upload an MP4 (about 4 seconds).',
+          'The hero takes photos only. Accepted: JPEG, PNG, WebP, GIF, AVIF.',
           400,
           correlationId,
         );
       }
-      if (slotOrder !== VIDEO_SLOT && !isImage) {
-        return apiError(
-          'VALIDATION_ERROR',
-          `Slot ${slotOrder} takes a photo. Only slot 1 takes video.`,
-          400,
-          correlationId,
-        );
-      }
-      if (isImage && file.size > MAX_IMAGE_BYTES) {
+      if (file.size > MAX_IMAGE_BYTES) {
         return apiError('VALIDATION_ERROR', 'Image is larger than 15MB.', 400, correlationId);
-      }
-      if (isVideo && file.size > MAX_VIDEO_BYTES) {
-        return apiError('VALIDATION_ERROR', 'Video is larger than 50MB.', 400, correlationId);
       }
 
       const sourceBytes = Buffer.from(await file.arrayBuffer());
-      const baseId = randomUUID();
-
-      if (isVideo) {
-        const converted = await convertVideoToWebOptimized(sourceBytes);
-        const videoPath = `hero/${baseId}.mp4`;
-        const { error: uploadError } = await admin.storage
-          .from(MEDIA_BUCKET)
-          .upload(videoPath, converted.video, { contentType: 'video/mp4', upsert: false });
-        if (uploadError) {
-          logger.error('hero_slides.upload.storage_failed', {
-            correlationId,
-            message: uploadError.message,
-          });
-          return apiError(
-            'EXTERNAL_SERVICE_ERROR',
-            `Failed to upload: ${uploadError.message}`,
-            502,
-            correlationId,
-          );
-        }
-        mediaUrl = admin.storage.from(MEDIA_BUCKET).getPublicUrl(videoPath).data.publicUrl;
-        mediaType = 'video';
-      } else {
-        const webp = await convertImageToWebp(sourceBytes);
-        const imagePath = `hero/${baseId}.webp`;
-        const { error: uploadError } = await admin.storage
-          .from(MEDIA_BUCKET)
-          .upload(imagePath, webp.data, { contentType: 'image/webp', upsert: false });
-        if (uploadError) {
-          logger.error('hero_slides.upload.storage_failed', {
-            correlationId,
-            message: uploadError.message,
-          });
-          return apiError(
-            'EXTERNAL_SERVICE_ERROR',
-            `Failed to upload: ${uploadError.message}`,
-            502,
-            correlationId,
-          );
-        }
-        mediaUrl = admin.storage.from(MEDIA_BUCKET).getPublicUrl(imagePath).data.publicUrl;
-        mediaType = 'image';
+      const webp = await convertImageToWebp(sourceBytes);
+      const imagePath = `hero/${randomUUID()}.webp`;
+      const { error: uploadError } = await admin.storage
+        .from(MEDIA_BUCKET)
+        .upload(imagePath, webp.data, { contentType: 'image/webp', upsert: false });
+      if (uploadError) {
+        logger.error('hero_slides.upload.storage_failed', {
+          correlationId,
+          message: uploadError.message,
+        });
+        return apiError(
+          'EXTERNAL_SERVICE_ERROR',
+          `Failed to upload: ${uploadError.message}`,
+          502,
+          correlationId,
+        );
       }
+      mediaUrl = admin.storage.from(MEDIA_BUCKET).getPublicUrl(imagePath).data.publicUrl;
+      mediaType = 'image';
     }
 
     const rawCaption = formData.get('captionText');

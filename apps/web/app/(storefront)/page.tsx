@@ -67,8 +67,13 @@ export default async function ProductsPage({
       .maybeSingle(),
     supabase
       .from('hero_slides')
-      .select('id, slot_order, media_type, media_url, caption_text')
+      // `media_type` is filtered on rather than selected: the band is
+      // stills only now, and asking for images explicitly means a row
+      // left over from the brief video era is skipped instead of being
+      // handed to <Image> as a broken picture.
+      .select('id, slot_order, media_url, caption_text')
       .eq('is_active', true)
+      .eq('media_type', 'image')
       .order('slot_order', { ascending: true }),
   ]);
 
@@ -81,7 +86,6 @@ export default async function ProductsPage({
   const heroSlides: HeroSlide[] = (heroResult.data ?? []).map((row) => ({
     id: row.id as string,
     slotOrder: row.slot_order as number,
-    mediaType: row.media_type as 'image' | 'video',
     mediaUrl: row.media_url as string,
     captionText: (row.caption_text as string | null) ?? null,
   }));

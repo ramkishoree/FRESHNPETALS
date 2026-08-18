@@ -6,7 +6,6 @@ function slide(id: string, overrides: Partial<HeroSlide> = {}): HeroSlide {
   return {
     id,
     slotOrder: Number(id),
-    mediaType: 'image',
     mediaUrl: `https://cdn.example/${id}.webp`,
     captionText: null,
     ...overrides,

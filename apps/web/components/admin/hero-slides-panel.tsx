@@ -10,21 +10,19 @@ import { Switch } from '@/components/ui/switch';
 interface HeroSlideRow {
   id: string;
   slot_order: number;
-  media_type: 'image' | 'video';
   media_url: string;
   caption_text: string | null;
   is_active: boolean;
 }
 
 const SLOTS = [1, 2, 3, 4] as const;
-const VIDEO_ACCEPT = 'video/mp4,video/quicktime,video/webm';
 const IMAGE_ACCEPT = 'image/jpeg,image/png,image/webp,image/avif';
 
 /**
  * The four homepage hero slots.
  *
  * Fixed cards rather than an add/remove list, because the hero itself is
- * fixed: four slots, the first of them video. That is a property of the
+ * fixed: four slots, all of them photographs. That is a property of the
  * band on the homepage, not a preference, so the screen states it
  * instead of letting an admin build a fifth slot that would never
  * appear.
@@ -113,7 +111,6 @@ export function HeroSlidesPanel() {
     <div className="grid gap-6 lg:grid-cols-2">
       {SLOTS.map((slot) => {
         const slide = slides.find((row) => row.slot_order === slot);
-        const isVideoSlot = slot === 1;
         const busy = busySlot === slot;
 
         return (
@@ -121,9 +118,7 @@ export function HeroSlidesPanel() {
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-foreground font-semibold">
                 Slot {slot}
-                <span className="text-muted-foreground ml-2 text-sm font-normal">
-                  {isVideoSlot ? 'Video — max ~4 sec' : 'Photo'}
-                </span>
+                <span className="text-muted-foreground ml-2 text-sm font-normal">Photo</span>
               </h2>
               {slide && (
                 <label className="flex items-center gap-2 text-sm">
@@ -141,19 +136,8 @@ export function HeroSlidesPanel() {
                 after it is already live. */}
             <div className="bg-muted relative aspect-[21/9] w-full overflow-hidden rounded-md">
               {slide ? (
-                slide.media_type === 'video' ? (
-                  <video
-                    src={slide.media_url}
-                    muted
-                    loop
-                    autoPlay
-                    playsInline
-                    className="size-full object-cover"
-                  />
-                ) : (
-                  // eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an already-optimized Supabase asset
-                  <img src={slide.media_url} alt="" className="size-full object-cover" />
-                )
+                // eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an already-optimized Supabase asset
+                <img src={slide.media_url} alt="" className="size-full object-cover" />
               ) : (
                 <p className="text-caption text-muted-foreground grid size-full place-items-center">
                   Empty — the hero skips this slot
@@ -178,9 +162,8 @@ export function HeroSlidesPanel() {
                 }
               />
               <p className="text-caption text-muted-foreground">
-                Recommended: 1440×480px landscape{' '}
-                {isVideoSlot ? 'video (MP4, about 4 seconds)' : 'image'} — it is cropped to a taller
-                16:9 shape on phones, so keep anything important away from the left and right edges.
+                Recommended: a 1440×480px landscape photo — it is cropped to a taller 16:9 shape on
+                phones, so keep anything important away from the left and right edges.
               </p>
             </div>
 
@@ -211,7 +194,7 @@ export function HeroSlidesPanel() {
                   fileInputs.current[slot] = element;
                 }}
                 type="file"
-                accept={isVideoSlot ? VIDEO_ACCEPT : IMAGE_ACCEPT}
+                accept={IMAGE_ACCEPT}
                 className="hidden"
                 onChange={(event) => {
                   const file = event.target.files?.[0];
