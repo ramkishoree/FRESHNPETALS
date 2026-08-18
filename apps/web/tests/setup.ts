@@ -9,3 +9,21 @@ import { afterEach } from 'vitest';
 afterEach(() => {
   cleanup();
 });
+
+// jsdom implements no CSS Object Model media queries, so `matchMedia` is
+// simply absent. Any component that asks whether the visitor prefers
+// reduced motion throws on render without this. The stub reports "no
+// preference", which is the majority case and the one worth exercising
+// by default; a test that cares about the other branch overrides it.
+if (typeof window !== 'undefined' && typeof window.matchMedia !== 'function') {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as typeof window.matchMedia;
+}

@@ -62,7 +62,7 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
       {usable.map((slide, position) => (
         <div
           key={slide.id}
-          className={`hero-slide${position === active ? 'is-active' : ''}`}
+          className={['hero-slide', position === active ? 'is-active' : ''].join(' ')}
           aria-hidden={position !== active}
         >
           {slide.mediaType === 'video' ? (
