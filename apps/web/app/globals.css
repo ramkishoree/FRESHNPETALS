@@ -16,16 +16,25 @@
     border-color: var(--color-border);
   }
 
+  /* `clip`, not `hidden`, and the distinction is the whole reason the
+     header and the category bars pin at all. `overflow-x: hidden` makes
+     the document a scroll container, and a `position: sticky` descendant
+     then sticks inside *that* box rather than to the viewport — so the
+     sticky header, the category pill bar and the category avatar strip
+     all silently scrolled away instead. `clip` does the same clipping
+     without creating a scroll container, which is what was wanted here:
+     nothing should ever scroll sideways, and that has never needed a
+     scroll container to enforce. */
   html {
     scroll-behavior: smooth;
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
-    overflow-x: hidden;
+    overflow-x: clip;
   }
 
   /* Mobile rubber-band overscroll paints past the viewport edge using
