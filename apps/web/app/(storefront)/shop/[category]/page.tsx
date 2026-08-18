@@ -41,7 +41,7 @@ export default async function CategoryShopPage({ params, searchParams }: PagePro
     .maybeSingle();
   if (!category) notFound();
 
-  const { column, ascending } = sortToOrderBy(sort);
+  const { column, ascending } = sortToOrderBy();
   const { data } = await supabase
     .from('products')
     .select(PRODUCT_SELECT_COLUMNS)

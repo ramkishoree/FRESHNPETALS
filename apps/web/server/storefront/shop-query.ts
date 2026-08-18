@@ -152,11 +152,12 @@ export function isSortValue(value: string | undefined): value is SortValue {
  * sorts in `sortProducts` below. It still runs for those cases, because
  * a deterministic fetch order is what keeps ties stable between loads.
  */
-export function sortToOrderBy(_sort?: string): { column: string; ascending: boolean } {
-  // Newest-first is the only order the database can produce for this
-  // catalogue, and it is also what every other mode builds on: the
-  // interleave keeps it inside each category, and the price sorts fall
-  // back to it for ties. So the fetch order no longer varies.
+export function sortToOrderBy(): { column: string; ascending: boolean } {
+  // Takes no argument any more. Newest-first is the only order the
+  // database can produce for this catalogue, and it is what every other
+  // mode builds on: the interleave keeps it inside each category, and
+  // the price sorts fall back to it for ties. So the fetch order no
+  // longer varies with `?sort=`.
   return { column: 'created_at', ascending: false };
 }
 

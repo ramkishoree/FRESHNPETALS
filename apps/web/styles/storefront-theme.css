@@ -522,6 +522,36 @@
   border-radius: 2px;
 }
 
+/* ---------- sort menu (portalled, so deliberately unscoped) ---------- */
+/* Every other rule in this file is written as `.storefront-theme .foo`.
+   This one cannot be: Radix renders the Select's menu through a portal
+   attached to <body>, which is outside the element carrying the
+   storefront palette. Tokens like `--sf-surface` resolve to nothing
+   there, so `bg-[var(--sf-surface)]` produced no background at all and
+   the product photographs below read straight through the options.
+
+   The values are the literal `--card` and `--line` from the palette
+   above; they are spelled out because the variables genuinely are not in
+   scope at this point in the document. The class is applied only by
+   ShopSortControl, so nothing in the admin is affected.
+
+   An explicit shadow and a solid fill, so the menu reads as a panel
+   sitting above the page rather than as text floating over the grid. */
+.sort-menu {
+  background-color: #fbf8ef;
+  border-color: #ded3ba;
+  border-radius: 2px;
+  box-shadow:
+    0 12px 28px rgba(34, 58, 44, 0.18),
+    0 2px 6px rgba(34, 58, 44, 0.12);
+}
+/* Radix keeps the highlighted option in sync with the keyboard, and the
+   default tint is faint against this warm paper. */
+.sort-menu [data-slot='select-item'][data-highlighted] {
+  background-color: #efe8d6;
+  color: #223a2c;
+}
+
 /* ---------- homepage hero band ---------- */
 /* A banner, not a splash. The height is capped in absolute pixels rather
    than in viewport units on purpose: the whole point of the homepage is

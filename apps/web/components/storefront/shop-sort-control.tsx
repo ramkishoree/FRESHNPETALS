@@ -31,7 +31,13 @@ export function ShopSortControl({ currentSort }: { currentSort?: string }) {
         >
           <SelectValue />
         </SelectTrigger>
-        <SelectContent className="rounded-[var(--r-md)] border-[var(--sf-border)] bg-[var(--sf-surface)]">
+        {/* `sort-menu` rather than the usual `bg-[var(--sf-surface)]`:
+            Radix portals this menu to <body>, outside the element that
+            carries the storefront palette, so every `--sf-*` token
+            resolved to nothing and the panel painted transparent — the
+            product photographs underneath showed straight through the
+            options. See `.sort-menu` for the opaque values. */}
+        <SelectContent className="sort-menu">
           {SORT_OPTIONS.map((option) => (
             <SelectItem key={option.value} value={option.value}>
               {option.label}

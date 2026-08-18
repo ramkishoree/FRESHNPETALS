@@ -37,7 +37,7 @@ export default async function ProductsPage({
 }) {
   const { sort } = await searchParams;
   const supabase = await createSupabaseServerClient();
-  const { column, ascending } = sortToOrderBy(sort);
+  const { column, ascending } = sortToOrderBy();
 
   const [productsResult, categoriesResult, offerResult, heroResult] = await Promise.all([
     supabase
