@@ -77,7 +77,11 @@ export function HeroCarousel({ slides }: { slides: HeroSlide[] }) {
             src={slide.mediaUrl}
             alt={slide.captionText ?? ''}
             fill
-            sizes="100vw"
+            // The band is the page container's content box, not the
+            // viewport: it stops growing at 1200px however wide the
+            // screen is. `100vw` claimed otherwise, so a 1920px screen at
+            // 2x fetched a 3840px-wide file to fill 2400px of it.
+            sizes="(min-width: 1360px) 1200px, (min-width: 640px) calc(100vw - 80px), calc(100vw - 40px)"
             // The hero is the largest element above the fold, so the
             // first slide is the page's LCP candidate and must not wait
             // for layout to be discovered.

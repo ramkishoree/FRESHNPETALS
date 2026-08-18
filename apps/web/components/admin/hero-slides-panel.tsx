@@ -132,9 +132,9 @@ export function HeroSlidesPanel() {
               )}
             </div>
 
-            {/* The real homepage shape, so a crop is judged here and not
-                after it is already live. */}
-            <div className="bg-muted relative aspect-[21/9] w-full overflow-hidden rounded-md">
+            {/* The storefront's real shape, so a crop is judged here and
+                not after it is already live. */}
+            <div className="bg-muted relative aspect-[8/3] w-full overflow-hidden rounded-md">
               {slide ? (
                 // eslint-disable-next-line @next/next/no-img-element -- admin-only preview of an already-optimized Supabase asset
                 <img src={slide.media_url} alt="" className="size-full object-cover" />
@@ -163,14 +163,14 @@ export function HeroSlidesPanel() {
               />
               <p className="text-caption text-muted-foreground">
                 <strong className="text-foreground">Best size: 2400 × 900 px</strong> (landscape,
-                8:3). The band is 1200 × 450 px at its largest on a computer, so 2400 × 900 keeps it
-                sharp on high-resolution screens. Anything wider or taller is fine — it will be
-                cropped to fit, never squashed.
+                8:3). The band is 1200 × 450 px at its largest, so 2400 × 900 keeps it sharp on
+                high-resolution screens. A different shape still works — it is cropped to fit, never
+                squashed — but at 8:3 nothing is lost.
               </p>
               <p className="text-caption text-muted-foreground">
-                On phones the band is a taller 16:9 shape, which trims roughly a sixth off each
-                side. Keep the words and the main subject in the middle third and nothing important
-                will be lost. The preview above is the computer shape.
+                The band is the same 8:3 shape on every screen, so a photo at this ratio is shown
+                whole — nothing is cut off on a phone. The preview above is exactly what visitors
+                see.
               </p>
             </div>
 
