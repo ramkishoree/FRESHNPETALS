@@ -53,14 +53,28 @@ export const BUSINESS = {
   jurisdictionCity: 'Lucknow',
   jurisdictionState: 'Uttar Pradesh',
 
-  /** Support hours, as published on the old contact page. */
-  supportHours: '9:00 AM – 8:00 PM, all days',
+  /** Shop hours, matching `outlets.working_hours` and both Google
+   *  Business Profiles. */
+  supportHours: '8:00 AM – 10:00 PM, all days',
 
-  /** Delivery pricing, mirroring what checkout actually charges. */
+  /**
+   * Delivery pricing, mirroring what checkout actually charges.
+   *
+   * "Mirroring" was aspirational: this said ₹5 per additional kilometre
+   * while `system_settings.delivery_per_km_fee_inr` — the number
+   * checkout actually bills — has been ₹10. A published delivery charge
+   * that undercuts the one taken at the till is the kind of discrepancy
+   * the Consumer Protection (E-Commerce) Rules exist about, so it is the
+   * policy that was wrong, not the price.
+   */
   deliveryBaseFee: 50,
   deliveryBaseKm: 5,
-  deliveryPerKmFee: 5,
-  sameDayCutoff: '6:00 PM',
+  deliveryPerKmFee: 10,
+  /** An hour before the last slot (10 PM – 12 AM) opens. */
+  sameDayCutoff: '9:00 PM',
+  /** Surcharge on the late slot, and the hour it starts from. */
+  nightChargeFee: 250,
+  nightChargeAfterTime: '10:00 PM',
 } as const;
 
 /**

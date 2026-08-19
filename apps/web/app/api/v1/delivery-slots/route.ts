@@ -10,16 +10,16 @@ import { runSecurityChain } from '@/server/security/chain';
  *
  * Storefront-facing read of the same delivery_slots admin manages at
  * /admin/delivery-slots. A slot is "bookable" when it's active, has
- * remaining capacity, and — for today only — starts at least 90 minutes
- * from now (owner's explicit rule: no slot within 1.5h of checkout time,
- * since prep + dispatch needs the lead time). Slots for any future date
- * are bookable purely on capacity; there's no per-date row, the same
- * slot template repeats daily.
+ * remaining capacity, and — for today only — starts at least an hour
+ * from now (owner's explicit rule; it was 90 minutes and they shortened
+ * it, since prep and dispatch fit in the hour). Slots for any future
+ * date are bookable purely on capacity; there's no per-date row, the
+ * same slot template repeats daily.
  *
  * IST is a fixed UTC+5:30 offset (no DST), computed directly rather than
  * pulling in a timezone library for one conversion.
  */
-const CUTOFF_MINUTES = 90;
+const CUTOFF_MINUTES = 60;
 
 const querySchema = z.object({
   date: z

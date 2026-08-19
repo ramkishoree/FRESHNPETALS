@@ -35,6 +35,7 @@ export default function ShippingPage() {
           heading: 'Delivery charges',
           body: [
             `Delivery is charged by distance from the outlet nearest to your delivery pin: ₹${BUSINESS.deliveryBaseFee} for the first ${BUSINESS.deliveryBaseKm} km, plus ₹${BUSINESS.deliveryPerKmFee} for each additional kilometre.`,
+            `A late-delivery surcharge of ₹${BUSINESS.nightChargeFee} applies to the ${BUSINESS.nightChargeAfterTime} slot. It is shown as a separate line at checkout before you pay.`,
             'The exact amount is calculated and shown at checkout before payment. There are no other delivery charges, and no charge is added after you pay.',
           ],
         },
@@ -42,7 +43,8 @@ export default function ShippingPage() {
           heading: 'Delivery times and same-day orders',
           body: [
             `Same-day delivery is available for orders placed before ${BUSINESS.sameDayCutoff}, subject to stock and slot availability. Orders placed after that are scheduled for the next available day.`,
-            'You choose a delivery date and a time slot at checkout. Slots are allocated on a first-come basis and a slot can close once it is full.',
+            'You choose a delivery date and a time slot at checkout. A slot can only be booked at least an hour before it starts, so we have time to prepare and dispatch your order.',
+            'Slots are allocated on a first-come basis and a slot can close once it is full.',
             'Delivery windows are honest estimates based on outlet workload, distance and traffic. They are not guaranteed times, and we do not offer timed-to-the-minute delivery.',
           ],
         },
