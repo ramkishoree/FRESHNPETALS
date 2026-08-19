@@ -236,7 +236,10 @@
 .storefront-theme .top-nav {
   align-items: center;
   gap: 1.75rem;
-  margin-left: 0.5rem;
+  /* No margin-left. It existed to nudge the nav away from the brand back
+     when the nav was the flexible element; now that the flanks are equal
+     columns, any margin here is a direct offset from centre. */
+  flex: none;
 }
 .storefront-theme .top-nav a {
   font-family: var(--font-body);
