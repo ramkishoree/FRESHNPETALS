@@ -13,7 +13,7 @@ import { fetchOutlets, outletUrlSlug } from '@/server/storefront/outlets';
  * require a session. */
 export const revalidate = 3600;
 
-const STATIC_ROUTES = ['', '/privacy', '/terms', '/shipping', '/refunds'];
+const STATIC_ROUTES = ['', '/flower-shop', '/privacy', '/terms', '/shipping', '/refunds'];
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;

@@ -32,6 +32,11 @@ export function SiteFooter({ outlets = [] }: { outlets?: FooterOutlet[] }) {
               Florist in Lucknow since 2021. Fresh bouquets, baskets, gift hampers and indoor
               plants, delivered across the city.
             </p>
+            <p className="text-caption mt-2">
+              <Link href="/flower-shop" className="text-muted-foreground hover:text-foreground">
+                Find a shop
+              </Link>
+            </p>
           </div>
           {outlets.map((outlet) => (
             <div key={outlet.slug}>
