@@ -87,6 +87,11 @@ export function CategoryAvatarStrip({
                       alt=""
                       width={160}
                       height={160}
+                      // The button is never wider than 80px and is
+                      // usually far smaller once seven of them divide a
+                      // phone's width; without this it fetched a 384px
+                      // file for a 44px circle.
+                      sizes="80px"
                       // A square crop of the existing cover photo — the
                       // same picture the category card already uses, so
                       // the owner has nothing new to upload.

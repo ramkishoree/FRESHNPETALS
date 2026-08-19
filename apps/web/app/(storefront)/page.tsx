@@ -15,10 +15,26 @@ import {
   sortToOrderBy,
 } from '@/server/storefront/shop-query';
 
+/**
+ * `title.absolute` rather than the template: the landing page has to
+ * carry the primary local terms itself, and appending the brand suffix a
+ * second time would push the useful words past what a result snippet
+ * shows.
+ */
 export const metadata: Metadata = {
-  title: 'Fresh & Petals — Flowers, bouquets & gifts',
+  title: {
+    absolute: 'Flower Shop in Lucknow | Buy Flowers Online — Fresh N Petals Florist',
+  },
   description:
-    'Every bloom, box and bouquet we make, delivered fresh across Lucknow. Browse the full catalogue and order in a couple of taps.',
+    'Buy flowers online in Lucknow. Fresh bouquets, basket bouquets, chocolate bouquets, indoor plants and gifts from Fresh N Petals, with same-day delivery from our Gomti Nagar and Arjunganj shops.',
+  alternates: { canonical: '/' },
+  openGraph: {
+    title: 'Flower Shop in Lucknow | Buy Flowers Online — Fresh N Petals',
+    description:
+      'Fresh bouquets, baskets and gifts delivered across Lucknow the same day, from two shops in Gomti Nagar and Arjunganj.',
+    url: '/',
+    type: 'website',
+  },
 };
 
 /**

@@ -21,10 +21,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const supabase = await createSupabaseServerClient();
   const { data } = await supabase
     .from('categories')
-    .select('name')
+    .select('name, description')
     .eq('slug', category)
     .maybeSingle();
-  return { title: data ? `${data.name} | Fresh & Petals` : 'Fresh & Petals' };
+  if (!data) return { title: 'Category not found' };
+
+  // Every category page previously shared one bare title and had no
+  // description at all, so search engines had nothing to tell them apart
+  // and wrote their own snippet from whatever text they found.
+  const title = `${data.name} in Lucknow — Buy Online, Same-Day Delivery`;
+  const description =
+    (data.description as string | null) ??
+    `Order ${String(data.name).toLowerCase()} online from Fresh N Petals, a florist in Lucknow with shops in Gomti Nagar and Arjunganj. Same-day delivery across the city.`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: `/shop/${category}` },
+    openGraph: { title, description, url: `/shop/${category}`, type: 'website' },
+  };
 }
 
 /** Ch.12 §19 Category Pages. */

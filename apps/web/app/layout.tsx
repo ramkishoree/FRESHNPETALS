@@ -19,9 +19,65 @@ import './globals.css';
 const SUPABASE_ORIGIN = new URL(process.env['NEXT_PUBLIC_SUPABASE_URL'] ?? 'https://supabase.co')
   .origin;
 
+const SITE_URL = process.env['NEXT_PUBLIC_APP_URL'] ?? 'https://freshnpetals.in';
+
+/**
+ * Site-wide metadata.
+ *
+ * `metadataBase` is the load-bearing part: without it Next cannot turn
+ * the relative `alternates.canonical` each page declares into an
+ * absolute URL, and no page had a canonical tag at all before this. A
+ * catalogue that answers on `/`, `/?sort=price_asc` and `/?sort=newest`
+ * is three URLs with the same products on them, which is exactly the
+ * duplication a canonical exists to resolve.
+ *
+ * The title is a template rather than a constant so every page reads as
+ * "<what this page is> | Fresh N Petals — Florist in Lucknow" without
+ * each one restating the brand.
+ */
 export const metadata: Metadata = {
-  title: 'Fresh & Petals',
-  description: 'Fresh N Petals — serving flowers in Lucknow since 2021.',
+  metadataBase: new URL(SITE_URL),
+  title: {
+    default: 'Fresh N Petals — Flower Shop & Florist in Lucknow | Same-Day Delivery',
+    template: '%s | Fresh N Petals — Florist in Lucknow',
+  },
+  description:
+    'Buy flowers online in Lucknow from Fresh N Petals. Fresh bouquets, baskets, chocolate bouquets, indoor plants and gifts, with same-day delivery from our Gomti Nagar and Arjunganj shops. Serving Lucknow since 2021.',
+  applicationName: 'Fresh N Petals',
+  keywords: [
+    'flower shop Lucknow',
+    'florist Lucknow',
+    'flowers near me',
+    'buy flowers online',
+    'online flower delivery Lucknow',
+    'bouquet delivery Lucknow',
+    'flowers Gomti Nagar',
+    'flowers Arjunganj',
+    'flower delivery Gomti Nagar',
+    'same day flower delivery Lucknow',
+  ],
+  authors: [{ name: 'Fresh N Petals' }],
+  alternates: { canonical: '/' },
+  openGraph: {
+    type: 'website',
+    siteName: 'Fresh N Petals',
+    locale: 'en_IN',
+    url: SITE_URL,
+    title: 'Fresh N Petals — Flower Shop & Florist in Lucknow',
+    description:
+      'Fresh bouquets, baskets and gifts delivered across Lucknow the same day. Two shops: Gomti Nagar and Arjunganj.',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Fresh N Petals — Flower Shop & Florist in Lucknow',
+    description: 'Fresh bouquets, baskets and gifts delivered across Lucknow the same day.',
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
+  },
+  category: 'shopping',
 };
 
 export default async function RootLayout({

@@ -82,7 +82,15 @@ export function ProductCard({
               alt={product.name}
               width={600}
               height={750}
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
+              // Measured, not guessed. The grid is two columns below
+              // 820px — not one — so the old `100vw` made a 390px phone
+              // download a 1200px file for a card rendered 167px wide:
+              // 5.7x the pixels it could ever show, and the single
+              // biggest reason the catalogue felt slow. Above 820px the
+              // grid is `auto-fill minmax(210px, 1fr)` inside a
+              // 1200px-max container, which lands on four to five
+              // columns, and it stops growing once the container caps.
+              sizes="(max-width: 820px) 50vw, (max-width: 1280px) 25vw, 240px"
               priority={priority}
               // Only meaningful alongside priority; tells the browser this
               // is the image worth fetching first, not merely eagerly.
