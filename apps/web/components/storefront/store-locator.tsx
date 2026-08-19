@@ -24,8 +24,28 @@ export interface LocatorLocation {
  * uses rather than pasted as a literal, so an address corrected in the
  * admin cannot leave a second, stale copy sitting in the locator.
  */
-export function StoreLocator({ locations }: { locations: LocatorLocation[] }) {
+export function StoreLocator({
+  locations,
+  apiKey,
+}: {
+  locations: LocatorLocation[];
+  apiKey: string;
+}) {
   const ref = React.useRef<HTMLElement>(null);
+  const loaderRef = React.useRef<HTMLElement>(null);
+
+  /**
+   * The loader's API key has to be set here rather than as JSX.
+   *
+   * `<gmpx-api-loader>` takes its key from an attribute literally named
+   * `key` — and `key` is reserved in React, consumed by the reconciler
+   * and never written to the DOM. The element therefore rendered with no
+   * key at all and the component threw "The Google Maps JavaScript API
+   * is required for this element to function correctly."
+   */
+  React.useEffect(() => {
+    loaderRef.current?.setAttribute('key', apiKey);
+  }, [apiKey]);
 
   React.useEffect(() => {
     let cancelled = false;
@@ -78,9 +98,17 @@ export function StoreLocator({ locations }: { locations: LocatorLocation[] }) {
     };
   }, [locations]);
 
-  return React.createElement('gmpx-store-locator', {
-    ref,
-    'map-id': 'DEMO_MAP_ID',
-    class: 'store-locator',
-  });
+  return React.createElement(
+    React.Fragment,
+    null,
+    React.createElement('gmpx-api-loader', {
+      ref: loaderRef,
+      'solution-channel': 'GMP_QB_locatorplus_v11_cABD',
+    }),
+    React.createElement('gmpx-store-locator', {
+      ref,
+      'map-id': 'DEMO_MAP_ID',
+      class: 'store-locator',
+    }),
+  );
 }

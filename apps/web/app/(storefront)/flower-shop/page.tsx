@@ -1,4 +1,3 @@
-import * as React from 'react';
 import type { Metadata } from 'next';
 import { headers } from 'next/headers';
 import Link from 'next/link';
@@ -82,12 +81,8 @@ export default async function FlowerShopsPage() {
             nonce={nonce}
             src="https://ajax.googleapis.com/ajax/libs/@googlemaps/extended-component-library/0.6.15/index.min.js"
           />
-          {/* eslint-disable-next-line @typescript-eslint/no-explicit-any -- custom element, no JSX typing ships with the library */}
-          {React.createElement('gmpx-api-loader' as any, {
-            key: mapsKey,
-            'solution-channel': 'GMP_QB_locatorplus_v11_cABD',
-          })}
           <StoreLocator
+            apiKey={mapsKey}
             locations={outlets.map((outlet) => ({
               title: outlet.name,
               address1: outlet.address,
