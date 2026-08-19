@@ -34,10 +34,17 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     .eq('slug', slug);
   if (!isDraft) query = query.eq('status', 'published');
   const { data } = await query.maybeSingle();
-  if (!data) return { title: 'Product not found | Fresh & Petals' };
+  if (!data) return { title: 'Product not found' };
   return {
-    title: data.seo_title ?? `${data.name} | Fresh & Petals`,
-    description: data.meta_description ?? undefined,
+    // The layout template appends "| Fresh N Petals", so neither branch
+    // spells the brand itself — these used to say "Fresh & Petals",
+    // which is not the name on the shopfront or on either Google
+    // Business Profile.
+    title: data.seo_title ?? `${data.name} — Buy Online in Lucknow`,
+    description:
+      data.meta_description ??
+      `Order ${data.name} online from Fresh N Petals, a florist in Lucknow with shops in Gomti Nagar and Arjunganj. Same-day delivery across the city.`,
+    alternates: { canonical: `/product/${slug}` },
   };
 }
 

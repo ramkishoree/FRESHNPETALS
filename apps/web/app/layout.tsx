@@ -39,7 +39,11 @@ export const metadata: Metadata = {
   metadataBase: new URL(SITE_URL),
   title: {
     default: 'Fresh N Petals — Flower Shop & Florist in Lucknow | Same-Day Delivery',
-    template: '%s | Fresh N Petals — Florist in Lucknow',
+    // Short on purpose. Google shows roughly 60 characters of a title;
+    // a long suffix spends that budget restating the brand instead of
+    // saying what the page is. Pages that need the brand in their own
+    // words set `title.absolute` and skip this.
+    template: '%s | Fresh N Petals',
   },
   description:
     'Buy flowers online in Lucknow from Fresh N Petals. Fresh bouquets, baskets, chocolate bouquets, indoor plants and gifts, with same-day delivery from our Gomti Nagar and Arjunganj shops. Serving Lucknow since 2021.',

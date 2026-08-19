@@ -56,7 +56,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!outlet) return { title: 'Shop not found' };
 
   const area = outletArea(outlet);
-  const title = `Flower Shop in ${area}, Lucknow — Fresh N Petals Florist`;
+  // The template adds "| Fresh N Petals", so this must not repeat it.
+  const title = `Flower Shop in ${area}, Lucknow`;
   const description = `Fresh flowers, bouquets and gifts from our ${area} shop in Lucknow. Same-day delivery across ${area} and nearby areas. Order online or call ${toE164(outlet.phone) ?? ''}.`;
 
   return {

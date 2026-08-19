@@ -29,7 +29,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   // Every category page previously shared one bare title and had no
   // description at all, so search engines had nothing to tell them apart
   // and wrote their own snippet from whatever text they found.
-  const title = `${data.name} in Lucknow — Buy Online, Same-Day Delivery`;
+  const title = `${data.name} in Lucknow — Same-Day Delivery`;
   const description =
     (data.description as string | null) ??
     `Order ${String(data.name).toLowerCase()} online from Fresh N Petals, a florist in Lucknow with shops in Gomti Nagar and Arjunganj. Same-day delivery across the city.`;
