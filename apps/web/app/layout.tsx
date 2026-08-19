@@ -77,6 +77,13 @@ export const metadata: Metadata = {
     follow: true,
     googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1 },
   },
+  // Set GOOGLE_SITE_VERIFICATION in Vercel to the code Search Console
+  // gives you for the "HTML tag" method, and the meta tag appears on
+  // every page. Left unset it emits nothing, so an unverified site is
+  // not carrying an empty tag around.
+  ...(process.env['GOOGLE_SITE_VERIFICATION']
+    ? { verification: { google: process.env['GOOGLE_SITE_VERIFICATION'] } }
+    : {}),
   category: 'shopping',
 };
 

@@ -8,7 +8,7 @@ import { SiteFooter } from '@/components/storefront/site-footer';
 import { SiteHeader } from '@/components/storefront/site-header';
 import { Spine } from '@/components/storefront/spine';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { fetchOutlets, outletArea, toE164 } from '@/server/storefront/outlets';
+import { fetchOutlets, outletArea, outletUrlSlug, toE164 } from '@/server/storefront/outlets';
 
 export default async function StorefrontLayout({ children }: { children: React.ReactNode }) {
   const env = getPublicEnv();
@@ -78,9 +78,9 @@ export default async function StorefrontLayout({ children }: { children: React.R
             // that to work at all.
             ...outlets.map((outlet) => ({
               '@type': 'Florist',
-              '@id': `${appUrl}/flower-shop/${outlet.slug}`,
+              '@id': `${appUrl}/flower-shop/${outletUrlSlug(outlet)}`,
               name: outlet.name,
-              url: `${appUrl}/flower-shop/${outlet.slug}`,
+              url: `${appUrl}/flower-shop/${outletUrlSlug(outlet)}`,
               ...(toE164(outlet.phone) ? { telephone: toE164(outlet.phone) } : {}),
               priceRange: '₹₹',
               address: {
@@ -120,7 +120,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
       <SiteFooter
         outlets={outlets.map((outlet) => ({
           name: outlet.name,
-          slug: outlet.slug,
+          slug: outletUrlSlug(outlet),
           area: outletArea(outlet),
           address: outlet.address,
           city: outlet.city,

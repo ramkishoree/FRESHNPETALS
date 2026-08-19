@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { JsonLd } from '@/components/seo/json-ld';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { getPublicEnv } from '@/config/env';
@@ -8,6 +8,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
   fetchOutlets,
   outletArea,
+  outletUrlSlug,
   toE164,
   type StorefrontOutlet,
 } from '@/server/storefront/outlets';
@@ -31,10 +32,20 @@ interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+/**
+ * Accepts the readable URL slug, and also the internal admin slug so the
+ * handful of links that briefly carried it do not 404. The page body
+ * redirects the latter rather than serving both, which would be the same
+ * shop on two URLs.
+ */
 async function loadOutlet(slug: string): Promise<StorefrontOutlet | null> {
   const supabase = await createSupabaseServerClient();
   const outlets = await fetchOutlets(supabase);
-  return outlets.find((outlet) => outlet.slug === slug) ?? null;
+  return (
+    outlets.find((outlet) => outletUrlSlug(outlet) === slug) ??
+    outlets.find((outlet) => outlet.slug === slug) ??
+    null
+  );
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -49,8 +60,13 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   return {
     title,
     description,
-    alternates: { canonical: `/flower-shop/${outlet.slug}` },
-    openGraph: { title, description, url: `/flower-shop/${outlet.slug}`, type: 'website' },
+    alternates: { canonical: `/flower-shop/${outletUrlSlug(outlet)}` },
+    openGraph: {
+      title,
+      description,
+      url: `/flower-shop/${outletUrlSlug(outlet)}`,
+      type: 'website',
+    },
   };
 }
 
@@ -58,6 +74,9 @@ export default async function FlowerShopPage({ params }: PageProps) {
   const { slug } = await params;
   const outlet = await loadOutlet(slug);
   if (!outlet) notFound();
+  // Reached by the internal admin slug: send it to the readable one so
+  // there is exactly one URL per shop.
+  if (slug !== outletUrlSlug(outlet)) permanentRedirect(`/flower-shop/${outletUrlSlug(outlet)}`);
 
   const area = outletArea(outlet);
   const appUrl = getPublicEnv().NEXT_PUBLIC_APP_URL;
@@ -87,9 +106,9 @@ export default async function FlowerShopPage({ params }: PageProps) {
         data={{
           '@context': 'https://schema.org',
           '@type': 'Florist',
-          '@id': `${appUrl}/flower-shop/${outlet.slug}`,
+          '@id': `${appUrl}/flower-shop/${outletUrlSlug(outlet)}`,
           name: outlet.name,
-          url: `${appUrl}/flower-shop/${outlet.slug}`,
+          url: `${appUrl}/flower-shop/${outletUrlSlug(outlet)}`,
           image: `${appUrl}/category-all.webp`,
           ...(phone ? { telephone: phone } : {}),
           ...(outlet.email ? { email: outlet.email } : {}),
@@ -201,7 +220,7 @@ export default async function FlowerShopPage({ params }: PageProps) {
           <ul className="space-y-2">
             {otherOutlets.map((entry) => (
               <li key={entry.slug}>
-                <Link href={`/flower-shop/${entry.slug}`} className="act">
+                <Link href={`/flower-shop/${outletUrlSlug(entry)}`} className="act">
                   Flower shop in {outletArea(entry)}, Lucknow
                 </Link>
               </li>

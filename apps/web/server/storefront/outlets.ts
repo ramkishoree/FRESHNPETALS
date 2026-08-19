@@ -85,3 +85,20 @@ export function outletArea(outlet: StorefrontOutlet): string {
   const fromName = outlet.name.split('-').pop()?.trim();
   return fromName && fromName.length > 1 ? fromName : outlet.city;
 }
+
+/**
+ * What a shop's page is addressed by.
+ *
+ * Deliberately not `outlets.slug`. Those are internal handles typed in
+ * the admin — "freshnpetalsgomtinagar1", trailing digit and all — and
+ * the checkout's outlet API keys off them, so they cannot be renamed
+ * without touching a payment path. A URL is read by people and weighed
+ * by search engines, and "gomti-nagar" is the term being searched for;
+ * "freshnpetalsgomtinagar1" is not a term at all.
+ */
+export function outletUrlSlug(outlet: StorefrontOutlet): string {
+  return outletArea(outlet)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}

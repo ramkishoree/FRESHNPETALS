@@ -6,7 +6,22 @@ blockExoticSubdeps: true
 overrides:
   vite: '>=6.4.3'
   esbuild: '>=0.24.3'
-  postcss: '>=8.5.10'
+  # GHSA-r28c-9q8g-f849 — path traversal via sourceMappingURL auto-loading.
+  postcss: '>=8.5.18'
+  # Next ships its own sharp for the image optimizer, and it lagged at
+  # 0.34.5 while this app's direct dependency was already 0.35.3 — two
+  # copies, one of them carrying the libvips CVEs (CVE-2026-33327/33328,
+  # CVE-2026-35590/35591). One version everywhere.
+  sharp: '>=0.35.3'
+  # brace-expansion, js-yaml, nanoid and undici are deliberately NOT
+  # overridden. Their advisories are real but every path to them runs
+  # through the dev toolchain — eslint, vitest, testcontainers — so none
+  # of it is served to a visitor. Pinning them was tried and reverted:
+  # a bare '>=' crosses majors, which forced js-yaml 4 -> 5 and
+  # brace-expansion 1 -> 5, and eslint died on
+  # "TypeError: expand is not a function" because minimatch@3 calls the
+  # CommonJS default export those majors removed. Fixing a dev-only
+  # advisory is not worth breaking the linter for.
 allowBuilds:
   cpu-features: true
   esbuild: true

@@ -1,7 +1,7 @@
 import type { MetadataRoute } from 'next';
 import { getPublicEnv } from '@/config/env';
 import { createSupabaseAdminClient } from '@/lib/supabase/admin';
-import { fetchOutlets } from '@/server/storefront/outlets';
+import { fetchOutlets, outletUrlSlug } from '@/server/storefront/outlets';
 
 /** Ch.16 — no sitemap existed anywhere before this; SEO Specialist AI's
  * "Schema Generation" capability had nothing to point search engines at.
@@ -53,7 +53,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // most of what a local florist is found by — they belong in the
   // sitemap ahead of any individual product.
   const outletEntries: MetadataRoute.Sitemap = outlets.map((outlet) => ({
-    url: `${appUrl}/flower-shop/${outlet.slug}`,
+    url: `${appUrl}/flower-shop/${outletUrlSlug(outlet)}`,
     changeFrequency: 'monthly',
     priority: 0.9,
   }));
