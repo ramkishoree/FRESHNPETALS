@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { deriveSeoDefaults, PRODUCT_LIMITS } from './product';
 
 describe('deriveSeoDefaults', () => {
-  it('appends the brand suffix to a short name', () => {
+  it('leaves the brand to the layout rather than stamping it in', () => {
+    // It used to append " | Fresh N Petals" here, which the storefront
+    // template then appended again — the live product title read
+    // "... | Fresh N Petals | Fresh N Petals".
     const { seoTitle } = deriveSeoDefaults('Red Rose Bouquet', 'A'.repeat(120));
-    expect(seoTitle).toBe('Red Rose Bouquet | Fresh N Petals');
+    expect(seoTitle).toBe('Red Rose Bouquet');
+    expect(seoTitle).not.toContain('Fresh N Petals');
     expect(seoTitle.length).toBeLessThanOrEqual(PRODUCT_LIMITS.seoTitleMax);
   });
 

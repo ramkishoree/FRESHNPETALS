@@ -207,11 +207,13 @@ export function deriveSeoDefaults(
   description: string,
   shortDescription?: string,
 ): { seoTitle: string; metaDescription: string; focusKeyword: string } {
-  const seoTitleSuffix = ' | Fresh N Petals';
+  // No brand suffix. The storefront layout's title template appends
+  // "| Fresh N Petals" to every page, so stamping it in here too
+  // produced "Dozen Red Roses | Fresh N Petals | Fresh N Petals" — and
+  // spent the 60-character budget saying the same thing twice. A stored
+  // seoTitle is the product's own subject; the brand is the layout's job.
   const seoTitle =
-    name.length + seoTitleSuffix.length <= PRODUCT_LIMITS.seoTitleMax
-      ? `${name}${seoTitleSuffix}`
-      : name.slice(0, PRODUCT_LIMITS.seoTitleMax);
+    name.length <= PRODUCT_LIMITS.seoTitleMax ? name : name.slice(0, PRODUCT_LIMITS.seoTitleMax);
 
   const rawDescription = (shortDescription?.trim() || description).replace(/\s+/g, ' ').trim();
   const metaDescription =
