@@ -2,10 +2,12 @@ import type { Metadata } from 'next';
 import { OfferBanner } from '@/components/commerce/offer-banner';
 import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-product-grid';
 import { CategoryAvatarStrip } from '@/components/storefront/category-avatar-strip';
-import { HeroCarousel, type HeroSlide } from '@/components/storefront/hero-carousel';
+import { HeroCarousel } from '@/components/storefront/hero-carousel';
 import { OfferBadge } from '@/components/storefront/offer-badge';
 import { ShopSortControl } from '@/components/storefront/shop-sort-control';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { fetchHeroSlides } from '@/server/storefront/hero-slides';
+import { logger } from '@/server/logger';
 import {
   mapProductRow,
   PRODUCT_SELECT_COLUMNS,
@@ -39,7 +41,7 @@ export default async function ProductsPage({
   const supabase = await createSupabaseServerClient();
   const { column, ascending } = sortToOrderBy();
 
-  const [productsResult, categoriesResult, offerResult, heroResult] = await Promise.all([
+  const [productsResult, categoriesResult, offerResult, heroSlides] = await Promise.all([
     supabase
       .from('products')
       .select(PRODUCT_SELECT_COLUMNS)
@@ -65,30 +67,27 @@ export default async function ProductsPage({
       .order('created_at', { ascending: false })
       .limit(1)
       .maybeSingle(),
-    supabase
-      .from('hero_slides')
-      // `media_type` is filtered on rather than selected: the band is
-      // stills only now, and asking for images explicitly means a row
-      // left over from the brief video era is skipped instead of being
-      // handed to <Image> as a broken picture.
-      .select('id, slot_order, media_url, caption_text')
-      .eq('is_active', true)
-      .eq('media_type', 'image')
-      .order('slot_order', { ascending: true }),
+    fetchHeroSlides(supabase),
   ]);
+
+  // These three follow the same rule the hero learned the hard way: an
+  // errored query and an empty table look identical after `?? []`, so a
+  // transient failure silently removes a whole section of the page. The
+  // fallback stays — half a homepage beats none — but it is recorded now
+  // rather than guessed at later.
+  if (productsResult.error) {
+    logger.error('homepage.products_query_failed', { message: productsResult.error.message });
+  }
+  if (categoriesResult.error) {
+    logger.error('homepage.categories_query_failed', { message: categoriesResult.error.message });
+  }
+  if (offerResult.error) {
+    logger.warn('homepage.offer_query_failed', { message: offerResult.error.message });
+  }
 
   const products = sortProducts((productsResult.data ?? []).map(mapProductRow), sort);
   const categories = categoriesResult.data ?? [];
   const offer = offerResult.data;
-  // Only slots the owner has actually filled reach the browser, so an
-  // empty slot is skipped by never existing rather than by a guard in
-  // the rotation.
-  const heroSlides: HeroSlide[] = (heroResult.data ?? []).map((row) => ({
-    id: row.id as string,
-    slotOrder: row.slot_order as number,
-    mediaUrl: row.media_url as string,
-    captionText: (row.caption_text as string | null) ?? null,
-  }));
 
   return (
     <div className="container-brand py-6 pb-20">
