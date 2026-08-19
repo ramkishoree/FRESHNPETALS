@@ -579,6 +579,31 @@
   }
 }
 
+/* ---------- header brand lockup ---------- */
+/* Emblem and wordmark on one baseline. The emblem is fixed in absolute
+   pixels rather than sized from the type, so it cannot grow with a
+   font-size change and start pushing the nav around. */
+.storefront-theme .brand-lockup {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+.storefront-theme .brand-emblem {
+  width: 2.4rem;
+  height: 2.4rem;
+  object-fit: contain;
+  /* The artwork sits on its own ivory ground; the round crop keeps it
+     from reading as a pasted square against the header. */
+  border-radius: 50%;
+  flex: none;
+}
+@media (max-width: 640px) {
+  .storefront-theme .brand-emblem {
+    width: 2rem;
+    height: 2rem;
+  }
+}
+
 /* ---------- category strip ---------- */
 /* Owner's call: every category has to be visible at once, on every
    screen, with no sideways scrolling. Seven round buttons at a fixed

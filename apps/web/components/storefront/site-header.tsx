@@ -1,6 +1,7 @@
 'use client';
 
 import { Menu, Search, ShoppingBag, User } from 'lucide-react';
+import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import * as React from 'react';
@@ -60,11 +61,26 @@ export function SiteHeader() {
           </SheetContent>
         </Sheet>
 
-        {/* The trading name as the shopfront and both Google Business
-            Profiles spell it. The <em> keeps the middle character in the
-            brand's accent colour, which is what it was always for. */}
-        <Link href="/" className="brand" aria-label="Fresh N Petals — home">
-          Fresh <em>N</em> Petals
+        {/* The emblem, plus the name as real text.
+            Deliberately not the whole circular logo: it carries the
+            wordmark and the "flowers that speak from the heart" line
+            inside it, and at the ~40px a header allows those render at
+            two or three pixels — mush, and a brand name a crawler and a
+            screen reader cannot read. The emblem stays crisp at any
+            size, and the name beside it stays selectable text. */}
+        <Link href="/" className="brand brand-lockup" aria-label="Fresh N Petals — home">
+          <Image
+            src="/logo-emblem.webp"
+            alt=""
+            width={256}
+            height={256}
+            priority
+            sizes="44px"
+            className="brand-emblem"
+          />
+          <span>
+            Fresh <em>N</em> Petals
+          </span>
         </Link>
 
         <nav

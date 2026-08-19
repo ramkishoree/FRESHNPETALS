@@ -48,7 +48,7 @@ export default async function StorefrontLayout({ children }: { children: React.R
               name: 'Fresh N Petals',
               alternateName: 'Fresh & Petals',
               url: appUrl,
-              logo: `${appUrl}/icon.svg`,
+              logo: `${appUrl}/logo-full.webp`,
               foundingDate: '2021',
               areaServed: { '@type': 'City', name: 'Lucknow' },
               ...(outlets[0]?.phone
