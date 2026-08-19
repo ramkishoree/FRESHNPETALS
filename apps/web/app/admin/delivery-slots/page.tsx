@@ -55,13 +55,9 @@ export default function DeliverySlotsPage() {
         endpoint="/api/v1/admin/delivery-slots"
         columns={columns}
         fields={[
-          {
-            name: 'delivery_group_id',
-            label: 'Delivery group ID',
-            type: 'text',
-            required: true,
-            placeholder: 'uuid',
-          },
+          // No delivery-group field. There is one group and every slot
+          // belongs to it, so the server fills it in — the form used to
+          // open by demanding its UUID.
           {
             name: 'label',
             label: 'Label',

@@ -29,6 +29,17 @@ interface AdminCrudRouteConfig {
    * either way.
    */
   trackAttribution?: boolean;
+  /**
+   * Fills in columns the admin should not have to type.
+   *
+   * Runs after validation and before the insert, so a schema can mark a
+   * required foreign key optional and have it resolved here instead of
+   * being demanded from whoever is filling in the form. Delivery slots
+   * are the case that prompted it: every slot belongs to the one
+   * "Standard delivery" group, and the form was asking an admin to
+   * hand-type its UUID.
+   */
+  beforeCreate?: (body: Record<string, unknown>) => Promise<Record<string, unknown>>;
 }
 
 interface RouteParams {
@@ -98,8 +109,9 @@ export function createAdminCrudCollectionRoute<TRow extends { id: string }>(
       const repository = new AdminCrudRepository<TRow>(admin, config.table, config.selectColumns);
 
       try {
+        const withDefaults = config.beforeCreate ? await config.beforeCreate(body) : body;
         const created = await repository.create({
-          ...stripUndefined(body),
+          ...stripUndefined(withDefaults),
           ...(config.trackAttribution !== false
             ? { created_by: actor.id, updated_by: actor.id }
             : {}),
