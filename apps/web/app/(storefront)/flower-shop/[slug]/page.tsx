@@ -6,7 +6,9 @@ import { AddToCartProductGrid } from '@/components/storefront/add-to-cart-produc
 import { getPublicEnv } from '@/config/env';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import {
+  everydayHours,
   fetchOutlets,
+  openingHoursSpecs,
   outletArea,
   outletUrlSlug,
   toE164,
@@ -126,6 +128,9 @@ export default async function FlowerShopPage({ params }: PageProps) {
             latitude: outlet.latitude,
             longitude: outlet.longitude,
           },
+          ...(openingHoursSpecs(outlet).length > 0
+            ? { openingHoursSpecification: openingHoursSpecs(outlet) }
+            : {}),
           // Only stated when Google itself has rated the shop — an
           // aggregateRating a search engine cannot corroborate is worse
           // than none at all.
@@ -183,6 +188,11 @@ export default async function FlowerShopPage({ params }: PageProps) {
               Get directions on Google Maps
             </a>
           </p>
+          {everydayHours(outlet) && (
+            <p className="text-body mt-3">
+              <strong>Open</strong> {everydayHours(outlet)}
+            </p>
+          )}
           {outlet.googleRating && outlet.googleRatingCount ? (
             <p className="text-caption mt-3">
               Rated {outlet.googleRating} out of 5 from {outlet.googleRatingCount} Google reviews.

@@ -8,7 +8,13 @@ import { SiteFooter } from '@/components/storefront/site-footer';
 import { SiteHeader } from '@/components/storefront/site-header';
 import { Spine } from '@/components/storefront/spine';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { fetchOutlets, outletArea, outletUrlSlug, toE164 } from '@/server/storefront/outlets';
+import {
+  fetchOutlets,
+  openingHoursSpecs,
+  outletArea,
+  outletUrlSlug,
+  toE164,
+} from '@/server/storefront/outlets';
 
 export default async function StorefrontLayout({ children }: { children: React.ReactNode }) {
   const env = getPublicEnv();
@@ -95,6 +101,9 @@ export default async function StorefrontLayout({ children }: { children: React.R
                 latitude: outlet.latitude,
                 longitude: outlet.longitude,
               },
+              ...(openingHoursSpecs(outlet).length > 0
+                ? { openingHoursSpecification: openingHoursSpecs(outlet) }
+                : {}),
               parentOrganization: { '@id': `${appUrl}#organization` },
               areaServed: { '@type': 'City', name: outlet.city },
               ...(outlet.googleRating && outlet.googleRatingCount

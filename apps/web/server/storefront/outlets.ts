@@ -80,10 +80,89 @@ export function toE164(phone: string | null): string | null {
   return local.length === 10 ? `+91${local}` : `+${digits}`;
 }
 
-/** The area a shop is named for — "Gomti Nagar" out of its full address. */
+/**
+ * The area a shop is named for — "Gomti Nagar" out of "Fresh N Petals
+ * -Gomti Nagar", spacing around the dash being inconsistent between the
+ * two rows.
+ *
+ * The dash has to be there. Without this check `split('-').pop()`
+ * returns the whole name, so a shop named plainly "Fresh N Petals" was
+ * called an area of that name and would have been addressed at
+ * `/flower-shop/fresh-n-petals` — the city is the honest fallback.
+ */
 export function outletArea(outlet: StorefrontOutlet): string {
+  if (!outlet.name.includes('-')) return outlet.city;
   const fromName = outlet.name.split('-').pop()?.trim();
   return fromName && fromName.length > 1 ? fromName : outlet.city;
+}
+
+const DAY_TO_SCHEMA: Record<string, string> = {
+  monday: 'Monday',
+  tuesday: 'Tuesday',
+  wednesday: 'Wednesday',
+  thursday: 'Thursday',
+  friday: 'Friday',
+  saturday: 'Saturday',
+  sunday: 'Sunday',
+};
+
+export interface OpeningHoursSpec {
+  '@type': 'OpeningHoursSpecification';
+  dayOfWeek: string[];
+  opens: string;
+  closes: string;
+}
+
+/**
+ * `working_hours` as schema.org opening hours.
+ *
+ * Stored per day as "08:00-22:00" so a shop can differ on a Sunday
+ * later, but days sharing a window are emitted as one specification
+ * with several `dayOfWeek` entries — which is both what Google's
+ * examples do and far less to read.
+ *
+ * Returns nothing at all when hours are unset. Google shows these in
+ * local results, and hours it cannot verify against the Business
+ * Profile are worse than absent.
+ */
+export function openingHoursSpecs(outlet: StorefrontOutlet): OpeningHoursSpec[] {
+  if (!outlet.workingHours) return [];
+
+  const byWindow = new Map<string, string[]>();
+  for (const [day, window] of Object.entries(outlet.workingHours)) {
+    const schemaDay = DAY_TO_SCHEMA[day.toLowerCase()];
+    if (!schemaDay || typeof window !== 'string') continue;
+    const [opens, closes] = window.split('-');
+    if (!opens || !closes) continue;
+    const key = `${opens}-${closes}`;
+    byWindow.set(key, [...(byWindow.get(key) ?? []), schemaDay]);
+  }
+
+  return [...byWindow.entries()].map(([window, days]) => {
+    const [opens, closes] = window.split('-');
+    return {
+      '@type': 'OpeningHoursSpecification' as const,
+      dayOfWeek: days,
+      opens: opens as string,
+      closes: closes as string,
+    };
+  });
+}
+
+/** "8:00 am – 10:00 pm, every day" when every day matches, else null. */
+export function everydayHours(outlet: StorefrontOutlet): string | null {
+  const specs = openingHoursSpecs(outlet);
+  const only = specs[0];
+  if (specs.length !== 1 || !only || only.dayOfWeek.length !== 7) return null;
+  return `${formatTime(only.opens)} to ${formatTime(only.closes)}, every day`;
+}
+
+function formatTime(value: string): string {
+  const [h, m] = value.split(':').map(Number);
+  if (h === undefined || Number.isNaN(h)) return value;
+  const suffix = h < 12 ? 'am' : 'pm';
+  const hour = h % 12 === 0 ? 12 : h % 12;
+  return m ? `${hour}:${String(m).padStart(2, '0')}${suffix}` : `${hour}${suffix}`;
 }
 
 /**
