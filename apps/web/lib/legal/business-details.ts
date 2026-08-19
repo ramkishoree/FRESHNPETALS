@@ -18,7 +18,7 @@
  */
 export const BUSINESS = {
   /** Customer-facing brand. Safe as-is. */
-  tradeName: 'Fresh & Petals',
+  tradeName: 'Fresh N Petals',
 
   /**
    * The proprietor's full legal name. A sole proprietorship has no
@@ -75,7 +75,7 @@ export const BUSINESS_DETAILS_COMPLETE = ![
   BUSINESS.supportPhone,
 ].some((value) => value.startsWith('TODO_'));
 
-/** "Fresh & Petals, a sole proprietorship of <name>" — used in clause 1. */
+/** "Fresh N Petals, a sole proprietorship of <name>" — used in clause 1. */
 export const LEGAL_OPERATOR = `${BUSINESS.tradeName}, a sole proprietorship of ${BUSINESS.proprietorName}`;
 
 /** Human list: "Lucknow", or "Lucknow and Kanpur", or "A, B and C". */

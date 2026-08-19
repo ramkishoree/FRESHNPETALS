@@ -16,7 +16,7 @@ export function AdminSidebar({ onNavigate = () => {} }: { onNavigate?: () => voi
   return (
     <nav className="flex h-full flex-col gap-1 overflow-y-auto p-3" aria-label="Admin navigation">
       <Link href="/admin" className="mb-4 flex items-center gap-2 px-2 py-1" onClick={onNavigate}>
-        <span className="text-h4 text-foreground font-bold">Fresh &amp; Petals</span>
+        <span className="text-h4 text-foreground font-bold">Fresh N Petals</span>
       </Link>
 
       {ADMIN_NAV.map((item) => {

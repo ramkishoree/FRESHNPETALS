@@ -3,9 +3,9 @@ import { LegalPage } from '@/components/storefront/legal-page';
 import { BUSINESS, serviceCityList } from '@/lib/legal/business-details';
 
 export const metadata: Metadata = {
-  title: 'Shipping & Delivery Policy | Fresh & Petals',
+  title: 'Shipping & Delivery Policy',
   description:
-    'Where Fresh & Petals delivers, what delivery costs, same-day cut-off times, delivery slots, and what happens when a delivery cannot be completed.',
+    'Where Fresh N Petals delivers, what delivery costs, same-day cut-off times, delivery slots, and what happens when a delivery cannot be completed.',
 };
 
 /**

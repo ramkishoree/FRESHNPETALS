@@ -4,7 +4,7 @@ import { deriveSeoDefaults, PRODUCT_LIMITS } from './product';
 describe('deriveSeoDefaults', () => {
   it('appends the brand suffix to a short name', () => {
     const { seoTitle } = deriveSeoDefaults('Red Rose Bouquet', 'A'.repeat(120));
-    expect(seoTitle).toBe('Red Rose Bouquet | Fresh & Petals');
+    expect(seoTitle).toBe('Red Rose Bouquet | Fresh N Petals');
     expect(seoTitle.length).toBeLessThanOrEqual(PRODUCT_LIMITS.seoTitleMax);
   });
 
@@ -12,7 +12,7 @@ describe('deriveSeoDefaults', () => {
     const longName = 'A'.repeat(80);
     const { seoTitle } = deriveSeoDefaults(longName, 'B'.repeat(120));
     expect(seoTitle.length).toBeLessThanOrEqual(PRODUCT_LIMITS.seoTitleMax);
-    expect(seoTitle).not.toContain('Fresh & Petals');
+    expect(seoTitle).not.toContain('Fresh N Petals');
   });
 
   it('prefers the short description for the meta description when present', () => {

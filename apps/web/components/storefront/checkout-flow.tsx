@@ -448,7 +448,7 @@ export function CheckoutFlow({
         order_id: razorpayOrderId,
         amount,
         currency,
-        name: 'Fresh & Petals',
+        name: 'Fresh N Petals',
         // Razorpay hands back the payment id and an HMAC of it. Passing
         // those to the server is what lets it ask Razorpay directly
         // whether the money was captured, instead of the order existing

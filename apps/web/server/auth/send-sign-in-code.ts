@@ -36,10 +36,10 @@ export async function sendSignInCode(email: string, fullName?: string): Promise<
 
   await sendEmail({
     to: email,
-    subject: `${code} is your Fresh & Petals sign-in code`,
+    subject: `${code} is your Fresh N Petals sign-in code`,
     html: `
       <div style="font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Arial,sans-serif;max-width:480px;margin:0 auto;padding:32px 24px;color:#1c1917">
-        <p style="margin:0 0 8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#78716c">Fresh &amp; Petals</p>
+        <p style="margin:0 0 8px;font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:#78716c">Fresh N Petals</p>
         <h1 style="margin:0 0 16px;font-size:22px;font-weight:600">Your sign-in code</h1>
         <p style="margin:0 0 24px;font-size:15px;line-height:1.6">Enter this code in the tab you started signing in from.</p>
         <p style="margin:0 0 24px;font-size:34px;font-weight:700;letter-spacing:.28em;font-family:ui-monospace,SFMono-Regular,Menlo,monospace">${code}</p>

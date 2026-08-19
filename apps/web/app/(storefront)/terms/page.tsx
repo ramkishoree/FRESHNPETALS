@@ -3,9 +3,9 @@ import { LegalPage } from '@/components/storefront/legal-page';
 import { BUSINESS, LEGAL_OPERATOR, serviceCityList } from '@/lib/legal/business-details';
 
 export const metadata: Metadata = {
-  title: 'Terms of Service | Fresh & Petals',
+  title: 'Terms of Service',
   description:
-    'The terms on which Fresh & Petals sells and delivers flowers, bouquets and gifts, including ordering, pricing, substitution, liability and dispute resolution.',
+    'The terms on which Fresh N Petals sells and delivers flowers, bouquets and gifts, including ordering, pricing, substitution, liability and dispute resolution.',
 };
 
 /**
@@ -107,7 +107,7 @@ export default function TermsPage() {
         {
           heading: 'Our content',
           body: [
-            'The Fresh & Petals name, logo, site design, photographs and text are our property or licensed to us, and are protected by Indian copyright and trade mark law. You may not copy or reuse them commercially without our written permission.',
+            'The Fresh N Petals name, logo, site design, photographs and text are our property or licensed to us, and are protected by Indian copyright and trade mark law. You may not copy or reuse them commercially without our written permission.',
           ],
         },
         {

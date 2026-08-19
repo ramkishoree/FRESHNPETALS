@@ -207,7 +207,7 @@ export function deriveSeoDefaults(
   description: string,
   shortDescription?: string,
 ): { seoTitle: string; metaDescription: string; focusKeyword: string } {
-  const seoTitleSuffix = ' | Fresh & Petals';
+  const seoTitleSuffix = ' | Fresh N Petals';
   const seoTitle =
     name.length + seoTitleSuffix.length <= PRODUCT_LIMITS.seoTitleMax
       ? `${name}${seoTitleSuffix}`

@@ -81,7 +81,7 @@ export async function sweepReviewRequestNudges(admin: SupabaseClient): Promise<v
         subject: `How was your order, ${order.order_number}?`,
         html:
           `<p>Hi${greetingName},</p>` +
-          `<p>We hope you loved your ${productNames} from Fresh &amp; Petals! ` +
+          `<p>We hope you loved your ${productNames} from Fresh N Petals! ` +
           `Would you take a moment to leave a review?</p>` +
           `<p><a href="${orderUrl}">Leave a review</a></p>` +
           `<p>Thank you for shopping with us.</p>`,

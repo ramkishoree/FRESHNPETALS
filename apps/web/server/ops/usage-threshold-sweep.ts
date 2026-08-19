@@ -81,9 +81,9 @@ export async function sweepUsageThresholds(admin: SupabaseClient): Promise<void>
   try {
     await sendEmail({
       to: env.DEV_ALERT_EMAIL,
-      subject: `Fresh & Petals: nearing free-tier limit (${warnings.length} area${warnings.length > 1 ? 's' : ''})`,
+      subject: `Fresh N Petals: nearing free-tier limit (${warnings.length} area${warnings.length > 1 ? 's' : ''})`,
       html: `<div style="font-family:sans-serif;font-size:14px;color:#222;">
-        <p><strong>Fresh & Petals is approaching a Supabase free-tier limit:</strong></p>
+        <p><strong>Fresh N Petals is approaching a Supabase free-tier limit:</strong></p>
         <ul>${warnings.map((w) => `<li>${w}</li>`).join('')}</ul>
         <p>Upgrade the affected resource in the Supabase dashboard (Project Settings → Billing) before it's fully hit — writes/uploads start failing once a limit is reached.</p>
       </div>`,

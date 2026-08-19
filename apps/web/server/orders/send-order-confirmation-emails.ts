@@ -104,7 +104,7 @@ export async function sendOrderConfirmationEmails(
   const businessName =
     typeof settings.get('business_name') === 'string'
       ? (settings.get('business_name') as string)
-      : 'Fresh & Petals';
+      : 'Fresh N Petals';
   const businessPhone =
     typeof settings.get('business_phone') === 'string'
       ? (settings.get('business_phone') as string)

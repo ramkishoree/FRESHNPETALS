@@ -3,9 +3,9 @@ import { LegalPage } from '@/components/storefront/legal-page';
 import { BUSINESS } from '@/lib/legal/business-details';
 
 export const metadata: Metadata = {
-  title: 'Cancellation & Refund Policy | Fresh & Petals',
+  title: 'Cancellation & Refund Policy',
   description:
-    'When a Fresh & Petals order can be cancelled, when you are entitled to a refund or replacement, how to claim one, and how long refunds take.',
+    'When a Fresh N Petals order can be cancelled, when you are entitled to a refund or replacement, how to claim one, and how long refunds take.',
 };
 
 /**

@@ -63,7 +63,7 @@ export async function generateInvoicePdf(input: InvoicePdfInput): Promise<Uint8A
 
   let y = PAGE_HEIGHT - MARGIN;
 
-  page.drawText('Fresh & Petals', { x: MARGIN, y, size: 20, font: bold, color: green });
+  page.drawText('Fresh N Petals', { x: MARGIN, y, size: 20, font: bold, color: green });
   page.drawText('TAX INVOICE', {
     x: PAGE_WIDTH - MARGIN - regular.widthOfTextAtSize('TAX INVOICE', 11),
     y: y + 3,
@@ -175,7 +175,7 @@ export async function generateInvoicePdf(input: InvoicePdfInput): Promise<Uint8A
     y -= emphasize ? 20 : 16;
   }
 
-  page.drawText('Thank you for shopping with Fresh & Petals.', {
+  page.drawText('Thank you for shopping with Fresh N Petals.', {
     x: MARGIN,
     y: MARGIN,
     size: 9,

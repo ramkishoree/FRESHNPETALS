@@ -83,10 +83,10 @@ export function OfferBadge({ offer }: { offer: OfferBadgeOffer }) {
 
             <div className="px-6 pt-8 pb-6 text-center">
               {/* The mark, as a circular ivory badge — the brand's own
-                  gold-on-ivory, so the poster reads as Fresh & Petals
+                  gold-on-ivory, so the poster reads as Fresh N Petals
                   rather than a generic discount pop-up. */}
               <span className="mx-auto mb-5 grid size-14 place-items-center rounded-full bg-[var(--fp-ivory)]">
-                <span className="text-lg font-bold text-[var(--gold-deep)]">F&amp;P</span>
+                <span className="text-lg font-bold text-[var(--gold-deep)]">FNP</span>
               </span>
 
               {offer.bannerHeading && (

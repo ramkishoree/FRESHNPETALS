@@ -24,7 +24,7 @@ export default async function LoginPage({
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-1 text-center">
           <h1 className="text-h2 text-foreground font-bold">Sign in</h1>
-          <p className="text-body text-muted-foreground">Welcome back to Fresh &amp; Petals.</p>
+          <p className="text-body text-muted-foreground">Welcome back to Fresh N Petals.</p>
         </div>
         {notice ? (
           <Alert variant="destructive">

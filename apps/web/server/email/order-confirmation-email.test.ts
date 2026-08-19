@@ -24,7 +24,7 @@ function makeParams(
     taxTotal: 99.9,
     discountTotal: 0,
     grandTotal: 2147.9,
-    businessName: 'Fresh & Petals',
+    businessName: 'Fresh N Petals',
     businessPhone: '9876543210',
     ...overrides,
   };

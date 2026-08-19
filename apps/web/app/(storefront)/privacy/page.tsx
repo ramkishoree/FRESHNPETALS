@@ -3,9 +3,9 @@ import { LegalPage } from '@/components/storefront/legal-page';
 import { BUSINESS, LEGAL_OPERATOR } from '@/lib/legal/business-details';
 
 export const metadata: Metadata = {
-  title: 'Privacy Policy | Fresh & Petals',
+  title: 'Privacy Policy',
   description:
-    'How Fresh & Petals collects, uses, shares and protects your personal data, and the rights you have under the Digital Personal Data Protection Act, 2023.',
+    'How Fresh N Petals collects, uses, shares and protects your personal data, and the rights you have under the Digital Personal Data Protection Act, 2023.',
 };
 
 /**

@@ -60,8 +60,11 @@ export function SiteHeader() {
           </SheetContent>
         </Sheet>
 
-        <Link href="/" className="brand">
-          Fresh <em>&amp;</em> Petals
+        {/* The trading name as the shopfront and both Google Business
+            Profiles spell it. The <em> keeps the middle character in the
+            brand's accent colour, which is what it was always for. */}
+        <Link href="/" className="brand" aria-label="Fresh N Petals — home">
+          Fresh <em>N</em> Petals
         </Link>
 
         <nav
