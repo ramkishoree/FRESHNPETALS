@@ -2,7 +2,9 @@ import { redirect } from 'next/navigation';
 import { headers } from 'next/headers';
 import { CheckoutFlow } from '@/components/storefront/checkout-flow';
 import { getPublicEnv } from '@/config/env';
+import { createSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getCurrentUser } from '@/server/auth/session';
+import { getRateConfig } from '@/server/checkout/get-rate-config';
 
 /**
  * Ch.12 §26 Checkout Experience. `proxy.ts` doesn't gate `/checkout`
@@ -34,12 +36,27 @@ export default async function CheckoutPage({
   // bundle, and `getPublicEnv` reads it dynamically.
   const ownerPhoneNumber = getPublicEnv().NEXT_PUBLIC_OWNER_PHONE_NUMBER;
 
+  // The same rates start-checkout prices the order with, handed to the
+  // outlet cards so the fee they advertise is the fee that gets charged.
+  // They were quoting `@prana/commerce`'s fallback constants instead, so
+  // a 5.2km delivery showed ₹55 on the card and ₹60 in the summary.
+  // Read through the admin client because `system_settings` is not
+  // readable by anon; nothing here is secret — every one of these
+  // numbers is already on screen in the order summary.
+  const { standardDeliveryKm, standardDeliveryFee, perKmFee } = await getRateConfig(
+    createSupabaseAdminClient(),
+  );
+
   return (
+    // No page-level <h1> here: CheckoutFlow's own banner already carries
+    // one, and two of them meant the word "Checkout" was rendered twice,
+    // one above the other, with two competing top-level headings for a
+    // screen reader and for search.
     <div className="container-brand py-10">
-      <h1 className="text-h2 text-foreground mb-6 font-bold">Checkout</h1>
       <CheckoutFlow
         {...(nonce ? { nonce } : {})}
         {...(ownerPhoneNumber ? { ownerPhoneNumber } : {})}
+        deliveryRates={{ standardDeliveryKm, standardDeliveryFee, perKmFee }}
       />
     </div>
   );

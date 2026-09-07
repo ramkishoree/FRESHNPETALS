@@ -218,8 +218,19 @@
   color: var(--ink);
   text-decoration: none;
   white-space: nowrap;
-  /* Last resort on a very narrow screen: the wordmark truncates rather
-     than pushing the icon cluster off the edge. */
+  min-width: 0;
+}
+
+/* Last resort on a very narrow screen: the wordmark truncates rather
+   than pushing the icon cluster off the edge.
+
+   This lives on the inner span, not on `.brand`. `.brand` is also
+   `.brand-lockup`, which makes it a flex container, and `text-overflow`
+   has no effect on one — the overflow is simply sliced off, which is how
+   the header came to read "Fresh N Pe" with no ellipsis to show for it.
+   On the span the text is a real inline box again and the ellipsis
+   renders. */
+.storefront-theme .brand-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;

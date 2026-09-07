@@ -8,7 +8,11 @@ import { ContactUsButton } from '@/components/commerce/contact-us-button';
 import { PriceDisplay } from '@/components/commerce/price-display';
 import { DeliveryMap, type MapLocation } from '@/components/storefront/delivery-map';
 import { rankOutletsByDistance } from '@prana/commerce';
-import { OutletSelector, type OutletWithStock } from '@/components/storefront/outlet-selector';
+import {
+  OutletSelector,
+  type OutletDeliveryRates,
+  type OutletWithStock,
+} from '@/components/storefront/outlet-selector';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -81,9 +85,12 @@ interface PricingBreakdown {
 export function CheckoutFlow({
   nonce,
   ownerPhoneNumber,
+  deliveryRates,
 }: {
   nonce?: string;
   ownerPhoneNumber?: string;
+  /** Read on the server from admin Settings — the same rates checkout charges. */
+  deliveryRates: OutletDeliveryRates;
 }) {
   const cart = useCart();
   const router = useRouter();
@@ -754,6 +761,7 @@ export function CheckoutFlow({
                 deliveryPin={deliveryPin}
                 selectedOutletId={selectedOutletId}
                 onSelect={(id) => setManualOutletId(id)}
+                deliveryRates={deliveryRates}
               />
             </section>
           )}

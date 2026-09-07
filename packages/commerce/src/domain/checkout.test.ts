@@ -127,10 +127,28 @@ describe('computeDeliveryFee', () => {
   });
 
   it('charges extra per km beyond the base distance', () => {
-    // 10 km → base 5 km = ₹50, extra 5 km × ₹5 = ₹25, total = ₹75
-    expect(computeDeliveryFee(10)).toBe(75);
-    // 7.3 km → base 5 km = ₹50, extra ceil(2.3) = 3 × ₹5 = ₹15, total = ₹65
-    expect(computeDeliveryFee(7.3)).toBe(65);
+    // 10 km → base 5 km = ₹50, extra 5 km × ₹10 = ₹50, total = ₹100
+    expect(computeDeliveryFee(10)).toBe(100);
+    // 7.3 km → base 5 km = ₹50, extra ceil(2.3) = 3 × ₹10 = ₹30, total = ₹80
+    expect(computeDeliveryFee(7.3)).toBe(80);
+  });
+
+  /**
+   * The storefront's outlet cards quoted a fee the shop was never going
+   * to charge, because they called this without rates and silently got
+   * the fallback constants: at 5.2 km the card said ₹55 and the order
+   * summary charged ₹60. Passing rates has to actually change the
+   * answer, and the narrow shape is what a caller holding only the three
+   * distance rates can supply.
+   */
+  it('quotes the rates it is given rather than the defaults', () => {
+    const shopRates = { standardDeliveryKm: 5, standardDeliveryFee: 50, perKmFee: 10 };
+    expect(computeDeliveryFee(5.2, shopRates)).toBe(60);
+    expect(computeDeliveryFee(7.6, shopRates)).toBe(80);
+
+    // A different shop, same function.
+    const cheaperRates = { standardDeliveryKm: 3, standardDeliveryFee: 20, perKmFee: 7 };
+    expect(computeDeliveryFee(5.2, cheaperRates)).toBe(20 + 3 * 7);
   });
 });
 

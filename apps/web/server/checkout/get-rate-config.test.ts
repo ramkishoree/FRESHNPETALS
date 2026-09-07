@@ -1,5 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it, vi } from 'vitest';
+import { DEFAULT_RATE_CONFIG } from '@prana/commerce';
 import { getRateConfig } from './get-rate-config';
 
 function makeAdmin(
@@ -55,9 +56,12 @@ describe('getRateConfig', () => {
     const rates = await getRateConfig(admin);
 
     expect(rates.taxRate).toBe(0.1);
-    expect(rates.standardDeliveryFee).toBe(50);
-    expect(rates.standardDeliveryKm).toBe(5);
-    expect(rates.perKmFee).toBe(5);
+    // Against DEFAULT_RATE_CONFIG rather than copies of its numbers: a
+    // hardcoded 5 here went stale when the shop moved to ₹10/km, so the
+    // test kept asserting a fallback rate that no longer existed.
+    expect(rates.standardDeliveryFee).toBe(DEFAULT_RATE_CONFIG.standardDeliveryFee);
+    expect(rates.standardDeliveryKm).toBe(DEFAULT_RATE_CONFIG.standardDeliveryKm);
+    expect(rates.perKmFee).toBe(DEFAULT_RATE_CONFIG.perKmFee);
   });
 
   it('never invents a night charge from a malformed cutoff', () => {

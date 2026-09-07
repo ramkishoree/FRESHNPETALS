@@ -53,11 +53,19 @@ export const TAX_RATE = 0.05;
 
 /** Distance-based delivery pricing:
  *  - First STANDARD_DELIVERY_KM (5) costs STANDARD_DELIVERY_FEE (₹50).
- *  - Every km beyond that costs PER_KM_FEE (₹5).
+ *  - Every km beyond that costs PER_KM_FEE (₹10).
  */
 export const STANDARD_DELIVERY_KM = 5;
 export const STANDARD_DELIVERY_FEE = 50;
-export const PER_KM_FEE = 5;
+/**
+ * The owner's stated rate: ₹50 covers the first 5 km, ₹10 for every km
+ * after. This was 5, which made it a fallback that quietly disagreed
+ * with the shop — `system_settings` carries 10, so any hiccup reading
+ * that table dropped the distance charge to half price, and the
+ * storefront's outlet cards (which had no settings to read) advertised
+ * ₹55 for a delivery checkout then charged ₹60 for.
+ */
+export const PER_KM_FEE = 10;
 
 /** Admin-editable rate config (system_settings' tax/delivery rows —
  * apps/web/server/checkout/get-rate-config.ts reads them). Defaults to
@@ -131,7 +139,14 @@ export function validateCartIsNotEmpty(lines: CartLineInput[]): string[] {
  *  `rates.standardDeliveryFee` when distance is unknown. */
 export function computeDeliveryFee(
   distanceKm: number | null | undefined,
-  rates: RateConfig = DEFAULT_RATE_CONFIG,
+  // Only the three distance rates, so a caller that has just those (the
+  // storefront's outlet cards) can pass them without inventing a tax
+  // rate and a night charge it has no business knowing. A full
+  // `RateConfig` still satisfies this.
+  rates: Pick<
+    RateConfig,
+    'standardDeliveryKm' | 'standardDeliveryFee' | 'perKmFee'
+  > = DEFAULT_RATE_CONFIG,
 ): number {
   if (distanceKm == null || distanceKm <= 0) return rates.standardDeliveryFee;
   if (distanceKm <= rates.standardDeliveryKm) return rates.standardDeliveryFee;

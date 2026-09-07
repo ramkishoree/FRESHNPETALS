@@ -92,6 +92,18 @@ export function CategoryAvatarStrip({
                       // phone's width; without this it fetched a 384px
                       // file for a 44px circle.
                       sizes="80px"
+                      // This strip is above the fold on every page it
+                      // appears on, so lazy-loading it only ever costs
+                      // time. "All" is a local file and lands at once
+                      // while the other six go through the optimizer
+                      // against Supabase — around a second each, even on
+                      // a CDN hit — so the row used to paint with one
+                      // photo and six empty circles until they caught
+                      // up. `eager` rather than `priority`: at well
+                      // under a kilobyte apiece they do not need a
+                      // preload link ahead of the hero, they just need
+                      // to stop waiting for layout.
+                      loading="eager"
                       // A square crop of the existing cover photo — the
                       // same picture the category card already uses, so
                       // the owner has nothing new to upload.

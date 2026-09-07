@@ -38,13 +38,21 @@ export function SiteHeader() {
   return (
     <header className="top">
       <div className="wrap top-in">
-        {/* Three columns, and the outer two share the leftover width
-            equally. The nav used to be the `flex-1` element and centred
-            itself inside whatever space the flanks left over — which is
-            the page's centre only while the brand and the icon cluster
-            happen to be the same width. They never were, and widening
-            the brand with the emblem made the drift obvious. */}
-        <div className="flex min-w-0 flex-1 items-center gap-1">
+        {/* Three columns, and from `lg` up the outer two share the
+            leftover width equally. The nav used to be the `flex-1`
+            element and centred itself inside whatever space the flanks
+            left over — which is the page's centre only while the brand
+            and the icon cluster happen to be the same width. They never
+            were, and widening the brand with the emblem made the drift
+            obvious.
+
+            Below `lg` the nav is hidden, so there is nothing to centre
+            and equal flanks only do harm: they hand the icon cluster
+            half the bar for three 36px buttons and starve the brand,
+            which is what was slicing the wordmark to "Fresh N Pe" on a
+            phone. There the brand takes its natural width and `ml-auto`
+            pushes the actions to the edge. */}
+        <div className="flex min-w-0 items-center gap-1 lg:flex-1">
           <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
             <SheetTrigger asChild>
               <Button variant="ghost" size="icon" className="lg:hidden" aria-label="Open menu">
@@ -85,7 +93,7 @@ export function SiteHeader() {
               sizes="44px"
               className="brand-emblem"
             />
-            <span>
+            <span className="brand-name">
               Fresh <em>N</em> Petals
             </span>
           </Link>
@@ -99,7 +107,7 @@ export function SiteHeader() {
           ))}
         </nav>
 
-        <div className="flex min-w-0 flex-1 items-center justify-end gap-1">
+        <div className="ml-auto flex min-w-0 items-center justify-end gap-1 lg:ml-0 lg:flex-1">
           {searchOpen ? (
             <form onSubmit={submitSearch} className="flex max-w-[220px] items-center sm:max-w-xs">
               <Input

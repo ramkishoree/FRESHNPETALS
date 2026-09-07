@@ -6,14 +6,21 @@ import { ShoppingBag } from 'lucide-react';
 import { CartItem } from '@/components/commerce/cart-item';
 import { BrandDivider } from '@/components/storefront/brand-divider';
 import { CartWishlist } from '@/components/storefront/cart-wishlist';
+import { PER_KM_FEE, STANDARD_DELIVERY_FEE, STANDARD_DELIVERY_KM } from '@prana/commerce';
 import { clearBuyNowItem } from '@/lib/buy-now';
 import { useCart } from '@/lib/cart-context';
 
-/** Ch.12 §24 Cart Experience. Delivery fee is distance-based (₹50 for the
- * first 5km, +₹5/km beyond — see packages/commerce/src/domain/checkout.ts)
- * and can only be computed once the customer drops a delivery pin at
- * checkout, so the cart itself just states the pricing model rather than
- * a progress bar toward a threshold that no longer exists. */
+/** Ch.12 §24 Cart Experience. Delivery fee is distance-based and can only
+ * be computed once the customer drops a delivery pin at checkout, so the
+ * cart itself just states the pricing model rather than a progress bar
+ * toward a threshold that no longer exists.
+ *
+ * The figures come from `@prana/commerce`'s constants rather than being
+ * typed into the sentence. They were typed in, and went stale: the copy
+ * promised ₹5/km long after the shop had moved to ₹10, so the basket
+ * quoted half the delivery fee the customer was about to be charged. The
+ * owner can still override the rate in admin Settings, which is why the
+ * sentence ends by sending them to checkout for the exact number. */
 export default function CartPage() {
   const { items, subtotal, removeItem, setQuantity } = useCart();
 
@@ -105,9 +112,9 @@ export default function CartPage() {
 
         <aside className="h-fit rounded-[var(--r-lg)] border border-[var(--sf-border)] bg-[var(--sf-surface-2)] p-6 lg:sticky lg:top-24">
           <p className="mb-6 text-sm text-[var(--sf-ink-muted)]">
-            Delivery is <span className="text-[var(--sf-ink)]">₹50</span> for the first 5km, plus
-            ₹5/km beyond that — you&rsquo;ll see the exact fee once you set your delivery location
-            at checkout.
+            Delivery is <span className="text-[var(--sf-ink)]">₹{STANDARD_DELIVERY_FEE}</span> for
+            the first {STANDARD_DELIVERY_KM}km, plus ₹{PER_KM_FEE}/km beyond that — you&rsquo;ll see
+            the exact fee once you set your delivery location at checkout.
           </p>
 
           <div className="flex justify-between text-sm">

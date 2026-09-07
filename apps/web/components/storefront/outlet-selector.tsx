@@ -1,8 +1,23 @@
 'use client';
 
 import * as React from 'react';
-import { computeDeliveryFee, rankOutletsByDistance } from '@prana/commerce';
+import { computeDeliveryFee, rankOutletsByDistance, type RateConfig } from '@prana/commerce';
 import type { MapLocation } from '@/components/storefront/delivery-map';
+
+/**
+ * The three rates that decide what the fee on an outlet card says.
+ *
+ * They arrive as a prop rather than being read from `@prana/commerce`'s
+ * defaults, because those defaults are a fallback, not the shop's
+ * prices. The owner sets the real ones in admin Settings and the server
+ * charges from there — so a card that quoted the constants quoted a
+ * price the customer was never going to pay. At 5.2 km the card said
+ * ₹55 and the order summary charged ₹60; at 7.6 km, ₹65 against ₹80.
+ */
+export type OutletDeliveryRates = Pick<
+  RateConfig,
+  'standardDeliveryKm' | 'standardDeliveryFee' | 'perKmFee'
+>;
 
 export interface OutletWithStock {
   id: string;
@@ -26,6 +41,8 @@ interface OutletSelectorProps {
   deliveryPin: MapLocation | null;
   selectedOutletId: string | null;
   onSelect: (outletId: string) => void;
+  /** The shop's configured rates, so the card quotes what checkout charges. */
+  deliveryRates: OutletDeliveryRates;
 }
 
 /**
@@ -40,6 +57,7 @@ export function OutletSelector({
   deliveryPin,
   selectedOutletId,
   onSelect,
+  deliveryRates,
 }: OutletSelectorProps) {
   // Rank outlets by distance to the delivery pin (if known), else show all.
   const ranked = React.useMemo(() => {
@@ -87,7 +105,10 @@ export function OutletSelector({
       {ranked.map((entry) => {
         const outlet = outlets.find((o) => o.id === entry.outlet.id)!;
         const isSelected = selectedOutletId === outlet.id;
-        const deliveryFee = computeDeliveryFee(deliveryPin ? entry.distanceKm : null);
+        const deliveryFee = computeDeliveryFee(
+          deliveryPin ? entry.distanceKm : null,
+          deliveryRates,
+        );
         const canFulfill = cartItems.every(
           (item) => (outlet.stock[item.productId] ?? 0) >= item.quantity,
         );
