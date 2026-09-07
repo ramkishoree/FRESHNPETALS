@@ -788,6 +788,10 @@
   color: var(--ink);
   display: block;
   min-width: 0;
+  /* Lets `.plate-meta` below decide its own layout from the card's
+     width rather than the window's. Inline-size only, so the card's
+     height still grows with its contents. */
+  container-type: inline-size;
 }
 .storefront-theme .plate-img {
   position: relative;
@@ -918,6 +922,31 @@
   }
   .storefront-theme .plate-pr {
     font-size: 0.95rem;
+  }
+}
+
+/* Whether the name can sit beside the price is a question about the
+   card, not about the window, and keying it to the viewport got the
+   answer backwards. The desktop grid is five columns wide, so a card at
+   1440px is about 214px across — narrower than the same card in the
+   two-column phone layout, which gets around 165px of a 390px screen
+   and stacks. So the widest screens were the ones running the row
+   layout in the least room: the name was squeezed into 99-124px beside
+   a `nowrap` price and wrapped to four, five, six lines, breaking words
+   mid-syllable ("Arrangem / ent") because `overflow-wrap: anywhere` is
+   the only reason it fit at all.
+
+   A container query asks the card itself. The threshold is what the row
+   actually needs: a readable name needs ~140px, the price runs to about
+   110px, and the gap is 1rem — so below 17rem there is no room for
+   both, at any viewport. The media query above still owns the phone's
+   density tweaks (tighter padding, smaller type); this owns the one
+   decision that was never really about the screen. */
+@container (max-width: 17rem) {
+  .storefront-theme .plate-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
   }
 }
 
